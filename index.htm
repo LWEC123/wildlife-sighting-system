@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpopo Wildlife Eco College - Sighting Data Capture System</title>
+    <meta name="description" content="Wildlife sighting data capture system for Limpopo Wildlife Eco College students">
+    <meta name="theme-color" content="#158034">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #158034;
+            --secondary: #f39c12;
+            --text-dark: #2c3e50;
+            --light-bg: #f5f7fa;
+        }
+        
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            max-width: 1000px;
+        }
+        
+        .form-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .header-logo {
+            max-height: 80px;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: #0e5a25;
+            border-color: #0e5a25;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            border-color: #2ecc71;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+            border-color: #27ae60;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        
+        .required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        
+        .data-preview {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        .species-image {
+            max-width: 100%;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .spinner-border {
+            width: 1rem;
+            height: 1rem;
+        }
+        
+        #sightingIdAlert {
+            display: none;
+        }
+        
+        .behavior-tag {
+            display: inline-block;
+            background-color: #e1f0fa;
+            color: #3498db;
+            border-radius: 30px;
+            padding: 5px 12px;
+            margin: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .behavior-tag i {
+            margin-left: 5px;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        
+        .behavior-tag i:hover {
+            color: #e74c3c;
+        }
+        
+        .tab-content {
+            padding: 20px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+        
+        .college-header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            margin-bottom: 0;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="text-center">
+                <img src="icons/lwec-logo.png" alt="Limpopo Wildlife Eco College Logo" class="header-logo">
+                <h1 class="mb-2">Limpopo Wildlife Eco College</h1>
+                <h3 class="mb-4">Wildlife Sighting Data Capture System</h3>
+            </div>
+            
+            <div id="sightingIdAlert" class="alert alert-success" role="alert">
+                <strong>Success!</strong> Your sighting has been recorded with ID: <span id="sightingIdValue"></span>
+            </div>
+
+            <form id="wildlifeSightingForm">
+                <!-- Taxonomic Classification Section -->
+                <h3 class="section-title"><i class="fas fa-sitemap me-2"></i>Taxonomic Classification</h3>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="taxonomicGroup" class="form-label required">Group</label>
+                        <select class="form-select" id="taxonomicGroup" required>
+                            <option value="">Select Group</option>
+                            <option value="Mammals">Mammals</option>
+                            <option value="Birds">Birds</option>
+                            <option value="Reptiles">Reptiles</option>
+                            <option value="Amphibians">Amphibians</option>
+                        </select>
+                        <div class="error-message" id="taxonomicGroupError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="taxonomicFamily" class="form-label required">Family</label>
+                        <select class="form-select" id="taxonomicFamily" required disabled>
+                            <option value="">Select Family</option>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                        <div class="error-message" id="taxonomicFamilyError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="species" class="form-label required">Species</label>
+                        <select class="form-select" id="species" required disabled>
+                            <option value="">Select Species</option>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                        <div class="error-message" id="speciesError"></div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div id="speciesImageContainer" class="text-center" style="display: none;">
+                            <img id="speciesImage" class="species-image" src="" alt="Species Image">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="speciesInfoContainer" style="display: none;">
+                            <h5 id="speciesScientificName" class="fst-italic"></h5>
+                            <p id="speciesDescription"></p>
+                            <p><strong>Conservation Status: </strong><span id="conservationStatus"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temporal Data Section -->
+                <h3 class="section-title"><i class="fas fa-clock me-2"></i>Temporal Data</h3>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="sightingDate" class="form-label required">Date</label>
+                        <input type="date" class="form-control" id="sightingDate" required>
+                        <div class="error-message" id="sightingDateError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="sightingTime" class="form-label required">Time</label>
+                        <input type="time" class="form-control" id="sightingTime" required>
+                        <div class="error-message" id="sightingTimeError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="season" class="form-label">Season</label>
+                        <input type="text" class="form-control" id="season" readonly>
+                    </div>
+                </div>
+
+                <!-- Spatial Data Section -->
+                <h3 class="section-title"><i class="fas fa-map-marker-alt me-2"></i>Spatial Data</h3>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="latitude" class="form-label required">Latitude</label>
+                        <div class="input-group">
+                            <input type="number" step="0.000001" class="form-control" id="latitude" required>
+                            <button class="btn btn-outline-secondary" type="button" id="getLocationBtn">
+                                <i class="fas fa-crosshairs"></i>
+                            </button>
+                        </div>
+                        <div class="error-message" id="latitudeError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="longitude" class="form-label required">Longitude</label>
+                        <input type="number" step="0.000001" class="form-control" id="longitude" required>
+                        <div class="error-message" id="longitudeError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="habitatZone" class="form-label required">Habitat Zone</label>
+                        <select class="form-select" id="habitatZone" required>
+                            <option value="">Select Habitat</option>
+                            <option value="Savanna">Savanna</option>
+                            <option value="Bushveld">Bushveld</option>
+                            <option value="Fynbos">Fynbos</option>
+                            <option value="Karoo">Karoo</option>
+                            <option value="Grassland">Grassland</option>
+                            <option value="Wetland">Wetland</option>
+                            <option value="Riverine">Riverine</option>
+                            <option value="Forest">Indigenous Forest</option>
+                            <option value="Mountain">Mountain</option>
+                            <option value="Thicket">Thicket</option>
+                            <option value="Kalahari">Kalahari Desert</option>
+                        </select>
+                        <div class="error-message" id="habitatZoneError"></div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="distanceObserved" class="form-label">Distance Observed (m)</label>
+                        <input type="number" class="form-control" id="distanceObserved" min="0">
+                    </div>
+                    <div class="col-md-8">
+                        <label for="locationNotes" class="form-label">Location Notes</label>
+                        <textarea class="form-control" id="locationNotes" rows="1"></textarea>
+                    </div>
+                </div>
+
+                <!-- Contextual Factors Section -->
+                <h3 class="section-title"><i class="fas fa-list-ul me-2"></i>Contextual Factors</h3>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="groupSize" class="form-label required">Group Size</label>
+                        <input type="number" class="form-control" id="groupSize" min="1" required>
+                        <div class="error-message" id="groupSizeError"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="weatherConditions" class="form-label">Weather Conditions</label>
+                        <select class="form-select" id="weatherConditions">
+                            <option value="">Select Weather</option>
+                            <option value="Clear">Clear</option>
+                            <option value="Partly Cloudy">Partly Cloudy</option>
+                            <option value="Cloudy">Cloudy</option>
+                            <option value="Rain">Rain</option>
+                            <option value="Drizzle">Drizzle</option>
+                            <option value="Thunderstorm">Thunderstorm</option>
+                            <option value="Fog">Fog</option>
+                            <option value="Windy">Windy</option>
+                            <option value="Hot">Hot</option>
+                            <option value="Cold">Cold</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="temperature" class="form-label">Temperature (°C)</label>
+                        <input type="number" class="form-control" id="temperature" step="0.1">
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="form-label">Observed Behaviors</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <select class="form-select" id="behaviorSelect">
+                                    <option value="">Select Behavior</option>
+                                    <option value="Feeding">Feeding</option>
+                                    <option value="Hunting">Hunting</option>
+                                    <option value="Resting">Resting</option>
+                                    <option value="Moving">Moving</option>
+                                    <option value="Grooming">Grooming</option>
+                                    <option value="Mating">Mating</option>
+                                    <option value="Nesting">Nesting</option>
+                                    <option value="Territorial Display">Territorial Display</option>
+                                    <option value="Vocalizing">Vocalizing</option>
+                                    <option value="Swimming">Swimming</option>
+                                    <option value="Flying">Flying</option>
+                                    <option value="Drinking at Waterhole">Drinking at Waterhole</option>
+                                    <option value="Dust Bathing">Dust Bathing</option>
+                                    <option value="Mud Wallowing">Mud Wallowing</option>
+                                    <option value="Sparring/Fighting">Sparring/Fighting</option>
+                                    <option value="Scent Marking">Scent Marking</option>
+                                    <option value="Browsing Vegetation">Browsing Vegetation</option>
+                                    <option value="Grazing">Grazing</option>
+                                    <option value="Migration">Migration</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="button" class="btn btn-secondary" id="addBehaviorBtn">Add Behavior</button>
+                            </div>
+                        </div>
+                        <div id="selectedBehaviors" class="mt-2"></div>
+                        <input type="hidden" id="behaviorsList" value="">
+                        <div class="error-message" id="behaviorsError"></div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label for="observationNotes" class="form-label">Additional Notes</label>
+                        <textarea class="form-control" id="observationNotes" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- Observer Information -->
+                <h3 class="section-title"><i class="fas fa-user me-2"></i>Observer Information</h3>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="observerName" class="form-label required">Observer Name</label>
+                        <input type="text" class="form-control" id="observerName" required>
+                        <div class="error-message" id="observerNameError"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="observerEmail" class="form-label">Email (optional)</label>
+                        <input type="email" class="form-control" id="observerEmail">
+                        <div class="error-message" id="observerEmailError"></div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="button" class="btn btn-primary me-md-2" id="previewBtn">Preview Data</button>
+                    <button type="submit" class="btn btn-success">Submit Sighting</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Data Preview Modal -->
+        <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="previewModalLabel">Data Preview</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-tabs" id="previewTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="json-tab" data-bs-toggle="tab" data-bs-target="#json" type="button" role="tab" aria-controls="json" aria-selected="true">JSON</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="yaml-tab" data-bs-toggle="tab" data-bs-target="#yaml" type="button" role="tab" aria-controls="yaml" aria-selected="false">YAML</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="previewTabsContent">
+                            <div class="tab-pane fade show active" id="json" role="tabpanel" aria-labelledby="json-tab">
+                                <pre class="data-preview" id="jsonPreview"></pre>
+                            </div>
+                            <div class="tab-pane fade" id="yaml" role="tabpanel" aria-labelledby="yaml-tab">
+                                <pre class="data-preview" id="yamlPreview"></pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="exportCsvBtn">Export as CSV</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; 2025 Limpopo Wildlife Eco College. All rights reserved.</p>
+        </div>
+    </div>
+
+    <!-- Bootstrap and Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+
+    <script>
+        // Taxonomic data structure with South African wildlife
+        const taxonomicData = {
+            "Mammals": {
+                "Felidae": [
+                    { name: "African Lion", scientific: "Panthera leo", status: "Vulnerable", image: "https://upload.wikimedia.org/wikipedia/commons/7/73/Lion_waiting_in_Namibia.jpg", description: "The lion is the second-largest living cat after the tiger. Found in grasslands and savannas across sub-Saharan Africa." },
+                    { name: "Leopard", scientific: "Panthera pardus", status: "Vulnerable", image: "https://upload.wikimedia.org/wikipedia/commons/c/c5/Leopard_in_South_Africa.jpg", description: "The leopard is one of the five extant species in the genus Panthera. Common in the savanna regions and mountainous areas of South Africa." },
+                    { name: "Cheetah", scientific: "Acinonyx jubatus", status: "Vulnerable", image: "https://upload.wikimedia.org/wikipedia/commons/0/09/TheCheethcat.jpg", description: "The cheetah is a large cat native to Africa and central Iran. It is the fastest land animal, capable of running at 80 to 128 km/h." },
+                    { name: "Caracal", scientific: "Caracal caracal", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/6/65/Caracal001.jpg", description: "The caracal is a medium-sized wild cat native to Africa, the Middle East, Central Asia, and India. Often found in semi-desert regions of South Africa." }
+                ],
+                "Canidae": [
+                    { name: "Black-backed Jackal", scientific: "Canis mesomelas", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Blackbacked_Jackal2.jpg", description: "The black-backed jackal is a canine native to eastern and southern Africa. Common throughout South Africa's nature reserves." },
+                    { name: "Bat-eared Fox", scientific: "Otocyon megalotis", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/0/0e/Bat-eared_fox_%28Otocyon_megalotis%29.jpg", description: "The bat-eared fox is a species of fox found on the African savanna, named for its large ears. Common in the western and northern parts of South Africa." },
+                    { name: "African Wild Dog", scientific: "Lycaon pictus", status: "Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/8/8c/African_wild_dog_%28Lycaon_pictus_pictus%29.jpg", description: "The African wild dog, also called the painted wolf, is one of the world's most endangered mammals. Found in isolated populations in South Africa's protected areas." }
+                ],
+                "Bovidae": [
+                    { name: "Impala", scientific: "Aepyceros melampus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/e/e1/Impala_standing_on_rock.jpg", description: "The impala is a medium-sized antelope common in eastern and southern Africa. One of the most abundant antelopes in South African game reserves." },
+                    { name: "Greater Kudu", scientific: "Tragelaphus strepsiceros", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/d/dc/Male_greater_kudu_2.jpg", description: "The greater kudu is a woodland antelope with distinctive spiral horns. Widely distributed throughout eastern and southern Africa." },
+                    { name: "Blue Wildebeest", scientific: "Connochaetes taurinus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/3/37/Blue_Wildebeest%2C_Ngorongoro.jpg", description: "The blue wildebeest is a large antelope found in the open woodlands and plains of South Africa." },
+                    { name: "Springbok", scientific: "Antidorcas marsupialis", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/2/29/Springbok_drinking_at_waterhole.jpg", description: "The springbok is a medium-sized antelope and the national animal of South Africa. Known for its distinctive jumping display called 'pronking'." }
+                ],
+                "Elephantidae": [
+                    { name: "African Bush Elephant", scientific: "Loxodonta africana", status: "Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/b/bf/African_Bush_Elephant.jpg", description: "The African bush elephant is the largest living terrestrial animal. Found in various habitats across South Africa, particularly in Kruger National Park." }
+                ],
+                "Rhinocerotidae": [
+                    { name: "White Rhinoceros", scientific: "Ceratotherium simum", status: "Near Threatened", image: "https://upload.wikimedia.org/wikipedia/commons/3/38/Southern_white_rhinoceros_in_Lake_Nakuru.jpg", description: "The white rhinoceros is the second-largest land mammal. South Africa is home to the majority of the world's white rhinos." },
+                    { name: "Black Rhinoceros", scientific: "Diceros bicornis", status: "Critically Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/6/63/Black_Rhinoceros_in_Ngorongoro.jpg", description: "The black rhinoceros is a species of rhinoceros native to eastern and southern Africa. Critically endangered due to poaching." }
+                ]
+            },
+            "Birds": {
+                "Accipitridae": [
+                    { name: "African Fish Eagle", scientific: "Haliaeetus vocifer", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Haliaeetus_vocifer_-Tanzania_-flying-8.jpg", description: "The African fish eagle is a large species of eagle found throughout sub-Saharan Africa near large bodies of open water." },
+                    { name: "Martial Eagle", scientific: "Polemaetus bellicosus", status: "Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/0/01/Martial_Eagle_%28Polemaetus_bellicosus%29_%286045223695%29.jpg", description: "The martial eagle is a large eagle native to sub-Saharan Africa. It is the largest eagle in Africa." },
+                    { name: "Bateleur", scientific: "Terathopius ecaudatus", status: "Near Threatened", image: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Bateleur_eagle_%28Terathopius_ecaudatus%29.jpg", description: "The bateleur is a distinctive medium-sized eagle with a very short tail, known for its acrobatic flight." }
+                ],
+                "Struthionidae": [
+                    { name: "Common Ostrich", scientific: "Struthio camelus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/e/ed/Struthio_camelus_portrait_Ngorongoro.jpg", description: "The common ostrich is a flightless bird native to Africa. It is the largest living species of bird." }
+                ],
+                "Bucerotidae": [
+                    { name: "Southern Ground Hornbill", scientific: "Bucorvus leadbeateri", status: "Vulnerable", image: "https://upload.wikimedia.org/wikipedia/commons/5/54/Southern_Ground_Hornbill_%28Bucorvus_leadbeateri%29_%286002095046%29.jpg", description: "The southern ground hornbill is the largest species of hornbill, with adults averaging 4 kg in weight." },
+                    { name: "Southern Yellow-billed Hornbill", scientific: "Tockus leucomelas", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/0/07/Southern_yellow-billed_hornbill_%28Tockus_leucomelas%29_male.jpg", description: "This distinctive hornbill species is often associated with scenes from The Lion King movie. Common in savanna habitats." }
+                ],
+                "Phoenicopteridae": [
+                    { name: "Greater Flamingo", scientific: "Phoenicopterus roseus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/f/f9/Greater_flamingo_%28Phoenicopterus_roseus%29.jpg", description: "The greater flamingo is the most widespread and largest species of the flamingo family." },
+                    { name: "Lesser Flamingo", scientific: "Phoeniconaias minor", status: "Near Threatened", image: "https://upload.wikimedia.org/wikipedia/commons/e/ec/Flamingoes_Feb09.jpg", description: "The lesser flamingo is the smallest species of flamingo, found in large numbers in South Africa's wetlands and salt pans." }
+                ],
+                "Psittacidae": [
+                    { name: "Cape Parrot", scientific: "Poicephalus robustus", status: "Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/0/05/Poicephalus_robustus_-perching_on_branch-8a-2c.jpg", description: "The Cape parrot is South Africa's only endemic parrot species, found primarily in the mistbelt forests of Eastern Cape, KwaZulu-Natal and Limpopo provinces." },
+                    { name: "Brown-headed Parrot", scientific: "Poicephalus cryptoxanthus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/f/f6/Brown-headed_Parrot_%28Poicephalus_cryptoxanthus%29_%2826426679277%29.jpg", description: "The brown-headed parrot is found in woodland and savanna in South Africa, particularly in the eastern regions." }
+                ],
+                "Otididae": [
+                    { name: "Kori Bustard", scientific: "Ardeotis kori", status: "Near Threatened", image: "https://upload.wikimedia.org/wikipedia/commons/e/e4/Kori_bustard_%28Ardeotis_kori_struthiunculus%29_male_courting.jpg", description: "The kori bustard is one of the heaviest flying birds in the world, found in open grasslands and lightly wooded savanna." },
+                    { name: "Blue Korhaan", scientific: "Eupodotis caerulescens", status: "Near Threatened", image: "https://upload.wikimedia.org/wikipedia/commons/7/77/Blue_Korhaan%2C_Eupodotis_caerulescens_at_Suikerbosrand_Nature_Reserve%2C_Gauteng%2C_South_Africa_%2843416542324%29.jpg", description: "The blue korhaan is endemic to South Africa, found in grassland habitats primarily in the central and eastern regions." }
+                ]
+            },
+            "Reptiles": {
+                "Crocodylidae": [
+                    { name: "Nile Crocodile", scientific: "Crocodylus niloticus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/b/bd/Crocodylus_niloticus_-_Crocodile_-_Nile_Crocodile_3.jpg", description: "The Nile crocodile is an African crocodile, the largest freshwater predator in Africa, and the second-largest reptile worldwide." }
+                ],
+                "Viperidae": [
+                    { name: "Puff Adder", scientific: "Bitis arietans", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/3/33/Bitis_arietans1.jpg", description: "The puff adder is responsible for more snakebite fatalities in Africa than any other snake." },
+                    { name: "Berg Adder", scientific: "Bitis atropos", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Berg_Adder_%28Bitis_atropos%29_%286908960413%29.jpg", description: "The berg adder is a venomous viper species found in mountainous regions of South Africa." }
+                ],
+                "Colubridae": [
+                    { name: "Boomslang", scientific: "Dispholidus typus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/6/66/Dispholidus_typus_viridus_2.jpg", description: "The boomslang is a large, venomous snake native to sub-Saharan Africa. Its name means 'tree snake' in Afrikaans." }
+                ],
+                "Testudinidae": [
+                    { name: "Leopard Tortoise", scientific: "Stigmochelys pardalis", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/0/0f/Leopard_Tortoise_%28Stigmochelys_pardalis%29_%2816498611873%29.jpg", description: "The leopard tortoise is the fourth-largest tortoise species in the world, widely distributed in the savannas of eastern and southern Africa." }
+                ]
+            },
+            "Amphibians": {
+                "Pipidae": [
+                    { name: "African Clawed Frog", scientific: "Xenopus laevis", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Xenopus-laevis-male-and-female.jpg", description: "The African clawed frog is a species of aquatic frog native to sub-Saharan Africa, primarily in South Africa." }
+                ],
+                "Bufonidae": [
+                    { name: "Western Leopard Toad", scientific: "Sclerophrys pantherina", status: "Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/c/c3/Western_Leopard_Toad.jpg", description: "The western leopard toad is endemic to the southwestern Cape region of South Africa and is endangered due to habitat loss." }
+                ],
+                "Hyperoliidae": [
+                    { name: "Painted Reed Frog", scientific: "Hyperolius marmoratus", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/4/4d/Hyperolius_marmoratus.jpg", description: "The painted reed frog is known for its vibrant colors and patterns that vary widely between individuals." }
+                ]
+            }
+        };
+
+        $(document).ready(function() {
+            // Populate taxonomic group dropdown
+            for (const group in taxonomicData) {
+                $('#taxonomicGroup').append(`<option value="${group}">${group}</option>`);
+            }
+
+            // Handle group selection
+            $('#taxonomicGroup').change(function() {
+                const selectedGroup = $(this).val();
+                $('#taxonomicFamily').empty().append('<option value="">Select Family</option>');
+                $('#species').empty().append('<option value="">Select Species</option>');
+                
+                if (selectedGroup) {
+                    $('#taxonomicFamily').prop('disabled', false);
+                    for (const family in taxonomicData[selectedGroup]) {
+                        $('#taxonomicFamily').append(`<option value="${family}">${family}</option>`);
+                    }
+                } else {
+                    $('#taxonomicFamily').prop('disabled', true);
+                    $('#species').prop('disabled', true);
+                }
+                
+                // Clear species info
+                hideSpeciesInfo();
+            });
+
+            // Handle family selection
+            $('#taxonomicFamily').change(function() {
+                const selectedGroup = $('#taxonomicGroup').val();
+                const selectedFamily = $(this).val();
+                $('#species').empty().append('<option value="">Select Species</option>');
+                
+                if (selectedFamily) {
+                    $('#species').prop('disabled', false);
+                    const species = taxonomicData[selectedGroup][selectedFamily];
+                    for (const speciesObj of species) {
+                        $('#species').append(`<option value="${speciesObj.name}">${speciesObj.name}</option>`);
+                    }
+                } else {
+                    $('#species').prop('disabled', true);
+                }
+                
+                // Clear species info
+                hideSpeciesInfo();
+            });
+
+            // Handle species selection
+            $('#species').change(function() {
+                const selectedGroup = $('#taxonomicGroup').val();
+                const selectedFamily = $('#taxonomicFamily').val();
+                const selectedSpecies = $(this).val();
+                
+                if (selectedSpecies) {
+                    // Find the selected species object
+                    const species = taxonomicData[selectedGroup][selectedFamily];
+                    const speciesObj = species.find(s => s.name === selectedSpecies);
+                    
+                    // Display species info
+                    if (speciesObj) {
+                        $('#speciesScientificName').text(speciesObj.scientific);
+                        $('#speciesDescription').text(speciesObj.description);
+                        $('#conservationStatus').text(speciesObj.status);
+                        $('#speciesImage').attr('src', speciesObj.image);
+                        
+                        // Show species info
+                        $('#speciesImageContainer').show();
+                        $('#speciesInfoContainer').show();
+                    }
+                } else {
+                    // Hide species info
+                    hideSpeciesInfo();
+                }
+            });
+
+            // Initialize date with today's date in local time zone
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+            $('#sightingDate').val(formattedDate);
+            updateSeason();
+
+            // Handle date change for season calculation
+            $('#sightingDate').change(function() {
+                updateSeason();
+            });
+
+            // Calculate season based on date
+            function updateSeason() {
+                const dateInput = $('#sightingDate').val();
+                if (dateInput) {
+                    const date = new Date(dateInput);
+                    const month = date.getMonth() + 1; // JS months are 0-indexed
+                    
+                    // Southern hemisphere seasons
+                    let season;
+                    if (month >= 3 && month <= 5) {
+                        season = "Autumn";
+                    } else if (month >= 6 && month <= 8) {
+                        season = "Winter";
+                    } else if (month >= 9 && month <= 11) {
+                        season = "Spring";
+                    } else {
+                        season = "Summer";
+                    }
+                    
+                    $('#season').val(season);
+                }
+            }
+
+            // Handle get location button
+            $('#getLocationBtn').click(function() {
+                if (navigator.geolocation) {
+                    $(this).html('<span class="spinner-border" role="status"></span>');
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            $('#latitude').val(position.coords.latitude.toFixed(6));
+                            $('#longitude').val(position.coords.longitude.toFixed(6));
+                            $('#getLocationBtn').html('<i class="fas fa-crosshairs"></i>');
+                        },
+                        function(error) {
+                            alert('Error getting location: ' + error.message);
+                            $('#getLocationBtn').html('<i class="fas fa-crosshairs"></i>');
+                        },
+                        { enableHighAccuracy: true }
+                    );
+                } else {
+                    alert('Geolocation is not supported by this browser.');
+                }
+            });
+
+            // Handle adding behaviors
+            $('#addBehaviorBtn').click(function() {
+                const behaviorSelect = $('#behaviorSelect');
+                const selectedBehavior = behaviorSelect.val();
+                
+                if (selectedBehavior) {
+                    // Check if behavior already exists
+                    const existingBehaviors = $('#behaviorsList').val().split(',').filter(b => b.length > 0);
+                    if (!existingBehaviors.includes(selectedBehavior)) {
+                        // Add behavior to hidden field
+                        existingBehaviors.push(selectedBehavior);
+                        $('#behaviorsList').val(existingBehaviors.join(','));
+                        
+                        // Add behavior tag to display
+                        const behaviorTag = $('<span class="behavior-tag"></span>')
+                            .text(selectedBehavior)
+                            .append('<i class="fas fa-times"></i>');
+                        
+                        $('#selectedBehaviors').append(behaviorTag);
+                        
+                        // Reset select
+                        behaviorSelect.val('');
+                    }
+                }
+            });
+
+            // Handle removing behaviors
+            $('#selectedBehaviors').on('click', '.behavior-tag i', function() {
+                const behavior = $(this).parent().text().trim();
+                
+                // Remove from hidden field
+                const existingBehaviors = $('#behaviorsList').val().split(',').filter(b => b.length > 0);
+                const updatedBehaviors = existingBehaviors.filter(b => b !== behavior);
+                $('#behaviorsList').val(updatedBehaviors.join(','));
+                
+                // Remove tag
+                $(this).parent().remove();
+            });
+
+            // Preview button handler
+            $('#previewBtn').click(function() {
+                // Validate the form
+                if (!validateForm()) {
+                    alert('Please fill in all required fields before previewing data.');
+                    return;
+                }
+                
+                // Get form data
+                const formData = collectFormData();
+                
+                // Display JSON preview
+                $('#jsonPreview').text(JSON.stringify(formData, null, 2));
+                
+                // Display YAML preview
+                $('#yamlPreview').text(jsyaml.dump(formData));
+                
+                // Show modal
+                const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+                previewModal.show();
+            });
+
+            // Export CSV button handler
+            $('#exportCsvBtn').click(function() {
+                const formData = collectFormData();
+                
+                // Create CSV content
+                let csvContent = "data:text/csv;charset=utf-8,";
+                
+                // Headers
+                const headers = Object.keys(flattenObject(formData));
+                csvContent += headers.join(",") + "\r\n";
+                
+                // Values
+                const values = headers.map(header => {
+                    const value = getNestedValue(formData, header.split('.'));
+                    // Handle values with commas or quotes
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                        return `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                });
+                csvContent += values.join(",");
+                
+                // Create download link
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `wildlife_sighting_${formData.sightingId}.csv`);
+                document.body.appendChild(link);
+                
+                // Trigger download
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            // Form submission handler
+            $('#wildlifeSightingForm').submit(function(event) {
+                event.preventDefault();
+                
+                // Validate the form
+                if (!validateForm()) {
+                    return;
+                }
+                
+                // Get form data
+                const formData = collectFormData();
+                
+                // In a real application, this would send data to a server
+                // Here we'll just save to localStorage for demonstration
+                
+                // Generate a sighting ID based on date and random number
+                const sightingId = 'LWEC-' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 10000);
+                formData.sightingId = sightingId;
+                
+                // Save to localStorage
+                const savedSightings = JSON.parse(localStorage.getItem('wildlifeSightings') || '[]');
+                savedSightings.push(formData);
+                localStorage.setItem('wildlifeSightings', JSON.stringify(savedSightings));
+                
+                // Show success message with ID
+                $('#sightingIdValue').text(sightingId);
+                $('#sightingIdAlert').fadeIn();
+                
+                // Reset form
+                resetForm();
+                
+                // Hide success message after a delay
+                setTimeout(function() {
+                    $('#sightingIdAlert').fadeOut();
+                }, 5000);
+            });
+
+            // Helper Functions
+            
+            // Collect all form data
+            function collectFormData() {
+                const taxonomicGroup = $('#taxonomicGroup').val();
+                const taxonomicFamily = $('#taxonomicFamily').val();
+                const species = $('#species').val();
+                
+                // Get scientific name from selected species
+                let scientificName = '';
+                if (taxonomicGroup && taxonomicFamily && species) {
+                    const speciesObj = taxonomicData[taxonomicGroup][taxonomicFamily].find(s => s.name === species);
+                    if (speciesObj) {
+                        scientificName = speciesObj.scientific;
+                    }
+                }
+                
+                // Get behaviors from hidden field
+                const behaviors = $('#behaviorsList').val().split(',').filter(b => b.length > 0);
+                
+                // Build form data object with hierarchical structure
+                return {
+                    taxonomy: {
+                        group: taxonomicGroup,
+                        family: taxonomicFamily,
+                        species: species,
+                        scientificName: scientificName
+                    },
+                    temporal: {
+                        date: $('#sightingDate').val(),
+                        time: $('#sightingTime').val(),
+                        season: $('#season').val()
+                    },
+                    spatial: {
+                        coordinates: {
+                            latitude: parseFloat($('#latitude').val()),
+                            longitude: parseFloat($('#longitude').val())
+                        },
+                        habitatZone: $('#habitatZone').val(),
+                        distanceObserved: $('#distanceObserved').val() ? parseInt($('#distanceObserved').val()) : null,
+                        locationNotes: $('#locationNotes').val()
+                    },
+                    contextual: {
+                        groupSize: parseInt($('#groupSize').val()),
+                        behaviors: behaviors,
+                        weatherConditions: $('#weatherConditions').val(),
+                        temperature: $('#temperature').val() ? parseFloat($('#temperature').val()) : null,
+                        notes: $('#observationNotes').val()
+                    },
+                    observer: {
+                        name: $('#observerName').val(),
+                        email: $('#observerEmail').val()
+                    },
+                    timestamp: new Date().toISOString()
+                };
+            }
+            
+            // Flatten nested object for CSV export
+            function flattenObject(obj, prefix = '') {
+                return Object.keys(obj).reduce((acc, key) => {
+                    const pre = prefix.length ? prefix + '.' : '';
+                    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                        Object.assign(acc, flattenObject(obj[key], pre + key));
+                    } else if (Array.isArray(obj[key])) {
+                        acc[pre + key] = obj[key].join('; ');
+                    } else {
+                        acc[pre + key] = obj[key];
+                    }
+                    return acc;
+                }, {});
+            }
+            
+            // Get nested value from object using array of keys
+            function getNestedValue(obj, path) {
+                return path.reduce((current, key) => {
+                    if (current && typeof current === 'object' && key in current) {
+                        return current[key];
+                    }
+                    return '';
+                }, obj);
+            }
+            
+            // Validate all required fields
+            function validateForm() {
+                let isValid = true;
+                
+                // Reset all error messages
+                $('.error-message').text('');
+                
+                // Validate taxonomic fields
+                if (!$('#taxonomicGroup').val()) {
+                    $('#taxonomicGroupError').text('Please select a group');
+                    isValid = false;
+                }
+                
+                if (!$('#taxonomicFamily').val()) {
+                    $('#taxonomicFamilyError').text('Please select a family');
+                    isValid = false;
+                }
+                
+                if (!$('#species').val()) {
+                    $('#speciesError').text('Please select a species');
+                    isValid = false;
+                }
+                
+                // Validate temporal fields
+                if (!$('#sightingDate').val()) {
+                    $('#sightingDateError').text('Please enter a date');
+                    isValid = false;
+                } else {
+                    // Parse the input date and create a date object set to midnight in local timezone
+                    const inputDate = new Date($('#sightingDate').val() + 'T00:00:00');
+                    
+                    // Create a "today" date object set to midnight in local timezone
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    // Compare dates properly
+                    if (inputDate > today) {
+                        $('#sightingDateError').text('Date cannot be in the future');
+                        isValid = false;
+                    }
+                }
+                
+                if (!$('#sightingTime').val()) {
+                    $('#sightingTimeError').text('Please enter a time');
+                    isValid = false;
+                }
+                
+                // Validate spatial fields
+                if (!$('#latitude').val()) {
+                    $('#latitudeError').text('Please enter a latitude');
+                    isValid = false;
+                }
+                
+                if (!$('#longitude').val()) {
+                    $('#longitudeError').text('Please enter a longitude');
+                    isValid = false;
+                }
+                
+                if (!$('#habitatZone').val()) {
+                    $('#habitatZoneError').text('Please select a habitat zone');
+                    isValid = false;
+                }
+                
+                // Validate contextual fields
+                if (!$('#groupSize').val() || parseInt($('#groupSize').val()) < 1) {
+                    $('#groupSizeError').text('Please enter a valid group size');
+                    isValid = false;
+                }
+                
+                // Validate observer fields
+                if (!$('#observerName').val()) {
+                    $('#observerNameError').text('Please enter your name');
+                    isValid = false;
+                }
+                
+                if ($('#observerEmail').val() && !isValidEmail($('#observerEmail').val())) {
+                    $('#observerEmailError').text('Please enter a valid email address');
+                    isValid = false;
+                }
+                
+                return isValid;
+            }
+            
+            // Validate email format
+            function isValidEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+            
+            // Reset form fields
+            function resetForm() {
+                // Reset dropdowns
+                $('#taxonomicGroup').val('');
+                $('#taxonomicFamily').val('').prop('disabled', true);
+                $('#species').val('').prop('disabled', true);
+                
+                // Reset temporal fields
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+                $('#sightingDate').val(formattedDate);
+                $('#sightingTime').val('');
+                updateSeason();
+                
+                // Reset spatial fields
+                $('#latitude').val('');
+                $('#longitude').val('');
+                $('#habitatZone').val('');
+                $('#distanceObserved').val('');
+                $('#locationNotes').val('');
+                
+                // Reset contextual fields
+                $('#groupSize').val('');
+                $('#weatherConditions').val('');
+                $('#temperature').val('');
+                $('#behaviorSelect').val('');
+                $('#selectedBehaviors').empty();
+                $('#behaviorsList').val('');
+                $('#observationNotes').val('');
+                
+                // Reset observer email (keep name for convenience)
+                $('#observerEmail').val('');
+                
+                // Hide species info
+                hideSpeciesInfo();
+                
+                // Clear validation errors
+                $('.error-message').text('');
+            }
+            
+            // Hide species info containers
+            function hideSpeciesInfo() {
+                $('#speciesImageContainer').hide();
+                $('#speciesInfoContainer').hide();
+            }
+
+            // Register service worker for PWA functionality
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(registration => {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        })
+                        .catch(err => {
+                            console.log('ServiceWorker registration failed: ', err);
+                        });
+                });
+            }
+        });
+    </script>
+</body>
+</html>
