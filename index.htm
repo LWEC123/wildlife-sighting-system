@@ -369,6 +369,113 @@
                         <div class="error-message" id="observerEmailError"></div>
                     </div>
                 </div>
+               <!-- Track Identification Feature HTML -->
+<!-- Add this section to your form after the Photo Documentation section -->
+
+<h3 class="section-title"><i class="fas fa-paw me-2"></i>Track Identification</h3>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="trackIdentificationCheck">
+            <label class="form-check-label" for="trackIdentificationCheck">
+                This sighting includes animal tracks
+            </label>
+        </div>
+        <div id="trackIdentificationSection" style="display: none;">
+            <div class="mb-3">
+                <label class="form-label">Identify Animal Tracks</label>
+                <div class="d-grid gap-2 d-md-flex mb-3">
+                    <button type="button" class="btn btn-secondary" id="captureTrackBtn"><i class="fas fa-camera me-2"></i>Capture Track</button>
+                    <button type="button" class="btn btn-secondary" id="uploadTrackBtn"><i class="fas fa-upload me-2"></i>Upload Track Image</button>
+                    <input type="file" id="trackUploadInput" accept="image/*" style="display: none;">
+                </div>
+                <div id="trackPreviewContainer" class="d-none">
+                    <div class="card mb-3">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img id="trackPreviewImage" class="img-fluid rounded-start" alt="Track preview">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <h5 class="card-title">Track Analysis</h5>
+                                    <div id="trackAnalysisSpinner" class="d-flex align-items-center">
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Analyzing track pattern...</span>
+                                    </div>
+                                    <div id="trackAnalysisResults" class="d-none">
+                                        <div class="mb-2">
+                                            <label class="form-label">Select Identified Animal</label>
+                                            <select class="form-select" id="identifiedAnimalSelect">
+                                                <option value="">Select animal from suggestions</option>
+                                            </select>
+                                        </div>
+                                        <p class="card-text" id="trackDescription"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-text">Upload a photo of animal tracks to help identify the species</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6" id="trackInfoBox" style="display: none;">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                Track Identification Guide
+            </div>
+            <div class="card-body">
+                <h5 class="card-title" id="trackGuideTitle">How to Photograph Animal Tracks</h5>
+                <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item">Place an object for scale (coin, pen, etc.) next to the track</li>
+                    <li class="list-group-item">Photograph from directly above the track</li>
+                    <li class="list-group-item">Ensure good lighting - early morning or late afternoon light works best</li>
+                    <li class="list-group-item">If possible, photograph multiple tracks to show the pattern/stride</li>
+                </ul>
+                <div id="commonTracksContainer" class="d-none">
+                    <h6>Common Tracks in This Area:</h6>
+                    <div class="d-flex flex-wrap gap-2" id="commonTracksPreview">
+                        <!-- Common track thumbnails will be inserted here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Track Modal -->
+<div class="modal fade" id="trackModal" tabindex="-1" aria-labelledby="trackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="trackModalLabel">Track Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <img id="trackModalImage" class="img-fluid rounded mb-3" alt="Animal track">
+                    </div>
+                    <div class="col-md-6">
+                        <h4 id="trackModalTitle"></h4>
+                        <p class="fst-italic" id="trackModalScientific"></p>
+                        <h5>Track Characteristics:</h5>
+                        <p id="trackModalDescription"></p>
+                        <div class="alert alert-primary">
+                            <h6>Key Identifying Features:</h6>
+                            <p id="trackModalCharacteristics"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="selectThisTrackBtn">Select This Animal</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div> 
 <h3 class="section-title"><i class="fas fa-camera me-2"></i>Photo Documentation</h3>
 <div class="row mb-4">
     <div class="col-md-6">
@@ -606,7 +713,191 @@
                 ]
             }
         };
+// Animal Tracks Database for South African Wildlife
 
+const animalTracksData = {
+    "Mammals": {
+        "Felidae": [
+            { 
+                name: "African Lion", 
+                scientific: "Panthera leo", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/3/32/Lion_Track_Savuti.jpg", 
+                description: "Large, round tracks without claw marks. 12-15 cm in diameter. Four toe pads visible with a three-lobed heel pad that has two indentations at its lower edge.",
+                characteristics: "No claw marks, very large size, round shape, three-lobed heel pad."
+            },
+            { 
+                name: "Leopard", 
+                scientific: "Panthera pardus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/4/42/Leopard_pugmark.jpg", 
+                description: "Medium-sized round tracks without claw marks, typically 7-10 cm in diameter. Very similar to lion but smaller. The three-lobed heel pad has two indentations at its lower edge.",
+                characteristics: "No claw marks, medium size, round shape, three-lobed heel pad."
+            },
+            { 
+                name: "Cheetah", 
+                scientific: "Acinonyx jubatus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/3/30/Cheetah_Tracks.jpg", 
+                description: "Medium-sized (6-8 cm) tracks with faint claw marks sometimes visible (unlike other cats). More oval-shaped than leopard tracks with a smaller heel pad. Often found in straight lines showing the cheetah's running pattern.",
+                characteristics: "Faint claw marks may be visible, oval shape, smaller heel pad, linear arrangement."
+            },
+            { 
+                name: "Caracal", 
+                scientific: "Caracal caracal", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Caracal_Track.jpg/800px-Caracal_Track.jpg", 
+                description: "Small cat tracks about 4-5 cm in diameter. No claw marks. Asymmetrical toe arrangement with two toes in front, similar to domestic cats but larger.",
+                characteristics: "No claw marks, small size, asymmetrical toe arrangement."
+            }
+        ],
+        "Canidae": [
+            { 
+                name: "African Wild Dog", 
+                scientific: "Lycaon pictus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/4/49/Wild_Dog_Tracks.jpg", 
+                description: "Medium-sized (5-6 cm) tracks with claw marks. More spread out (splayed) than other canids. Wild dogs have only four toes (while domestic dogs have a dewclaw that sometimes registers).",
+                characteristics: "Claw marks present, four toes, splayed appearance, arranged in straight lines when running."
+            },
+            { 
+                name: "Black-backed Jackal", 
+                scientific: "Canis mesomelas", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/c/c2/Jackal_Tracks_in_Sand.jpg", 
+                description: "Small canid tracks (3-4 cm) with visible claw marks. More oval-shaped than round, with the two middle toes extending further forward than the outer toes.",
+                characteristics: "Claw marks present, small size, oval shape, two middle toes extend forward."
+            }
+        ],
+        "Hyaenidae": [
+            { 
+                name: "Spotted Hyena", 
+                scientific: "Crocuta crocuta", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/6/60/Hyena_prints.JPG", 
+                description: "Large tracks (9-12 cm) with blunt claw marks. Hyena tracks are distinctive with four toes and a broad heel pad. The front feet are larger than the hind feet.",
+                characteristics: "Blunt claw marks, four toes, broad heel pad, asymmetrical appearance."
+            }
+        ],
+        "Bovidae": [
+            { 
+                name: "Impala", 
+                scientific: "Aepyceros melampus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/0/0d/Impala_Track.jpg", 
+                description: "Small heart-shaped tracks about 5 cm long. Pointed at the front and divided into two distinct halves (hooves) with a gap between them. The front hooves are larger than the hind hooves.",
+                characteristics: "Heart-shaped, two distinct halves (cloven), small size, pointed at front."
+            },
+            { 
+                name: "Greater Kudu", 
+                scientific: "Tragelaphus strepsiceros", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/0/03/Kudu_Track_Limpopo.jpg", 
+                description: "Medium to large tracks (7-9 cm long) with a heart shape. Each track is distinctly divided into two halves with pointed tips. Tracks are more elongated and larger than most other antelope.",
+                characteristics: "Heart-shaped, cloven hooves, elongated, larger than impala tracks."
+            },
+            { 
+                name: "Cape Buffalo", 
+                scientific: "Syncerus caffer", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Cape_Buffalo_Tracks.jpg", 
+                description: "Very large, rounded, cloven hoofprints (12-15 cm). Wider and more rounded at the front than other bovids. Often with dewclaw marks visible behind the main track in soft ground.",
+                characteristics: "Very large size, cloven, rounded at the front, dewclaw marks often visible."
+            }
+        ],
+        "Elephantidae": [
+            { 
+                name: "African Bush Elephant", 
+                scientific: "Loxodonta africana", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/b/b8/Elephant_Footprint.jpg", 
+                description: "Enormous, circular tracks (40-50 cm diameter) with wrinkled texture reflecting the sole pad. Often showing five nail marks at the front edge of the track. Unmistakable due to their size.",
+                characteristics: "Enormous circular track, fine wrinkles in impression, five toenail marks sometimes visible."
+            }
+        ],
+        "Rhinocerotidae": [
+            { 
+                name: "White Rhinoceros", 
+                scientific: "Ceratotherium simum", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/4/49/White_Rhino_Track.jpg", 
+                description: "Large three-toed tracks (20-25 cm wide). The middle toe is larger than the outer toes. Each toe has a distinct rounded hoof mark. White rhino tracks are typically wider than black rhino tracks.",
+                characteristics: "Three-toed, very large, wider than long, middle toe larger than outer toes."
+            },
+            { 
+                name: "Black Rhinoceros", 
+                scientific: "Diceros bicornis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Black_Rhino_Footprint.jpg", 
+                description: "Large three-toed tracks (18-22 cm wide). Similar to white rhino but typically narrower. The black rhino has a narrower, more pointed foot shape than the white rhino.",
+                characteristics: "Three-toed, narrower than white rhino, more pointed toe shape."
+            }
+        ],
+        "Equidae": [
+            { 
+                name: "Burchell's Zebra", 
+                scientific: "Equus quagga burchellii", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Zebra_hoofprint.jpg", 
+                description: "Single, rounded hoof prints (8-10 cm) with a U-shape. Very similar to horse tracks but often more rounded and wider. In soft ground, entire hoof outline is visible.",
+                characteristics: "Single rounded hoof, U-shaped, symmetrical, no cleft."
+            }
+        ],
+        "Suidae": [
+            { 
+                name: "Common Warthog", 
+                scientific: "Phacochoerus africanus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Warthog_Tracks.jpg", 
+                description: "Small (5-6 cm) tracks showing two primary hoofprints with smaller dewclaw marks often visible behind. The two main toes are more pointed and separated than many other hoofed animals.",
+                characteristics: "Two pointed primary hooves with dewclaw marks behind, small size."
+            }
+        ],
+        "Procaviidae": [
+            { 
+                name: "Rock Hyrax", 
+                scientific: "Procavia capensis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/9/94/Rock_Hyrax_Tracks.jpg", 
+                description: "Very small tracks (2-3 cm) with a distinctive padded appearance. The front feet have four toes while the hind feet have three toes. The sole pads have a moist, suction-cup-like surface that helps them grip rocks.",
+                characteristics: "Very small, padded appearance, four toes on front feet, three on hind feet."
+            }
+        ],
+        "Cercopithecidae": [
+            { 
+                name: "Chacma Baboon", 
+                scientific: "Papio ursinus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/5/51/Baboon_Tracks.jpg", 
+                description: "Hand-like tracks (7-10 cm) with five fingers/toes. Front handprints show a shorter thumb to the side. Rear footprints have a distinctive big toe that sticks out to the side like a human thumb.",
+                characteristics: "Hand-like with five digits, big toe on rear foot extends outward like a thumb."
+            }
+        ]
+    },
+    "Reptiles": {
+        "Crocodylidae": [
+            { 
+                name: "Nile Crocodile", 
+                scientific: "Crocodylus niloticus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/9/97/Crocodile_Track.jpg", 
+                description: "Distinctive tracks with five toes on front feet and four toes on hind feet. Claw marks clearly visible. Often accompanied by a drag mark from the tail. Front footprints are smaller (10-12 cm) than hind footprints (15-20 cm).",
+                characteristics: "Five toes on front feet, four on hind, clear claw marks, often with tail drag mark."
+            }
+        ],
+        "Testudinidae": [
+            { 
+                name: "Leopard Tortoise", 
+                scientific: "Stigmochelys pardalis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/3/38/Leopard_Tortoise_Tracks.jpg", 
+                description: "Distinctive elephant-like tracks but much smaller (6-10 cm). Shows claw marks at the front of rounded footprints. Often with a central drag mark from the plastron (bottom shell).",
+                characteristics: "Rounded with claw marks, central drag line between left and right tracks."
+            }
+        ]
+    },
+    "Birds": {
+        "Struthionidae": [
+            { 
+                name: "Common Ostrich", 
+                scientific: "Struthio camelus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Ostrich_footprints%2C_Cape_Cross.jpg", 
+                description: "Distinctive three-toed tracks (15-20 cm) that resemble dinosaur footprints. Two toes point forward (with the central toe being much larger) and one toe points to the side. The only bird in South Africa with this track pattern.",
+                characteristics: "Three-toed, dinosaur-like, very large, central toe much larger than others."
+            }
+        ],
+        "Otididae": [
+            { 
+                name: "Kori Bustard", 
+                scientific: "Ardeotis kori", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/5/59/Kori_Bustard_Tracks.jpg", 
+                description: "Medium-sized three-toed bird tracks (7-9 cm) with three toes pointing forward. The middle toe is the longest. No hind toe is visible in the tracks.",
+                characteristics: "Three toes forward, no hind toe, middle toe longest."
+            }
+        ]
+    }
+};
         $(document).ready(function() {
             // Populate taxonomic group dropdown
             for (const group in taxonomicData) {
