@@ -1101,8 +1101,274 @@
                             console.log('ServiceWorker registration failed: ', err);
                         });
                 });
+            
+        // Photo storage array
+let sightingPhotos = [];
+const MAX_PHOTOS = 5;
+
+// Handle Take Photo button click
+$('#takePhotoBtn').click(function() {
+    // Check if the browser supports getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Your browser does not support camera access. Please use a modern browser or upload photos instead.');
+        return;
+    }
+    
+    // Check if we've reached the maximum number of photos
+    if (sightingPhotos.length >= MAX_PHOTOS) {
+        alert(`You can only add up to ${MAX_PHOTOS} photos. Please remove some photos before adding more.`);
+        return;
+    }
+    
+    // Show the camera modal
+    const cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
+    cameraModal.show();
+    
+    // Start the camera when modal is shown
+    $('#cameraModal').on('shown.bs.modal', function() {
+        startCamera();
+    });
+    
+    // Stop the camera when modal is hidden
+    $('#cameraModal').on('hidden.bs.modal', function() {
+        stopCamera();
+    });
+});
+
+// Handle file upload button click
+$('#uploadPhotoBtn').click(function() {
+    // Check if we've reached the maximum number of photos
+    if (sightingPhotos.length >= MAX_PHOTOS) {
+        alert(`You can only add up to ${MAX_PHOTOS} photos. Please remove some photos before adding more.`);
+        return;
+    }
+    
+    // Trigger the hidden file input
+    $('#photoUploadInput').click();
+});
+
+// Handle file selection
+$('#photoUploadInput').change(function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    // Calculate how many more photos we can add
+    const remainingSlots = MAX_PHOTOS - sightingPhotos.length;
+    const filesToProcess = Math.min(files.length, remainingSlots);
+    
+    if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Only the first ${remainingSlots} will be added.`);
+    }
+    
+    // Process each selected file
+    for (let i = 0; i < filesToProcess; i++) {
+        const file = files[i];
+        
+        // Check if file is an image
+        if (!file.type.startsWith('image/')) {
+            alert(`File "${file.name}" is not an image and will be skipped.`);
+            continue;
+        }
+        
+        // Read file as data URL
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            addPhotoToCollection(e.target.result, `Uploaded: ${file.name}`);
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // Reset the file input to allow selecting the same files again
+    $(this).val('');
+});
+
+// Start camera stream
+function startCamera() {
+    const video = document.getElementById('cameraVideo');
+    const cameraError = document.getElementById('cameraError');
+    
+    // Hide any previous errors
+    cameraError.style.display = 'none';
+    
+    // Check if this is a mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Set up constraints for the camera
+    const constraints = {
+        video: {
+            facingMode: isMobile ? 'environment' : 'user', // Use back camera on mobile
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        }
+    };
+    
+    // Access the camera
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(function(stream) {
+            video.srcObject = stream;
+            
+            // Show the appropriate capture button based on device type
+            if (isMobile) {
+                $('#captureBtnDesktop').hide();
+                $('#captureBtnMobile').show();
+            } else {
+                $('#captureBtnDesktop').show();
+                $('#captureBtnMobile').hide();
             }
+            
+            // Set up the capture button event handlers
+            $('#captureBtnDesktop, #captureBtnMobile').off('click').on('click', function() {
+                capturePhoto(stream);
+            });
+        })
+        .catch(function(error) {
+            console.error('Error accessing camera:', error);
+            cameraError.textContent = `Error accessing camera: ${error.message}`;
+            cameraError.style.display = 'block';
         });
+}
+
+// Stop camera stream
+function stopCamera() {
+    const video = document.getElementById('cameraVideo');
+    if (video.srcObject) {
+        const tracks = video.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+        video.srcObject = null;
+    }
+}
+
+// Capture photo from camera
+function capturePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const context = canvas.getContext('2d');
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Get image data
+    const imageData = canvas.toDataURL('image/jpeg');
+    
+    // Add photo to collection
+    addPhotoToCollection(imageData, 'Camera capture');
+    
+    // Close the modal
+    const cameraModal = bootstrap.Modal.getInstance(document.getElementById('cameraModal'));
+    cameraModal.hide();
+}
+
+// Add photo to the collection
+function addPhotoToCollection(imageData, caption) {
+    // Add to photo collection
+    sightingPhotos.push({
+        dataUrl: imageData,
+        caption: caption,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Update photo counter
+    updatePhotoCounter();
+    
+    // Create thumbnail
+    createPhotoThumbnail(imageData, sightingPhotos.length - 1);
+    
+    // Show the photo alert
+    $('#photoAlert').removeClass('d-none');
+}
+
+// Update photo counter
+function updatePhotoCounter() {
+    const count = sightingPhotos.length;
+    $('#photoCounter').text(`${count} photo${count !== 1 ? 's' : ''} added`);
+}
+
+// Create photo thumbnail
+function createPhotoThumbnail(imageData, index) {
+    const container = document.getElementById('photoPreviewContainer');
+    
+    const thumbnailDiv = document.createElement('div');
+    thumbnailDiv.className = 'position-relative';
+    thumbnailDiv.dataset.index = index;
+    
+    const img = document.createElement('img');
+    img.src = imageData;
+    img.className = 'img-thumbnail';
+    img.alt = 'Sighting photo';
+    img.style.width = '150px';
+    img.style.height = '150px';
+    img.style.objectFit = 'cover';
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn btn-sm btn-danger position-absolute top-0 end-0 m-1';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    removeBtn.onclick = function() {
+        removePhoto(index);
+    };
+    
+    thumbnailDiv.appendChild(img);
+    thumbnailDiv.appendChild(removeBtn);
+    container.appendChild(thumbnailDiv);
+}
+
+// Remove photo
+function removePhoto(index) {
+    // Remove from array
+    sightingPhotos.splice(index, 1);
+    
+    // Clear all thumbnails
+    const container = document.getElementById('photoPreviewContainer');
+    container.innerHTML = '';
+    
+    // Recreate thumbnails
+    sightingPhotos.forEach((photo, i) => {
+        createPhotoThumbnail(photo.dataUrl, i);
+    });
+    
+    // Update counter
+    updatePhotoCounter();
+    
+    // Hide alert if no photos
+    if (sightingPhotos.length === 0) {
+        $('#photoAlert').addClass('d-none');
+    }
+}
+
+// Modify your existing collectFormData function to include photos
+// Add this to your existing collectFormData function
+/*
+// Add photos to the form data object
+if (sightingPhotos.length > 0) {
+    formData.photos = sightingPhotos.map(photo => ({
+        caption: photo.caption,
+        timestamp: photo.timestamp,
+        // Store a reduced quality version to save space
+        dataUrl: reduceImageQuality(photo.dataUrl, 0.7)
+    }));
+}
+*/
+
+// Add this function to reduce image quality for storage
+function reduceImageQuality(dataUrl, quality) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = dataUrl;
+    });
+}
     </script>
     
 <!-- Camera Capture Modal -->
