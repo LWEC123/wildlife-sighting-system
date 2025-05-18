@@ -369,7 +369,55 @@
                         <div class="error-message" id="observerEmailError"></div>
                     </div>
                 </div>
+<h3 class="section-title"><i class="fas fa-camera me-2"></i>Photo Documentation</h3>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <label class="form-label">Add Photos</label>
+        <div class="d-grid gap-2 d-md-flex mb-3">
+            <button type="button" class="btn btn-secondary" id="takePhotoBtn"><i class="fas fa-camera me-2"></i>Take Photo</button>
+            <button type="button" class="btn btn-secondary" id="uploadPhotoBtn"><i class="fas fa-upload me-2"></i>Upload Photo</button>
+            <input type="file" id="photoUploadInput" accept="image/*" multiple style="display: none;">
+        </div>
+        <div class="form-text">Add up to 5 photos of the sighting</div>
+    </div>
+    <div class="col-md-6">
+        <div id="photoCounter" class="mb-2">0 photos added</div>
+        <div class="alert alert-info d-none" id="photoAlert">
+            <i class="fas fa-info-circle me-2"></i>Photos will be stored locally with your sighting data
+        </div>
+    </div>
+</div>
 
+<div class="row mb-4">
+    <div class="col-12">
+        <div id="photoPreviewContainer" class="d-flex flex-wrap gap-3"></div>
+    </div>
+</div>
+
+<!-- Add this HTML at the end of your file, just before the closing </body> tag -->
+<!-- Camera Capture Modal -->
+<div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cameraModalLabel">Take a Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <video id="cameraVideo" autoplay playsinline style="width: 100%; max-height: 60vh; background-color: #000;"></video>
+                    <canvas id="cameraCanvas" style="display: none;"></canvas>
+                </div>
+                <div id="cameraError" class="alert alert-danger mt-3" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="captureBtnDesktop"><i class="fas fa-camera me-2"></i>Take Photo</button>
+                <button type="button" class="btn btn-primary" id="captureBtnMobile" style="display: none;"><i class="fas fa-camera me-2"></i>Take Photo</button>
+            </div>
+        </div>
+    </div>
+</div>
                 <!-- Submit Button -->
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button type="button" class="btn btn-primary me-md-2" id="previewBtn">Preview Data</button>
@@ -452,10 +500,6 @@
                 ]
             },
             "Birds": {
-                // Expanded South African Bird Database
-// This code should replace the existing Birds section in your taxonomicData object
-
-"Birds": {
     "Accipitridae": [
         { name: "African Fish Eagle", scientific: "Haliaeetus vocifer", status: "Least Concern", image: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Haliaeetus_vocifer_-Tanzania_-flying-8.jpg", description: "The African fish eagle is a large species of eagle found throughout sub-Saharan Africa near large bodies of open water." },
         { name: "Martial Eagle", scientific: "Polemaetus bellicosus", status: "Endangered", image: "https://upload.wikimedia.org/wikipedia/commons/0/01/Martial_Eagle_%28Polemaetus_bellicosus%29_%286045223695%29.jpg", description: "The martial eagle is a large eagle native to sub-Saharan Africa. It is the largest eagle in Africa." },
