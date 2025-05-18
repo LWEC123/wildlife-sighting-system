@@ -715,6 +715,8 @@
         };
 // Animal Tracks Database for South African Wildlife
 
+// Expanded Animal Tracks Database (Birds Removed) for South African Wildlife
+
 const animalTracksData = {
     "Mammals": {
         "Felidae": [
@@ -745,6 +747,20 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Caracal_Track.jpg/800px-Caracal_Track.jpg", 
                 description: "Small cat tracks about 4-5 cm in diameter. No claw marks. Asymmetrical toe arrangement with two toes in front, similar to domestic cats but larger.",
                 characteristics: "No claw marks, small size, asymmetrical toe arrangement."
+            },
+            { 
+                name: "Serval", 
+                scientific: "Leptailurus serval", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/3/33/Serval_tracks.jpg", 
+                description: "Medium-small cat tracks (4-5 cm) similar to caracal but more elongated. No claw marks visible. Often found in wetland areas and grasslands.",
+                characteristics: "No claw marks, elongated shape, smaller than leopard, larger than genet."
+            },
+            { 
+                name: "African Wild Cat", 
+                scientific: "Felis lybica", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Wild_cat_tracks.jpg", 
+                description: "Small cat tracks (3-4 cm) that look like domestic cat tracks. No claw marks. Four toes and a three-lobed heel pad. Typically more elongated than domestic cat tracks.",
+                characteristics: "No claw marks, very small size for a wild cat, three-lobed heel pad."
             }
         ],
         "Canidae": [
@@ -761,6 +777,27 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/c/c2/Jackal_Tracks_in_Sand.jpg", 
                 description: "Small canid tracks (3-4 cm) with visible claw marks. More oval-shaped than round, with the two middle toes extending further forward than the outer toes.",
                 characteristics: "Claw marks present, small size, oval shape, two middle toes extend forward."
+            },
+            { 
+                name: "Side-striped Jackal", 
+                scientific: "Canis adustus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/6/62/Side-striped_Jackal_tracks.jpg", 
+                description: "Small canid tracks similar to black-backed jackal but slightly larger (4-5 cm). Claw marks visible. Often found in woodlands and thickets.",
+                characteristics: "Claw marks present, slightly larger than black-backed jackal, more symmetric than fox."
+            },
+            { 
+                name: "Bat-eared Fox", 
+                scientific: "Otocyon megalotis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/a/a5/Bat-eared_Fox_tracks.jpg", 
+                description: "Very small canid tracks (2-3 cm) with visible claw marks. The small size helps distinguish from jackal tracks. Often found in open grasslands and arid regions.",
+                characteristics: "Claw marks present, very small size, delicate appearance, middle toes close together."
+            },
+            { 
+                name: "Cape Fox", 
+                scientific: "Vulpes chama", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Cape_Fox_tracks.jpg", 
+                description: "Small canid tracks (3-4 cm) with visible claw marks. More narrow and elongated than jackal tracks, often with more visible negative space between the pads.",
+                characteristics: "Claw marks present, small size, narrow and elongated shape, visible space between pads."
             }
         ],
         "Hyaenidae": [
@@ -770,6 +807,20 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/6/60/Hyena_prints.JPG", 
                 description: "Large tracks (9-12 cm) with blunt claw marks. Hyena tracks are distinctive with four toes and a broad heel pad. The front feet are larger than the hind feet.",
                 characteristics: "Blunt claw marks, four toes, broad heel pad, asymmetrical appearance."
+            },
+            { 
+                name: "Brown Hyena", 
+                scientific: "Parahyaena brunnea", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/1/13/Brown_Hyena_tracks.jpg", 
+                description: "Large tracks (8-10 cm) similar to spotted hyena but slightly smaller and narrower. Blunt claw marks visible. Often found in arid and semi-arid regions.",
+                characteristics: "Blunt claw marks, four toes, narrower than spotted hyena, large heel pad."
+            },
+            { 
+                name: "Aardwolf", 
+                scientific: "Proteles cristata", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/c/c3/Aardwolf_Track.jpg", 
+                description: "Medium-sized tracks (5-7 cm) that resemble small hyena tracks. Blunt claw marks visible. More narrow than other hyena tracks. The aardwolf, unlike other hyenas, mostly eats termites.",
+                characteristics: "Blunt claw marks, four toes, much smaller than other hyenas, narrow appearance."
             }
         ],
         "Bovidae": [
@@ -793,6 +844,41 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Cape_Buffalo_Tracks.jpg", 
                 description: "Very large, rounded, cloven hoofprints (12-15 cm). Wider and more rounded at the front than other bovids. Often with dewclaw marks visible behind the main track in soft ground.",
                 characteristics: "Very large size, cloven, rounded at the front, dewclaw marks often visible."
+            },
+            { 
+                name: "Eland", 
+                scientific: "Taurotragus oryx", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Eland_tracks.jpg", 
+                description: "Large, heart-shaped tracks (10-12 cm) with blunt tips. The largest antelope tracks you'll find in Africa. Dewclaw marks may be visible in soft ground behind the main track.",
+                characteristics: "Very large, heart-shaped, blunt-tipped, dewclaw marks may be visible."
+            },
+            { 
+                name: "Blue Wildebeest", 
+                scientific: "Connochaetes taurinus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/9/91/Wildebeest_track.jpg", 
+                description: "Medium-sized tracks (7-9 cm) with a rounded heart shape. More rounded at the front than impala tracks. Dewclaw marks occasionally visible in soft ground.",
+                characteristics: "Medium size, rounded heart shape, less pointed than impala or kudu."
+            },
+            { 
+                name: "Springbok", 
+                scientific: "Antidorcas marsupialis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Springbok_tracks.jpg", 
+                description: "Small heart-shaped tracks (4-5 cm) with sharp points. Very similar to impala but smaller and often found in more arid habitats. The tracks often show a bounding pattern.",
+                characteristics: "Small, sharp-pointed, heart-shaped, often in bounding pattern."
+            },
+            { 
+                name: "Nyala", 
+                scientific: "Tragelaphus angasii", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/9/93/Nyala_track.jpg", 
+                description: "Medium-sized tracks (6-7 cm) with a heart shape. Similar to kudu but smaller. Typically found in dense bush and riverine habitats.",
+                characteristics: "Medium size, heart-shaped, narrower than kudu, wider than bushbuck."
+            },
+            { 
+                name: "Bushbuck", 
+                scientific: "Tragelaphus scriptus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Bushbuck_track.jpg", 
+                description: "Small heart-shaped tracks (4-5 cm) with pointed tips. Similar to impala but more slender and typically found in forested areas and thickets.",
+                characteristics: "Small, narrow, heart-shaped, very pointed, found in forested areas."
             }
         ],
         "Elephantidae": [
@@ -827,6 +913,13 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/a/ab/Zebra_hoofprint.jpg", 
                 description: "Single, rounded hoof prints (8-10 cm) with a U-shape. Very similar to horse tracks but often more rounded and wider. In soft ground, entire hoof outline is visible.",
                 characteristics: "Single rounded hoof, U-shaped, symmetrical, no cleft."
+            },
+            { 
+                name: "Cape Mountain Zebra", 
+                scientific: "Equus zebra zebra", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/4/41/Mountain_Zebra_track.jpg", 
+                description: "Single, rounded hoof prints (7-9 cm) similar to Burchell's zebra but smaller and often narrower. Typically found in rocky, mountainous terrain.",
+                characteristics: "Single rounded hoof, smaller than plains zebra, narrower shape."
             }
         ],
         "Suidae": [
@@ -836,6 +929,13 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Warthog_Tracks.jpg", 
                 description: "Small (5-6 cm) tracks showing two primary hoofprints with smaller dewclaw marks often visible behind. The two main toes are more pointed and separated than many other hoofed animals.",
                 characteristics: "Two pointed primary hooves with dewclaw marks behind, small size."
+            },
+            { 
+                name: "Bushpig", 
+                scientific: "Potamochoerus larvatus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/7/7e/Bushpig_track.jpg", 
+                description: "Small to medium tracks (5-7 cm) similar to warthog but wider and less pointed. Dewclaw marks are often more pronounced. Typically found in forested and thicket habitats.",
+                characteristics: "Two main hooves with prominent dewclaw marks, wider than warthog tracks."
             }
         ],
         "Procaviidae": [
@@ -854,6 +954,88 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/5/51/Baboon_Tracks.jpg", 
                 description: "Hand-like tracks (7-10 cm) with five fingers/toes. Front handprints show a shorter thumb to the side. Rear footprints have a distinctive big toe that sticks out to the side like a human thumb.",
                 characteristics: "Hand-like with five digits, big toe on rear foot extends outward like a thumb."
+            },
+            { 
+                name: "Vervet Monkey", 
+                scientific: "Chlorocebus pygerythrus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/6/6e/Vervet_monkey_tracks.jpg", 
+                description: "Small hand-like tracks (3-5 cm) with five slender fingers/toes. Similar to baboon but much smaller and more delicate. The big toe on the hind foot extends outward.",
+                characteristics: "Small hand-like tracks, five slender digits, delicate appearance."
+            }
+        ],
+        "Hippopotamidae": [
+            { 
+                name: "Hippopotamus", 
+                scientific: "Hippopotamus amphibius", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/c/c3/Hippo_tracks.jpg", 
+                description: "Large four-toed tracks (15-20 cm) with a distinctive splayed appearance. The toes are short, rounded, and widely separated. Often found near water with drag marks between footprints.",
+                characteristics: "Four widely-splayed toes, large size, rounded toe impressions, often with drag marks."
+            }
+        ],
+        "Giraffidae": [
+            { 
+                name: "Giraffe", 
+                scientific: "Giraffa camelopardalis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/d/de/Giraffe_Tracks.jpg", 
+                description: "Very large, heart-shaped tracks (15-20 cm) similar to other bovids but much larger. The front hooves are larger than the hind hooves. Giraffe tracks are broader and more rounded than most antelope.",
+                characteristics: "Very large size, heart-shaped, broad and rounded appearance, cloven."
+            }
+        ],
+        "Mustelidae": [
+            { 
+                name: "Honey Badger", 
+                scientific: "Mellivora capensis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/b/b2/Honey_Badger_tracks.jpg", 
+                description: "Medium-sized tracks (5-7 cm) with five toes and prominent claw marks. The front feet have longer claws than the hind feet due to their digging habits. Tracks often show a distinctive waddling gait.",
+                characteristics: "Five toes, prominent claw marks, wide stance, pigeon-toed appearance."
+            },
+            { 
+                name: "African Striped Weasel", 
+                scientific: "Poecilogale albinucha", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Weasel_tracks.jpg", 
+                description: "Very small tracks (2-3 cm) with five toes and small claw marks. Typically arranged in a bounding pattern with paired front and hind prints.",
+                characteristics: "Very small, five toes, small claw marks, bounding pattern."
+            }
+        ],
+        "Herpestidae": [
+            { 
+                name: "Meerkat", 
+                scientific: "Suricata suricatta", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/9/94/Meerkat_tracks.jpg", 
+                description: "Small tracks (2-3 cm) with four toes and visible claw marks. Front and hind prints are similar in size. Often found in sandy areas in arid regions.",
+                characteristics: "Small, four toes, visible claw marks, straight-line walking pattern."
+            },
+            { 
+                name: "Slender Mongoose", 
+                scientific: "Galerella sanguinea", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/2/27/Mongoose_tracks.jpg", 
+                description: "Small tracks (2-3 cm) with five toes and visible claw marks. The tracks show a distinctive bounding gait with pairs of prints.",
+                characteristics: "Small, five toes, visible claw marks, bounding movement pattern."
+            }
+        ],
+        "Viverridae": [
+            { 
+                name: "Small-spotted Genet", 
+                scientific: "Genetta genetta", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/8/82/Genet_tracks.jpg", 
+                description: "Small cat-like tracks (2-3 cm) with five toes and no visible claw marks. Similar to small cats but with five toe pads instead of four. The heel pad has three lobes at the rear edge.",
+                characteristics: "Small, five toes, no claw marks, three-lobed heel pad."
+            },
+            { 
+                name: "African Civet", 
+                scientific: "Civettictis civetta", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/8/84/Civet_track.jpg", 
+                description: "Medium-sized tracks (4-5 cm) with five toes and typically no visible claw marks. The heel pad has a distinctive M-shaped rear edge.",
+                characteristics: "Medium size, five toes, no claw marks, M-shaped rear edge on heel pad."
+            }
+        ],
+        "Orycteropodidae": [
+            { 
+                name: "Aardvark", 
+                scientific: "Orycteropus afer", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/6/67/Aardvark_tracks.jpg", 
+                description: "Distinctive tracks with four toes on the front feet and five toes on the hind feet. Large claw marks are clearly visible. Front feet prints (7-8 cm) are broader than hind feet (5-6 cm).",
+                characteristics: "Four toes on front, five on hind, large claw marks, asymmetrical appearance."
             }
         ]
     },
@@ -874,26 +1056,47 @@ const animalTracksData = {
                 image: "https://upload.wikimedia.org/wikipedia/commons/3/38/Leopard_Tortoise_Tracks.jpg", 
                 description: "Distinctive elephant-like tracks but much smaller (6-10 cm). Shows claw marks at the front of rounded footprints. Often with a central drag mark from the plastron (bottom shell).",
                 characteristics: "Rounded with claw marks, central drag line between left and right tracks."
-            }
-        ]
-    },
-    "Birds": {
-        "Struthionidae": [
+            },
             { 
-                name: "Common Ostrich", 
-                scientific: "Struthio camelus", 
-                image: "https://upload.wikimedia.org/wikipedia/commons/c/cd/Ostrich_footprints%2C_Cape_Cross.jpg", 
-                description: "Distinctive three-toed tracks (15-20 cm) that resemble dinosaur footprints. Two toes point forward (with the central toe being much larger) and one toe points to the side. The only bird in South Africa with this track pattern.",
-                characteristics: "Three-toed, dinosaur-like, very large, central toe much larger than others."
+                name: "Speckled Padloper", 
+                scientific: "Chersobius signatus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/1/1d/Small_tortoise_tracks.jpg", 
+                description: "Very small tortoise tracks (2-3 cm) with tiny claw marks. A thin central drag line is often visible between the left and right tracks.",
+                characteristics: "Very small, rounded, tiny claw marks, thin central drag line."
             }
         ],
-        "Otididae": [
+        "Varanidae": [
             { 
-                name: "Kori Bustard", 
-                scientific: "Ardeotis kori", 
-                image: "https://upload.wikimedia.org/wikipedia/commons/5/59/Kori_Bustard_Tracks.jpg", 
-                description: "Medium-sized three-toed bird tracks (7-9 cm) with three toes pointing forward. The middle toe is the longest. No hind toe is visible in the tracks.",
-                characteristics: "Three toes forward, no hind toe, middle toe longest."
+                name: "Rock Monitor", 
+                scientific: "Varanus albigularis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/a/a1/Monitor_lizard_tracks.jpg", 
+                description: "Medium-sized tracks (5-7 cm) with five long toes and visible claw marks. A tail drag mark is often visible between the prints. Front feet have slightly shorter toes than hind feet.",
+                characteristics: "Five long toes with claw marks, tail drag, asymmetrical toe lengths."
+            },
+            { 
+                name: "Water Monitor", 
+                scientific: "Varanus niloticus", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/6/61/Water_Monitor_tracks.jpg", 
+                description: "Medium-sized tracks (6-8 cm) very similar to rock monitor but often found near water. Five long toes with visible claw marks and usually a clear tail drag mark.",
+                characteristics: "Five long toes, claw marks, clear tail drag, found near water."
+            }
+        ],
+        "Pythonidae": [
+            { 
+                name: "African Rock Python", 
+                scientific: "Python sebae", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Python_tracks.jpg", 
+                description: "Distinctive S-shaped trail with no foot marks. The track shows the side-to-side movement of the snake with a central groove where the body presses deeper into the substrate.",
+                characteristics: "S-shaped continuous trail, no foot marks, regular indentations along trail."
+            }
+        ],
+        "Chamaeleonidae": [
+            { 
+                name: "Flap-necked Chameleon", 
+                scientific: "Chamaeleo dilepis", 
+                image: "https://upload.wikimedia.org/wikipedia/commons/d/db/Chameleon_tracks.jpg", 
+                description: "Small tracks (2-3 cm) with a distinctive pattern created by their zygodactyl feet (toes grouped in opposable sets). Tracks show pairs of toe groups pointing outward.",
+                characteristics: "Small, distinctive grouped toe pattern, slow walking pattern."
             }
         ]
     }
