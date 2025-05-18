@@ -1215,6 +1215,11 @@ const animalTracksData = {
                         name: $('#observerName').val(),
                         email: $('#observerEmail').val()
                     },
+                    tracks: $('#trackIdentificationCheck').is(':checked') && currentTrackImage ? {
+                        image: reduceImageQuality(currentTrackImage, 0.7),
+                        identifiedAnimal: selectedTrackAnimal,
+                        notes: $('#trackDescription').text()
+                    } : null,
                     timestamp: new Date().toISOString()
                 };
             }
@@ -1630,9 +1635,6 @@ function removePhoto(index) {
     }
 }
 
-// Modify your existing collectFormData function to include photos
-// Add this to your existing collectFormData function
-/*
 // Add photos to the form data object
 if (sightingPhotos.length > 0) {
     formData.photos = sightingPhotos.map(photo => ({
