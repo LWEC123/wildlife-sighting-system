@@ -1103,7 +1103,7 @@ const animalTracksData = {
         <script>   
            $(document).ready(function() {
             // Populate taxonomic group dropdown
-            for (const group in taxonomicData) {
+            for (const group in wildlifeData) {
                 $('#taxonomicGroup').append(`<option value="${group}">${group}</option>`);
             }
 
@@ -1115,7 +1115,7 @@ const animalTracksData = {
                 
                 if (selectedGroup) {
                     $('#taxonomicFamily').prop('disabled', false);
-                    for (const family in taxonomicData[selectedGroup]) {
+                    for (const family in wildlifeData[selectedGroup]) {
                         $('#taxonomicFamily').append(`<option value="${family}">${family}</option>`);
                     }
                 } else {
