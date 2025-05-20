@@ -1887,26 +1887,7 @@ function reduceImageQuality(dataUrl, quality) {
     });
 
     // Populate species when family is selected
-    $('#taxonomicFamily').change(function() {
-        const selectedGroup = $('#taxonomicGroup').val();
-        const selectedFamily = $(this).val();
-        const speciesSelect = $('#species');
-        
-        // Clear existing options
-        speciesSelect.empty().append('<option value="">Select Species</option>');
-        
-        if (selectedGroup && selectedFamily && wildlifeData[selectedGroup][selectedFamily]) {
-            speciesSelect.prop('disabled', false);
-            wildlifeData[selectedGroup][selectedFamily].forEach(species => {
-                speciesSelect.append('<option value="' + species + '">' + species + '</option>');
-            });
-        } else {
-            speciesSelect.prop('disabled', true);
-        }
-    });
-});
-</script>  
-    
+      
 <!-- Camera Capture Modal -->
     <div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
