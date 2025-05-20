@@ -1864,6 +1864,47 @@ function reduceImageQuality(dataUrl, quality) {
         img.src = dataUrl;
     });
 }
+                $(document).ready(function() {
+    // Populate families when group is selected
+    $('#taxonomicGroup').change(function() {
+        const selectedGroup = $(this).val();
+        const familySelect = $('#taxonomicFamily');
+        const speciesSelect = $('#species');
+        
+        // Clear existing options
+        familySelect.empty().append('<option value="">Select Family</option>');
+        speciesSelect.empty().append('<option value="">Select Species</option>');
+        
+        if (selectedGroup && wildlifeData[selectedGroup]) {
+            familySelect.prop('disabled', false);
+            Object.keys(wildlifeData[selectedGroup]).forEach(family => {
+                familySelect.append('<option value="' + family + '">' + family + '</option>');
+            });
+        } else {
+            familySelect.prop('disabled', true);
+            speciesSelect.prop('disabled', true);
+        }
+    });
+
+    // Populate species when family is selected
+    $('#taxonomicFamily').change(function() {
+        const selectedGroup = $('#taxonomicGroup').val();
+        const selectedFamily = $(this).val();
+        const speciesSelect = $('#species');
+        
+        // Clear existing options
+        speciesSelect.empty().append('<option value="">Select Species</option>');
+        
+        if (selectedGroup && selectedFamily && wildlifeData[selectedGroup][selectedFamily]) {
+            speciesSelect.prop('disabled', false);
+            wildlifeData[selectedGroup][selectedFamily].forEach(species => {
+                speciesSelect.append('<option value="' + species + '">' + species + '</option>');
+            });
+        } else {
+            speciesSelect.prop('disabled', true);
+        }
+    });
+});
        
 <!-- Camera Capture Modal -->
 
