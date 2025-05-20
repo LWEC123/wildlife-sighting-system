@@ -1875,9 +1875,9 @@ function reduceImageQuality(dataUrl, quality) {
         familySelect.empty().append('<option value="">Select Family</option>');
         speciesSelect.empty().append('<option value="">Select Species</option>');
         
-        if (selectedGroup && wildlifeData[selectedGroup]) {
+        if (selectedGroup && taxonomicData[selectedGroup]) {
             familySelect.prop('disabled', false);
-            Object.keys(wildlifeData[selectedGroup]).forEach(family => {
+            Object.keys(taxonomicData[selectedGroup]).forEach(family => {
                 familySelect.append('<option value="' + family + '">' + family + '</option>');
             });
         } else {
