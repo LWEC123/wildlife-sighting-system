@@ -51,6 +51,7 @@
   @media(min-width:820px){ .simWrap{grid-template-columns:1.15fr .85fr;} }
   .viewfinder{position:relative; border-radius:12px; overflow:hidden; aspect-ratio:3/2; background:#000; border:6px solid #1c1c1c;}
   .vfInner{position:absolute; inset:0; transition:filter .25s;}
+  .photoLayer{position:absolute; inset:0; background-size:cover; background-position:center; transform:scale(1.04); transition:filter .25s;}
   .vfBg{position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-around; font-size:clamp(30px,7vw,58px); padding-bottom:16%; transition:filter .25s;}
   .subjectWrap{position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center;}
   .subject{position:relative; font-size:clamp(64px,16vw,130px); transition:filter .25s; line-height:1;}
@@ -153,6 +154,9 @@
             <div class="vfInner" id="vfInner">
               <div class="vfBg" id="vfBg"></div>
               <div class="subjectWrap"><div class="subject" id="subject"></div></div>
+              <div class="photoLayer" id="photoBase" hidden></div>
+              <div id="photoGhosts"></div>
+              <div class="photoLayer" id="photoSharp" hidden></div>
             </div>
             <svg class="noiseSvg" id="noiseSvg" xmlns="http://www.w3.org/2000/svg">
               <filter id="nz"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter>
@@ -220,7 +224,7 @@
 
 </main>
 
-<footer>Wildlife Photo Tutor · Limpopo Wildlife Eco College · Works offline — no internet needed.</footer>
+<footer>Wildlife Photo Tutor · Limpopo Wildlife Eco College · Works offline — no internet needed.<br>Scene photographs © Limpopo Wildlife Eco College.</footer>
 
 <script>
 "use strict";
@@ -246,19 +250,19 @@ const SHUTTERS = [
 const ISOS = [100, 200, 400, 800, 1600, 3200, 6400, 12800];
 
 const SCENES = [
-  {id:"eagle", name:"🦅 Fish Eagle in flight", emoji:"🦅", ev:14, reqT:1/2000, iso_ok:3200,
+  {id:"eagle", img:"eagle.jpg", focus:{x:50,y:38,rx:30,ry:26}, name:"🦅 Fish Eagle in flight", emoji:"🦅", ev:14, reqT:1/2000, iso_ok:3200,
    sky:["#8ec9e8","#d9ecf5"], ground:"🌾🌾🌳🌾", note:"Midday, fast-moving bird — you need a very fast shutter.",
    subjectY:"-14%"},
-  {id:"impala", name:"🦌 Impala at golden hour", emoji:"🦌", ev:12, reqT:1/250, iso_ok:1600,
+  {id:"impala", img:"impala.jpg", focus:{x:50,y:55,rx:34,ry:30}, name:"🦌 Impala at golden hour", emoji:"🦌", ev:12, reqT:1/250, iso_ok:1600,
    sky:["#f2b463","#f8dcae"], ground:"🌳🌾🌾🌳", note:"Soft evening light, animal grazing calmly.",
    subjectY:"6%"},
-  {id:"elephant", name:"🐘 Elephant at the waterhole", emoji:"🐘", ev:15, reqT:1/125, iso_ok:800,
+  {id:"elephant", img:"elephant.jpg", focus:{x:50,y:55,rx:38,ry:34}, name:"🐘 Elephant at the waterhole", emoji:"🐘", ev:15, reqT:1/125, iso_ok:800,
    sky:["#9fd0ea","#eaf4f9"], ground:"🌳🌾💧🌾", note:"Bright midday sun — watch out for over-exposure.",
    subjectY:"6%"},
-  {id:"leopard", name:"🐆 Leopard at dusk", emoji:"🐆", ev:8, reqT:1/125, iso_ok:6400,
+  {id:"leopard", img:"leopard.jpg", focus:{x:50,y:55,rx:34,ry:30}, name:"🐆 Leopard at dusk", emoji:"🐆", ev:8, reqT:1/125, iso_ok:6400,
    sky:["#43507a","#b3778a"], ground:"🌳🌳🌾🌳", note:"Fading light — you will have to push your ISO.",
    subjectY:"6%"},
-  {id:"owl", name:"🦉 Owl on a night drive", emoji:"🦉", ev:5, reqT:1/60, iso_ok:12800,
+  {id:"owl", img:"owl.jpg", focus:{x:50,y:45,rx:28,ry:26}, name:"🦉 Owl on a night drive", emoji:"🦉", ev:5, reqT:1/60, iso_ok:12800,
    sky:["#131a2e","#2c3557"], ground:"🌳🌲🌳🌲", note:"Spotlight only. A perched subject lets you use slower shutters.",
    subjectY:"-4%"}
 ];
@@ -426,6 +430,21 @@ function renderScenes(){
   });
 }
 
+const photoCache = {};
+function photoReady(sc){
+  if(!sc.img) return false;
+  const st = photoCache[sc.img];
+  if(st === undefined){
+    photoCache[sc.img] = null;
+    const im = new Image();
+    im.onload = ()=>{ photoCache[sc.img] = true; if(curScene.img===sc.img) updateSim(); };
+    im.onerror = ()=>{ photoCache[sc.img] = false; };
+    im.src = sc.img;
+    return false;
+  }
+  return st === true;
+}
+
 function settingsEV(N, t, iso){ return Math.log2(N*N/t) - Math.log2(iso/100); }
 
 function updateSim(){
@@ -437,13 +456,10 @@ function updateSim(){
   document.getElementById("isoVal").textContent = "ISO "+iso;
   document.getElementById("vfLabel").textContent = curScene.note;
 
-  // scene visuals
   const bg = document.getElementById("vfBg");
   const inner = document.getElementById("vfInner");
-  inner.style.background = `linear-gradient(180deg, ${curScene.sky[0]} 0%, ${curScene.sky[1]} 62%, #7a6a45 62%, #8a7a50 100%)`;
-  bg.textContent = curScene.ground;
 
-  // exposure
+  // exposure maths first (drives all layers)
   const stops = curScene.ev - settingsEV(N, sh.t, iso); // + = over, - = under
   const clamped = Math.max(-3.4, Math.min(3.4, stops));
   const bright = Math.pow(2, clamped*0.55);
@@ -453,29 +469,64 @@ function updateSim(){
   const pct = ((Math.max(-3, Math.min(3, stops)) + 3) / 6) * 100;
   document.getElementById("meterNeedle").style.left = `calc(${pct}% - 2px)`;
 
-  // depth of field: background blur
-  const dof = Math.max(0.4, 15/N);
-  bg.style.filter = `blur(${dof.toFixed(1)}px)`;
+  const dof = Math.max(0.4, 15/N);                       // background blur from aperture
+  const slowStops = Math.log2(sh.t / curScene.reqT);     // >0 means motion blur
+  const blurPx = slowStops > 0 ? Math.min(18, slowStops*5) : 0;
 
-  // motion blur on subject
-  const subj = document.getElementById("subject");
-  subj.textContent = curScene.emoji;
-  subj.style.transform = `translateY(${curScene.subjectY})`;
-  const slowStops = Math.log2(sh.t / curScene.reqT);
-  let blurPx = 0;
-  subj.querySelectorAll(".trail").forEach(el=>el.remove());
-  if(slowStops > 0){
-    blurPx = Math.min(18, slowStops*5);
-    subj.style.filter = `blur(${(blurPx/3).toFixed(1)}px)`;
-    for(let i=1;i<=3;i++){
-      const t = document.createElement("span");
-      t.className = "trail"; t.textContent = curScene.emoji;
-      t.style.opacity = (0.3 - i*0.08).toFixed(2);
-      t.style.transform = `translateX(${i*blurPx*0.9}px)`;
-      subj.appendChild(t);
+  const base = document.getElementById("photoBase");
+  const sharp = document.getElementById("photoSharp");
+  const ghosts = document.getElementById("photoGhosts");
+  const hasPhoto = photoReady(curScene);
+
+  if(hasPhoto){
+    // photographic mode: real image, layered like a lens sees it
+    bg.hidden = true; document.querySelector(".subjectWrap").hidden = true;
+    base.hidden = false; sharp.hidden = false;
+    const url = `url("${curScene.img}")`;
+    const f = curScene.focus || {x:50,y:50,rx:32,ry:28};
+    base.style.backgroundImage = url;
+    base.style.filter = `blur(${dof.toFixed(1)}px)`;
+    sharp.style.backgroundImage = url;
+    const mask = `radial-gradient(ellipse ${f.rx}% ${f.ry}% at ${f.x}% ${f.y}%, #000 55%, transparent 100%)`;
+    sharp.style.webkitMaskImage = mask; sharp.style.maskImage = mask;
+    sharp.style.filter = blurPx > 0 ? `blur(${(blurPx/3).toFixed(1)}px)` : "none";
+    ghosts.innerHTML = "";
+    if(blurPx > 0){
+      for(let i=1;i<=2;i++){
+        const g = document.createElement("div");
+        g.className = "photoLayer";
+        g.style.backgroundImage = url;
+        g.style.webkitMaskImage = mask; g.style.maskImage = mask;
+        g.style.opacity = (0.30 - i*0.10).toFixed(2);
+        g.style.transform = `scale(1.04) translateX(${i*blurPx*0.7}px)`;
+        g.style.filter = `blur(${(blurPx/2).toFixed(1)}px)`;
+        ghosts.appendChild(g);
+      }
     }
+    inner.style.background = "#000";
   } else {
-    subj.style.filter = "none";
+    // fallback mode: stylised scene (used until the photo files are uploaded)
+    base.hidden = true; sharp.hidden = true; ghosts.innerHTML = "";
+    bg.hidden = false; document.querySelector(".subjectWrap").hidden = false;
+    inner.style.background = `linear-gradient(180deg, ${curScene.sky[0]} 0%, ${curScene.sky[1]} 62%, #7a6a45 62%, #8a7a50 100%)`;
+    bg.textContent = curScene.ground;
+    bg.style.filter = `blur(${dof.toFixed(1)}px)`;
+    const subj = document.getElementById("subject");
+    subj.textContent = curScene.emoji;
+    subj.style.transform = `translateY(${curScene.subjectY})`;
+    subj.querySelectorAll(".trail").forEach(el=>el.remove());
+    if(blurPx > 0){
+      subj.style.filter = `blur(${(blurPx/3).toFixed(1)}px)`;
+      for(let i=1;i<=3;i++){
+        const t = document.createElement("span");
+        t.className = "trail"; t.textContent = curScene.emoji;
+        t.style.opacity = (0.3 - i*0.08).toFixed(2);
+        t.style.transform = `translateX(${i*blurPx*0.9}px)`;
+        subj.appendChild(t);
+      }
+    } else {
+      subj.style.filter = "none";
+    }
   }
 
   // noise
@@ -628,6 +679,7 @@ function resetProgress(){
 /* ================= INIT ================= */
 renderLevels();
 renderScenes();
+SCENES.forEach(photoReady);
 updateSim();
 </script>
 </body>
