@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wildlife Photo Tutor — Limpopo Wildlife Eco College</title>
+<style>
+  :root{
+    --green-deep:#1e3a2a; --green:#2d5741; --green-soft:#3e7257;
+    --sand:#f4efe4; --sand-deep:#e8dfc8; --card:#ffffff;
+    --ink:#25301f; --ink-soft:#5c6653; --gold:#c99a3c; --gold-soft:#e9c87b;
+    --bad:#b0492f; --good:#3a7d44; --warn:#b07a1e;
+    --radius:14px; --shadow:0 2px 10px rgba(30,58,42,.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); line-height:1.55;}
+  header{background:linear-gradient(135deg,var(--green-deep),var(--green)); color:#fff; padding:18px 20px 14px;}
+  header h1{font-size:1.35rem; letter-spacing:.3px;}
+  header .sub{color:var(--gold-soft); font-size:.85rem; margin-top:2px;}
+  nav{display:flex; gap:6px; background:var(--green-deep); padding:0 12px; overflow-x:auto;}
+  nav button{flex:0 0 auto; background:none; border:none; color:#cfe0d3; font-size:.95rem; padding:12px 16px; cursor:pointer; border-bottom:3px solid transparent;}
+  nav button.active{color:#fff; border-bottom-color:var(--gold); font-weight:600;}
+  main{max-width:980px; margin:0 auto; padding:20px 14px 60px;}
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; margin-bottom:18px;}
+  h2{font-size:1.2rem; color:var(--green-deep); margin-bottom:10px;}
+  h3{font-size:1.02rem; color:var(--green); margin:14px 0 6px;}
+  p{margin-bottom:10px;}
+  .muted{color:var(--ink-soft); font-size:.9rem;}
+  .pill{display:inline-block; padding:2px 10px; border-radius:999px; font-size:.75rem; font-weight:600; letter-spacing:.3px;}
+  .pill.beginner{background:#dcefe0; color:#2c6b3a;}
+  .pill.intermediate{background:#fdf1d7; color:#8a6414;}
+  .pill.advanced{background:#f4ddd4; color:#93401f;}
+  .btn{display:inline-block; background:var(--green); color:#fff; border:none; border-radius:9px; padding:10px 18px; font-size:.95rem; cursor:pointer;}
+  .btn:hover{background:var(--green-soft);}
+  .btn.gold{background:var(--gold);}
+  .btn.ghost{background:transparent; color:var(--green); border:1.5px solid var(--green);}
+  .btn.small{padding:6px 12px; font-size:.85rem;}
+  .btn:disabled{opacity:.45; cursor:default;}
+  .grid{display:grid; gap:14px;}
+  @media(min-width:700px){ .grid.two{grid-template-columns:1fr 1fr;} .grid.three{grid-template-columns:1fr 1fr 1fr;} }
+
+  /* Level selector */
+  .levelRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;}
+  .levelBtn{flex:1 1 150px; border:2px solid var(--sand-deep); border-radius:12px; background:#fff; padding:14px; cursor:pointer; text-align:left;}
+  .levelBtn .lvName{font-weight:700; color:var(--green-deep);}
+  .levelBtn .lvDesc{font-size:.82rem; color:var(--ink-soft); margin-top:3px;}
+  .levelBtn.selected{border-color:var(--gold); background:#fffaf0; box-shadow:0 0 0 3px rgba(201,154,60,.15);}
+
+  /* Simulator */
+  .simWrap{display:grid; gap:16px;}
+  @media(min-width:820px){ .simWrap{grid-template-columns:1.15fr .85fr;} }
+  .viewfinder{position:relative; border-radius:12px; overflow:hidden; aspect-ratio:3/2; background:#000; border:6px solid #1c1c1c;}
+  .vfInner{position:absolute; inset:0; transition:filter .25s;}
+  .vfBg{position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:space-around; font-size:clamp(30px,7vw,58px); padding-bottom:16%; transition:filter .25s;}
+  .subjectWrap{position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center;}
+  .subject{position:relative; font-size:clamp(64px,16vw,130px); transition:filter .25s; line-height:1;}
+  .trail{position:absolute; top:0; left:0; line-height:1;}
+  .noiseSvg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:0; mix-blend-mode:overlay; transition:opacity .25s;}
+  .vfLabel{position:absolute; top:8px; left:10px; color:#fff; background:rgba(0,0,0,.45); padding:3px 10px; border-radius:8px; font-size:.78rem; z-index:5;}
+  .sceneRow{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .sceneBtn{border:2px solid var(--sand-deep); background:#fff; border-radius:10px; padding:7px 11px; cursor:pointer; font-size:.85rem;}
+  .sceneBtn.selected{border-color:var(--green); background:#eaf3ec; font-weight:600;}
+  .sceneBtn .done{color:var(--good);}
+  .ctrl{margin-bottom:14px;}
+  .ctrl label{display:flex; justify-content:space-between; font-weight:600; font-size:.92rem; color:var(--green-deep); margin-bottom:4px;}
+  .ctrl label .val{color:var(--gold); font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%; accent-color:var(--green);}
+  .meter{position:relative; height:38px; background:linear-gradient(90deg,#3b3b78,#4d7dbb 25%,#3a7d44 45%,#3a7d44 55%,#c9a13c 75%,#b0492f); border-radius:9px; margin:6px 0 2px;}
+  .meterNeedle{position:absolute; top:-5px; width:4px; height:48px; background:#111; border:1px solid #fff; border-radius:2px; transition:left .2s;}
+  .meterTicks{display:flex; justify-content:space-between; font-size:.72rem; color:var(--ink-soft); padding:0 2px;}
+  .feedback{list-style:none; margin-top:10px;}
+  .feedback li{padding:7px 10px; border-radius:8px; margin-bottom:6px; font-size:.9rem; background:var(--sand);}
+  .feedback li.ok{border-left:4px solid var(--good);}
+  .feedback li.warn{border-left:4px solid var(--warn);}
+  .feedback li.bad{border-left:4px solid var(--bad);}
+  .shotBanner{display:none; margin-top:10px; padding:12px; border-radius:10px; background:#e9f5ec; border:1.5px solid var(--good); color:#245c30; font-weight:600;}
+  .shotBanner.show{display:block;}
+
+  /* Tutorials */
+  .lessonCard{border:1.5px solid var(--sand-deep); border-radius:12px; padding:14px; background:#fff; cursor:pointer; transition:border-color .15s;}
+  .lessonCard:hover{border-color:var(--green-soft);}
+  .lessonCard h3{margin:6px 0 4px;}
+  .lessonCard .status{font-size:.82rem; margin-top:6px;}
+  .lessonCard .status.done{color:var(--good); font-weight:600;}
+  .quizQ{margin:14px 0; padding:12px; background:var(--sand); border-radius:10px;}
+  .quizQ p{font-weight:600;}
+  .quizQ label{display:block; padding:7px 10px; margin-top:6px; background:#fff; border:1.5px solid var(--sand-deep); border-radius:8px; cursor:pointer; font-size:.92rem;}
+  .quizQ label.correct{border-color:var(--good); background:#e9f5ec;}
+  .quizQ label.wrong{border-color:var(--bad); background:#faeae5;}
+  .lessonBody h3{margin-top:16px;}
+  .lessonBody ul{margin:0 0 10px 22px;}
+  .tipBox{background:#fdf6e3; border-left:4px solid var(--gold); padding:10px 12px; border-radius:8px; margin:10px 0; font-size:.92rem;}
+
+  /* Progress */
+  .barWrap{background:var(--sand-deep); border-radius:999px; height:16px; overflow:hidden; margin:6px 0 2px;}
+  .bar{height:100%; background:linear-gradient(90deg,var(--green),var(--green-soft)); border-radius:999px; transition:width .4s; min-width:0;}
+  .badgeGrid{display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;}
+  .badge{flex:0 0 120px; text-align:center; padding:12px 8px; border-radius:12px; background:var(--sand); border:1.5px solid var(--sand-deep); opacity:.4;}
+  .badge.earned{opacity:1; border-color:var(--gold); background:#fffaf0;}
+  .badge .bIcon{font-size:1.8rem;}
+  .badge .bName{font-weight:700; font-size:.82rem; margin-top:4px; color:var(--green-deep);}
+  .badge .bDesc{font-size:.7rem; color:var(--ink-soft);}
+  footer{text-align:center; padding:24px 10px 40px; color:var(--ink-soft); font-size:.8rem;}
+  .backRow{margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📷 Wildlife Photo Tutor</h1>
+  <div class="sub">Limpopo Wildlife Eco College — Field Photography Training</div>
+</header>
+
+<nav id="nav">
+  <button data-tab="home" class="active">🏠 Home</button>
+  <button data-tab="sim">📸 Exposure Simulator</button>
+  <button data-tab="learn">📚 Tutorials</button>
+  <button data-tab="progress">🏆 My Progress</button>
+</nav>
+
+<main>
+
+  <!-- ============ HOME ============ -->
+  <section id="tab-home">
+    <div class="card">
+      <h2>Welcome, ranger-photographer! 🦒</h2>
+      <p>This tool teaches you the craft of wildlife photography — how aperture, shutter speed and ISO work together — through hands-on practice with African wildlife scenes.</p>
+      <p class="muted">Your progress is saved automatically on this computer, so you can close this page and pick up where you left off.</p>
+    </div>
+    <div class="card">
+      <h2>Choose your level</h2>
+      <p class="muted">This tailors which tutorials are recommended to you. You can change it any time.</p>
+      <div class="levelRow" id="levelRow"></div>
+    </div>
+    <div class="card">
+      <h2>How to use this tutor</h2>
+      <p><strong>1. Learn</strong> — work through the tutorials for your level in the 📚 Tutorials tab, and pass each short quiz.</p>
+      <p><strong>2. Practise</strong> — open the 📸 Exposure Simulator and try to nail a sharp, well-exposed shot in every scene, from an eagle in flight to a leopard at dusk.</p>
+      <p><strong>3. Track</strong> — watch your badges and completion bars grow in 🏆 My Progress.</p>
+    </div>
+  </section>
+
+  <!-- ============ SIMULATOR ============ -->
+  <section id="tab-sim" hidden>
+    <div class="card">
+      <h2>Exposure Simulator</h2>
+      <p class="muted">Pick a scene, then adjust <strong>aperture</strong>, <strong>shutter speed</strong> and <strong>ISO</strong> until you capture a great shot: correctly exposed, sharp, and clean. The viewfinder responds live to your settings.</p>
+      <div class="sceneRow" id="sceneRow"></div>
+      <div class="simWrap">
+        <div>
+          <div class="viewfinder">
+            <div class="vfLabel" id="vfLabel"></div>
+            <div class="vfInner" id="vfInner">
+              <div class="vfBg" id="vfBg"></div>
+              <div class="subjectWrap"><div class="subject" id="subject"></div></div>
+            </div>
+            <svg class="noiseSvg" id="noiseSvg" xmlns="http://www.w3.org/2000/svg">
+              <filter id="nz"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter>
+              <rect width="100%" height="100%" filter="url(#nz)"/>
+            </svg>
+          </div>
+          <div class="meter"><div class="meterNeedle" id="meterNeedle"></div></div>
+          <div class="meterTicks"><span>-3</span><span>-2</span><span>-1</span><span>0</span><span>+1</span><span>+2</span><span>+3</span></div>
+          <p class="muted" style="text-align:center; margin-top:2px;">Exposure meter — aim for the centre (0)</p>
+        </div>
+        <div>
+          <div class="ctrl">
+            <label>Aperture <span class="val" id="apVal"></span></label>
+            <input type="range" id="apSlider" min="0" max="6" step="1">
+            <div class="meterTicks"><span>f/2.8 (wide)</span><span>f/22 (narrow)</span></div>
+          </div>
+          <div class="ctrl">
+            <label>Shutter speed <span class="val" id="shVal"></span></label>
+            <input type="range" id="shSlider" min="0" max="9" step="1">
+            <div class="meterTicks"><span>1/4000 (fast)</span><span>1/8 (slow)</span></div>
+          </div>
+          <div class="ctrl">
+            <label>ISO <span class="val" id="isoVal"></span></label>
+            <input type="range" id="isoSlider" min="0" max="7" step="1">
+            <div class="meterTicks"><span>100 (clean)</span><span>12800 (noisy)</span></div>
+          </div>
+          <ul class="feedback" id="feedback"></ul>
+          <div class="shotBanner" id="shotBanner"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TUTORIALS ============ -->
+  <section id="tab-learn" hidden>
+    <div id="lessonList">
+      <div class="card">
+        <h2>Interactive Tutorials</h2>
+        <p class="muted" id="learnIntro"></p>
+      </div>
+      <div class="grid two" id="lessonGrid"></div>
+    </div>
+    <div id="lessonView" hidden>
+      <div class="backRow"><button class="btn ghost small" onclick="closeLesson()">← Back to tutorials</button></div>
+      <div class="card" id="lessonContent"></div>
+    </div>
+  </section>
+
+  <!-- ============ PROGRESS ============ -->
+  <section id="tab-progress" hidden>
+    <div class="card">
+      <h2>My Progress</h2>
+      <div id="progressBars"></div>
+    </div>
+    <div class="card">
+      <h2>Badges</h2>
+      <div class="badgeGrid" id="badgeGrid"></div>
+    </div>
+    <div class="card">
+      <h2>Start over</h2>
+      <p class="muted">This erases all saved progress on this computer.</p>
+      <button class="btn ghost small" onclick="resetProgress()">Reset my progress</button>
+    </div>
+  </section>
+
+</main>
+
+<footer>Wildlife Photo Tutor · Limpopo Wildlife Eco College · Works offline — no internet needed.</footer>
+
+<script>
+"use strict";
+/* ================= STATE ================= */
+const STORE_KEY = "lwec-photo-tutor-v1";
+let state = { level:"beginner", lessonsDone:{}, scenesDone:{} };
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.level) state = Object.assign(state, s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ================= DATA ================= */
+const LEVELS = [
+  {id:"beginner", name:"🌱 Beginner", desc:"New to cameras. Start with the exposure triangle."},
+  {id:"intermediate", name:"🌿 Intermediate", desc:"Comfortable with basics. Learn light and composition."},
+  {id:"advanced", name:"🌳 Advanced", desc:"Ready for birds in flight and low-light work."}
+];
+
+const APERTURES = [2.8, 4, 5.6, 8, 11, 16, 22];
+const SHUTTERS = [
+  {label:"1/4000 s", t:1/4000},{label:"1/2000 s", t:1/2000},{label:"1/1000 s", t:1/1000},
+  {label:"1/500 s", t:1/500},{label:"1/250 s", t:1/250},{label:"1/125 s", t:1/125},
+  {label:"1/60 s", t:1/60},{label:"1/30 s", t:1/30},{label:"1/15 s", t:1/15},{label:"1/8 s", t:1/8}
+];
+const ISOS = [100, 200, 400, 800, 1600, 3200, 6400, 12800];
+
+const SCENES = [
+  {id:"eagle", name:"🦅 Fish Eagle in flight", emoji:"🦅", ev:14, reqT:1/2000, iso_ok:3200,
+   sky:["#8ec9e8","#d9ecf5"], ground:"🌾🌾🌳🌾", note:"Midday, fast-moving bird — you need a very fast shutter.",
+   subjectY:"-14%"},
+  {id:"impala", name:"🦌 Impala at golden hour", emoji:"🦌", ev:12, reqT:1/250, iso_ok:1600,
+   sky:["#f2b463","#f8dcae"], ground:"🌳🌾🌾🌳", note:"Soft evening light, animal grazing calmly.",
+   subjectY:"6%"},
+  {id:"elephant", name:"🐘 Elephant at the waterhole", emoji:"🐘", ev:15, reqT:1/125, iso_ok:800,
+   sky:["#9fd0ea","#eaf4f9"], ground:"🌳🌾💧🌾", note:"Bright midday sun — watch out for over-exposure.",
+   subjectY:"6%"},
+  {id:"leopard", name:"🐆 Leopard at dusk", emoji:"🐆", ev:8, reqT:1/125, iso_ok:6400,
+   sky:["#43507a","#b3778a"], ground:"🌳🌳🌾🌳", note:"Fading light — you will have to push your ISO.",
+   subjectY:"6%"},
+  {id:"owl", name:"🦉 Owl on a night drive", emoji:"🦉", ev:5, reqT:1/60, iso_ok:12800,
+   sky:["#131a2e","#2c3557"], ground:"🌳🌲🌳🌲", note:"Spotlight only. A perched subject lets you use slower shutters.",
+   subjectY:"-4%"}
+];
+
+const LESSONS = [
+ {id:"triangle", level:"beginner", icon:"🔺", title:"The Exposure Triangle",
+  body:`<p>Every photograph is made from light, and three settings control how much light reaches your sensor:</p>
+   <ul><li><strong>Aperture</strong> — how wide the lens opening is (f/2.8 is wide, f/22 is narrow).</li>
+   <li><strong>Shutter speed</strong> — how long the sensor collects light (1/2000&nbsp;s is a blink; 1/8&nbsp;s is an age).</li>
+   <li><strong>ISO</strong> — how strongly the camera amplifies the light it received.</li></ul>
+   <p>They form a triangle because changing one forces you to compensate with another. Open the aperture one stop and you must halve the shutter time or drop the ISO to keep the same brightness.</p>
+   <h3>Stops</h3><p>Photographers measure light in <strong>stops</strong>. One stop = double (or half) the light. Each step on the simulator's sliders is exactly one stop — watch the exposure meter as you move them.</p>
+   <div class="tipBox">🐘 Field example: a bright waterhole at midday needs far less gathering of light than a leopard at dusk — the triangle is how you adapt.</div>`,
+  quiz:[
+   {q:"Which three settings make up the exposure triangle?", opts:["Zoom, focus, flash","Aperture, shutter speed, ISO","White balance, ISO, zoom"], a:1},
+   {q:"One 'stop' of light means…", opts:["Double or half the light","10% more light","A camera malfunction"], a:0}
+  ]},
+ {id:"aperture", level:"beginner", icon:"🌀", title:"Aperture & Depth of Field",
+  body:`<p>The aperture is the adjustable opening inside your lens. Its size is written as an <strong>f-number</strong>: the smaller the number, the wider the opening.</p>
+   <ul><li><strong>f/2.8 (wide)</strong> — lots of light, and a <em>shallow</em> depth of field: your subject is sharp, the background melts into a soft blur.</li>
+   <li><strong>f/16 (narrow)</strong> — little light, and a <em>deep</em> depth of field: nearly everything is sharp.</li></ul>
+   <h3>Why wildlife photographers love wide apertures</h3>
+   <p>A blurred background makes an impala pop out of the thornveld instead of vanishing into it, and the extra light lets you keep the shutter fast. But beware: at f/2.8 the zone of sharpness can be centimetres deep — focus on the eye!</p>
+   <div class="tipBox">🦌 Try it: in the simulator, slide the aperture from f/22 to f/2.8 and watch the trees behind the impala blur away.</div>`,
+  quiz:[
+   {q:"Which aperture lets in the MOST light?", opts:["f/22","f/8","f/2.8"], a:2},
+   {q:"A shallow depth of field means…", opts:["Everything is sharp","Only a thin zone is sharp, the rest blurs","The photo is dark"], a:1}
+  ]},
+ {id:"shutter", level:"beginner", icon:"⏱️", title:"Shutter Speed & Motion",
+  body:`<p>Shutter speed decides whether movement is <strong>frozen</strong> or <strong>smeared</strong>. Wildlife moves — so this is usually the first setting to protect.</p>
+   <h3>Rules of thumb in the bush</h3>
+   <ul><li>Bird in flight: <strong>1/2000&nbsp;s</strong> or faster</li>
+   <li>Walking or grazing animal: <strong>1/250&nbsp;s</strong></li>
+   <li>Resting animal, braced camera: <strong>1/125&nbsp;s</strong> can work</li>
+   <li>Perched owl at night, beanbag support: <strong>1/60&nbsp;s</strong> if you're steady</li></ul>
+   <p>Too slow, and your subject becomes a ghost-trail. In the simulator, motion blur appears the moment your shutter drops below what the scene demands.</p>
+   <div class="tipBox">🦅 A fish eagle strike is over in half a second. At 1/125&nbsp;s you get a smear; at 1/2000&nbsp;s you get feathers frozen mid-splash.</div>`,
+  quiz:[
+   {q:"A fish eagle in flight is best captured at…", opts:["1/60 s","1/250 s","1/2000 s"], a:2},
+   {q:"What happens when the shutter is too slow for a moving animal?", opts:["Motion blur — the subject smears","The image gets grainy","Nothing changes"], a:0}
+  ]},
+ {id:"iso", level:"beginner", icon:"✨", title:"ISO & Noise",
+  body:`<p>ISO is your volume knob for light. Turn it up and the image brightens — but like turning up a small radio, the signal gets rough. That roughness is <strong>noise</strong> (grain).</p>
+   <ul><li><strong>ISO 100–400</strong> — clean and crisp; use in good light.</li>
+   <li><strong>ISO 800–3200</strong> — visible grain, still very usable.</li>
+   <li><strong>ISO 6400+</strong> — grainy, but often the only way to get a dusk or night shot at all.</li></ul>
+   <h3>The golden rule</h3>
+   <p><strong>A sharp, noisy photo beats a clean, blurry one.</strong> Raise the ISO as high as you must to keep your shutter fast enough — you can reduce noise later, but you can never un-blur a leopard.</p>
+   <div class="tipBox">🐆 At dusk in the simulator, try keeping ISO at 100 — you'll see why night photographers make peace with grain.</div>`,
+  quiz:[
+   {q:"High ISO causes…", opts:["Motion blur","Digital noise (grain)","A wider aperture"], a:1},
+   {q:"Which is usually the better photo?", opts:["Sharp but noisy","Clean but blurry"], a:0}
+  ]},
+ {id:"light", level:"intermediate", icon:"🌅", title:"Reading Light in the Bush",
+  body:`<p>Light in the Lowveld changes character through the day, and great wildlife photographers plan around it.</p>
+   <h3>Golden hour (first & last hour of sun)</h3>
+   <p>Warm, low, soft light that models fur and feathers beautifully and lights the animal's eyes. This is prime time — game is active, too.</p>
+   <h3>Harsh midday</h3>
+   <p>Overhead sun creates hard shadows under brows and bellies and washes out colour. If you must shoot, expose for the highlights, seek shade, or go for high-contrast black-and-white.</p>
+   <h3>Overcast</h3>
+   <p>A giant softbox: even, gentle light, great for portraits and detail — though the sky itself is usually dull and best kept out of frame.</p>
+   <h3>Dusk & night</h3>
+   <p>Light falls off fast. Open your aperture wide, accept high ISO, and lean on supports (beanbag, window mount) as shutters slow.</p>
+   <div class="tipBox">🌅 Plan: golden hour at a waterhole beats midday almost anywhere.</div>`,
+  quiz:[
+   {q:"When is the light generally best for wildlife photography?", opts:["Midday","The first and last hour of sunlight","Any time"], a:1},
+   {q:"Overcast light is like…", opts:["A giant softbox — even and soft","A spotlight — hard and directional"], a:0}
+  ]},
+ {id:"composition", level:"intermediate", icon:"🖼️", title:"Composition & Focus for Wildlife",
+  body:`<p>A technically perfect exposure still fails if the picture is poorly built. Three habits will lift your images immediately:</p>
+   <h3>1. Focus on the eye</h3>
+   <p>Viewers connect with the eyes. If the eye is sharp, the photo usually works — even if the tail is soft.</p>
+   <h3>2. Rule of thirds & space to move</h3>
+   <p>Place your subject off-centre, on a third-line, with open space in the direction it faces or moves. A kudu staring into empty frame edge feels trapped.</p>
+   <h3>3. Get low, mind the background</h3>
+   <p>Shooting at the animal's eye level is intimate and dramatic. Before you press the shutter, scan the background for bright sticks, dustbins, vehicles — a clean backdrop is half the photograph.</p>
+   <div class="tipBox">🦓 Exercise: next game drive, take one animal and photograph it three ways — eye level, thirds-placed, clean background. Compare.</div>`,
+  quiz:[
+   {q:"The most important part of the animal to keep sharp is…", opts:["The tail","The eye","The feet"], a:1},
+   {q:"'Space to move' means…", opts:["Leaving open frame in the direction the animal faces","Zooming out fully","Standing far away"], a:0}
+  ]},
+ {id:"bif", level:"advanced", icon:"🦅", title:"Mastering Birds in Flight",
+  body:`<p>The toughest everyday challenge in wildlife photography: a small, erratic subject moving fast against a changing background.</p>
+   <h3>Settings first</h3>
+   <ul><li>Shutter <strong>1/2000–1/4000&nbsp;s</strong>; let ISO float as high as needed.</li>
+   <li>Aperture around <strong>f/5.6–f/8</strong> — a little extra depth of field forgives small focus errors.</li>
+   <li>Continuous autofocus (AI-Servo / AF-C) with a burst of frames.</li></ul>
+   <h3>Technique</h3>
+   <p>Pick the bird up early, track it smoothly ("pan"), keep both eyes open, and squeeze the burst as it passes your ideal light angle. Anticipate behaviour: raptors typically take off into the wind, and a kingfisher returns to the same perch.</p>
+   <div class="tipBox">🪶 Practice target: start with slow, predictable fliers — herons, hornbills — before attempting swallows.</div>`,
+  quiz:[
+   {q:"A good starting shutter speed for birds in flight is…", opts:["1/250 s","1/2000 s","1/30 s"], a:1},
+   {q:"Why choose f/8 rather than f/2.8 for flight shots?", opts:["More depth of field forgives focus errors","It lets in more light","It adds motion blur"], a:0}
+  ]},
+ {id:"night", level:"advanced", icon:"🌙", title:"Low-Light & Ethical Night Photography",
+  body:`<p>Night drives reveal leopards, owls, genets — and push your camera to its limits.</p>
+   <h3>Technique</h3>
+   <ul><li>Widest aperture you own (f/2.8–f/4), ISO 6400+, shutter as slow as the subject and your support allow.</li>
+   <li>Brace on a beanbag or door mount; switch off the vehicle engine to kill vibration.</li>
+   <li>Focus using the edge of the spotlight beam; expose for the animal, let the night stay dark.</li></ul>
+   <h3>Ethics — this matters at LWEC</h3>
+   <ul><li>Never shine spotlights directly into the eyes of nocturnal hunters or nesting birds; use the beam's edge or a red filter.</li>
+   <li>No flash on close subjects at night.</li><li>The sighting always outranks the photograph: if the animal changes behaviour because of you, back off.</li></ul>
+   <div class="tipBox">🌙 A grainy, honest image of natural behaviour is worth more than a crisp shot of a blinded animal.</div>`,
+  quiz:[
+   {q:"At night you should generally use…", opts:["Widest aperture and high ISO","Narrow aperture and ISO 100","Fastest possible shutter"], a:0},
+   {q:"Ethically, a spotlight should…", opts:["Be aimed straight into the animal's eyes for focus","Be used at its edge or with a red filter","Stay on the animal as long as possible"], a:1}
+  ]}
+];
+
+const BADGES = [
+  {id:"firstLesson", icon:"📖", name:"First Steps", desc:"Complete your first tutorial", test:s=>Object.keys(s.lessonsDone).length>=1},
+  {id:"firstShot", icon:"📸", name:"First Shot", desc:"Master any simulator scene", test:s=>Object.keys(s.scenesDone).length>=1},
+  {id:"beginnerDone", icon:"🌱", name:"Bush Apprentice", desc:"Finish all Beginner tutorials", test:s=>LESSONS.filter(l=>l.level==="beginner").every(l=>s.lessonsDone[l.id])},
+  {id:"interDone", icon:"🌿", name:"Field Ranger", desc:"Finish all Intermediate tutorials", test:s=>LESSONS.filter(l=>l.level==="intermediate").every(l=>s.lessonsDone[l.id])},
+  {id:"advDone", icon:"🌳", name:"Veld Master", desc:"Finish all Advanced tutorials", test:s=>LESSONS.filter(l=>l.level==="advanced").every(l=>s.lessonsDone[l.id])},
+  {id:"allScenes", icon:"🏆", name:"Exposure Master", desc:"Master every simulator scene", test:s=>SCENES.every(sc=>s.scenesDone[sc.id])}
+];
+
+/* ================= NAV ================= */
+const tabs = ["home","sim","learn","progress"];
+document.getElementById("nav").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  showTab(b.dataset.tab);
+});
+function showTab(t){
+  tabs.forEach(x=>{
+    document.getElementById("tab-"+x).hidden = (x!==t);
+  });
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
+  if(t==="learn") renderLessons();
+  if(t==="progress") renderProgress();
+  window.scrollTo(0,0);
+}
+
+/* ================= LEVEL SELECT ================= */
+function renderLevels(){
+  const row = document.getElementById("levelRow");
+  row.innerHTML = "";
+  LEVELS.forEach(lv=>{
+    const b = document.createElement("button");
+    b.className = "levelBtn" + (state.level===lv.id ? " selected":"");
+    b.innerHTML = `<div class="lvName">${lv.name}</div><div class="lvDesc">${lv.desc}</div>`;
+    b.onclick = ()=>{ state.level = lv.id; save(); renderLevels(); };
+    row.appendChild(b);
+  });
+}
+
+/* ================= SIMULATOR ================= */
+let curScene = SCENES[0];
+const apSlider = document.getElementById("apSlider");
+const shSlider = document.getElementById("shSlider");
+const isoSlider = document.getElementById("isoSlider");
+apSlider.value = 3; shSlider.value = 4; isoSlider.value = 2;
+
+function renderScenes(){
+  const row = document.getElementById("sceneRow");
+  row.innerHTML = "";
+  SCENES.forEach(sc=>{
+    const b = document.createElement("button");
+    b.className = "sceneBtn" + (sc.id===curScene.id ? " selected":"");
+    b.innerHTML = sc.name + (state.scenesDone[sc.id] ? ' <span class="done">✔</span>':"");
+    b.onclick = ()=>{ curScene = sc; renderScenes(); updateSim(); };
+    row.appendChild(b);
+  });
+}
+
+function settingsEV(N, t, iso){ return Math.log2(N*N/t) - Math.log2(iso/100); }
+
+function updateSim(){
+  const N = APERTURES[+apSlider.value];
+  const sh = SHUTTERS[+shSlider.value];
+  const iso = ISOS[+isoSlider.value];
+  document.getElementById("apVal").textContent = "f/"+N;
+  document.getElementById("shVal").textContent = sh.label;
+  document.getElementById("isoVal").textContent = "ISO "+iso;
+  document.getElementById("vfLabel").textContent = curScene.note;
+
+  // scene visuals
+  const bg = document.getElementById("vfBg");
+  const inner = document.getElementById("vfInner");
+  inner.style.background = `linear-gradient(180deg, ${curScene.sky[0]} 0%, ${curScene.sky[1]} 62%, #7a6a45 62%, #8a7a50 100%)`;
+  bg.textContent = curScene.ground;
+
+  // exposure
+  const stops = curScene.ev - settingsEV(N, sh.t, iso); // + = over, - = under
+  const clamped = Math.max(-3.4, Math.min(3.4, stops));
+  const bright = Math.pow(2, clamped*0.55);
+  inner.style.filter = `brightness(${Math.max(.08, Math.min(4.2, bright))})`;
+
+  // meter
+  const pct = ((Math.max(-3, Math.min(3, stops)) + 3) / 6) * 100;
+  document.getElementById("meterNeedle").style.left = `calc(${pct}% - 2px)`;
+
+  // depth of field: background blur
+  const dof = Math.max(0.4, 15/N);
+  bg.style.filter = `blur(${dof.toFixed(1)}px)`;
+
+  // motion blur on subject
+  const subj = document.getElementById("subject");
+  subj.textContent = curScene.emoji;
+  subj.style.transform = `translateY(${curScene.subjectY})`;
+  const slowStops = Math.log2(sh.t / curScene.reqT);
+  let blurPx = 0;
+  subj.querySelectorAll(".trail").forEach(el=>el.remove());
+  if(slowStops > 0){
+    blurPx = Math.min(18, slowStops*5);
+    subj.style.filter = `blur(${(blurPx/3).toFixed(1)}px)`;
+    for(let i=1;i<=3;i++){
+      const t = document.createElement("span");
+      t.className = "trail"; t.textContent = curScene.emoji;
+      t.style.opacity = (0.3 - i*0.08).toFixed(2);
+      t.style.transform = `translateX(${i*blurPx*0.9}px)`;
+      subj.appendChild(t);
+    }
+  } else {
+    subj.style.filter = "none";
+  }
+
+  // noise
+  const noiseSteps = Math.max(0, Math.log2(iso/800));
+  document.getElementById("noiseSvg").style.opacity = Math.min(.75, noiseSteps*0.19);
+
+  // feedback
+  const fb = document.getElementById("feedback");
+  fb.innerHTML = "";
+  const okExp = Math.abs(stops) <= 0.5;
+  const okSharp = slowStops <= 0;
+  const okNoise = iso <= curScene.iso_ok;
+  addFb(fb, okExp ? "ok" : (Math.abs(stops)<=1.5 ? "warn":"bad"),
+    okExp ? "✅ Exposure is spot on." :
+    stops>0 ? `☀️ Over-exposed by ${stops.toFixed(1)} stops — close the aperture, speed up the shutter, or lower ISO.` :
+              `🌑 Under-exposed by ${Math.abs(stops).toFixed(1)} stops — open the aperture, slow the shutter, or raise ISO.`);
+  addFb(fb, okSharp ? "ok":"bad",
+    okSharp ? "✅ Shutter is fast enough — subject is sharp." :
+    `💨 Motion blur! This subject needs ${fmtShutter(curScene.reqT)} or faster.`);
+  addFb(fb, okNoise ? "ok":"warn",
+    okNoise ? "✅ Noise is under control for this scene." :
+    `✨ Heavy grain at ISO ${iso}. For this scene try to stay at or below ISO ${curScene.iso_ok} — but sharp beats clean!`);
+
+  // success
+  const banner = document.getElementById("shotBanner");
+  if(okExp && okSharp && okNoise){
+    banner.classList.add("show");
+    if(!state.scenesDone[curScene.id]){
+      state.scenesDone[curScene.id] = true; save(); renderScenes();
+      banner.textContent = `🏆 Perfect shot — "${curScene.name}" mastered! It's been added to your progress.`;
+    } else {
+      banner.textContent = `📸 Beautiful — a textbook shot of this scene.`;
+    }
+  } else {
+    banner.classList.remove("show");
+  }
+}
+function addFb(ul, cls, txt){ const li=document.createElement("li"); li.className=cls; li.textContent=txt; ul.appendChild(li); }
+function fmtShutter(t){ const s=SHUTTERS.find(x=>Math.abs(x.t-t)<1e-9); return s?s.label:("1/"+Math.round(1/t)+" s"); }
+[apSlider, shSlider, isoSlider].forEach(el=>el.addEventListener("input", updateSim));
+
+/* ================= LESSONS ================= */
+function renderLessons(){
+  document.getElementById("lessonView").hidden = true;
+  document.getElementById("lessonList").hidden = false;
+  const lvName = LEVELS.find(l=>l.id===state.level).name;
+  document.getElementById("learnIntro").textContent =
+    `Your level is ${lvName}. Lessons for your level are listed first — but you're welcome to explore them all. Pass the short quiz at the end of each lesson to mark it complete.`;
+  const grid = document.getElementById("lessonGrid");
+  grid.innerHTML = "";
+  const order = {[state.level]:0, beginner:1, intermediate:2, advanced:3};
+  [...LESSONS].sort((a,b)=>(order[a.level]??9)-(order[b.level]??9)).forEach(ls=>{
+    const done = !!state.lessonsDone[ls.id];
+    const c = document.createElement("div");
+    c.className = "lessonCard";
+    c.innerHTML = `<span class="pill ${ls.level}">${ls.level}</span>
+      <h3>${ls.icon} ${ls.title}</h3>
+      <div class="status ${done?'done':''}">${done ? "✔ Completed" : "Not yet completed"}</div>`;
+    c.onclick = ()=>openLesson(ls.id);
+    grid.appendChild(c);
+  });
+}
+function openLesson(id){
+  const ls = LESSONS.find(l=>l.id===id);
+  document.getElementById("lessonList").hidden = true;
+  const view = document.getElementById("lessonView");
+  view.hidden = false;
+  const done = !!state.lessonsDone[ls.id];
+  let html = `<span class="pill ${ls.level}">${ls.level}</span>
+    <h2 style="margin-top:8px;">${ls.icon} ${ls.title}</h2>
+    <div class="lessonBody">${ls.body}</div>
+    <h3 style="margin-top:20px;">📝 Quick quiz ${done ? "— already passed ✔" : "(answer all to complete this lesson)"}</h3>
+    <form id="quizForm">`;
+  ls.quiz.forEach((qq,qi)=>{
+    html += `<div class="quizQ" data-qi="${qi}"><p>${qi+1}. ${qq.q}</p>`;
+    qq.opts.forEach((op,oi)=>{
+      html += `<label><input type="radio" name="q${qi}" value="${oi}"> ${op}</label>`;
+    });
+    html += `</div>`;
+  });
+  html += `</form><button class="btn gold" id="quizSubmit">Check my answers</button>
+    <p class="muted" id="quizResult" style="margin-top:10px;"></p>`;
+  document.getElementById("lessonContent").innerHTML = html;
+  document.getElementById("quizSubmit").onclick = ()=>gradeQuiz(ls);
+  window.scrollTo(0,0);
+}
+function gradeQuiz(ls){
+  let correct = 0, answered = 0;
+  ls.quiz.forEach((qq,qi)=>{
+    const sel = document.querySelector(`input[name="q${qi}"]:checked`);
+    const box = document.querySelector(`.quizQ[data-qi="${qi}"]`);
+    box.querySelectorAll("label").forEach((lb,oi)=>{
+      lb.classList.remove("correct","wrong");
+      if(oi===qq.a) lb.classList.add("correct");
+    });
+    if(sel){
+      answered++;
+      if(+sel.value===qq.a) correct++;
+      else box.querySelectorAll("label")[+sel.value].classList.add("wrong");
+    }
+  });
+  const res = document.getElementById("quizResult");
+  if(answered < ls.quiz.length){ res.textContent = "Please answer every question first."; return; }
+  if(correct === ls.quiz.length){
+    state.lessonsDone[ls.id] = true; save();
+    res.textContent = `🎉 ${correct}/${ls.quiz.length} — lesson complete! It's been added to your progress.`;
+  } else {
+    res.textContent = `${correct}/${ls.quiz.length} — the correct answers are highlighted in green. Re-read the lesson and try again!`;
+  }
+}
+function closeLesson(){ renderLessons(); }
+
+/* ================= PROGRESS ================= */
+function renderProgress(){
+  const wrap = document.getElementById("progressBars");
+  wrap.innerHTML = "";
+  LEVELS.forEach(lv=>{
+    const ls = LESSONS.filter(l=>l.level===lv.id);
+    const done = ls.filter(l=>state.lessonsDone[l.id]).length;
+    wrap.appendChild(barBlock(`${lv.name} tutorials`, done, ls.length));
+  });
+  const scDone = SCENES.filter(sc=>state.scenesDone[sc.id]).length;
+  wrap.appendChild(barBlock("📸 Simulator scenes mastered", scDone, SCENES.length));
+
+  const bg = document.getElementById("badgeGrid");
+  bg.innerHTML = "";
+  BADGES.forEach(b=>{
+    const earned = b.test(state);
+    const d = document.createElement("div");
+    d.className = "badge" + (earned ? " earned":"");
+    d.innerHTML = `<div class="bIcon">${b.icon}</div><div class="bName">${b.name}</div><div class="bDesc">${b.desc}</div>`;
+    bg.appendChild(d);
+  });
+}
+function barBlock(label, done, total){
+  const div = document.createElement("div");
+  div.style.marginBottom = "14px";
+  const pct = total ? Math.round(done/total*100) : 0;
+  div.innerHTML = `<strong>${label}</strong> <span class="muted">${done} of ${total}</span>
+    <div class="barWrap"><div class="bar" style="width:${pct}%"></div></div>`;
+  return div;
+}
+function resetProgress(){
+  if(confirm("Erase all progress and badges? This cannot be undone.")){
+    state = { level:"beginner", lessonsDone:{}, scenesDone:{} };
+    save(); renderLevels(); renderScenes(); renderProgress(); updateSim();
+  }
+}
+
+/* ================= INIT ================= */
+renderLevels();
+renderScenes();
+updateSim();
+</script>
+</body>
+</html>
