@@ -101,6 +101,18 @@
   .badge .bIcon{font-size:1.8rem;}
   .badge .bName{font-weight:700; font-size:.82rem; margin-top:4px; color:var(--green-deep);}
   .badge .bDesc{font-size:.7rem; color:var(--ink-soft);}
+
+  /* Gallery */
+  .galleryGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:12px;}
+  .gItem{position:relative; border-radius:10px; overflow:hidden; aspect-ratio:1; cursor:pointer; background:var(--sand-deep);}
+  .gItem img{width:100%; height:100%; object-fit:cover; display:block; transition:transform .2s;}
+  .gItem:hover img{transform:scale(1.06);}
+  .gItem .gName{position:absolute; left:0; right:0; bottom:0; background:linear-gradient(transparent,rgba(0,0,0,.68)); color:#fff; font-size:.74rem; padding:16px 8px 6px; text-transform:capitalize;}
+  #lightbox{position:fixed; inset:0; background:rgba(8,14,9,.93); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:60; padding:18px;}
+  #lightbox.show{display:flex;}
+  #lightbox img{max-width:94vw; max-height:80vh; border-radius:10px; box-shadow:0 12px 44px rgba(0,0,0,.6);}
+  #lightbox .lbName{color:var(--gold-soft); margin-top:12px; font-size:1rem; text-transform:capitalize;}
+  #lightbox .lbClose{position:absolute; top:12px; right:16px; font-size:1.9rem; color:#fff; background:none; border:none; cursor:pointer;}
   footer{text-align:center; padding:24px 10px 40px; color:var(--ink-soft); font-size:.8rem;}
   .backRow{margin-bottom:12px;}
 </style>
@@ -116,6 +128,7 @@
   <button data-tab="home" class="active">🏠 Home</button>
   <button data-tab="sim">📸 Exposure Simulator</button>
   <button data-tab="learn">📚 Tutorials</button>
+  <button data-tab="gallery">🖼️ Gallery</button>
   <button data-tab="progress">🏆 My Progress</button>
 </nav>
 
@@ -205,6 +218,17 @@
     </div>
   </section>
 
+  <!-- ============ GALLERY ============ -->
+  <section id="tab-gallery" hidden>
+    <div class="card">
+      <h2>Photo Gallery</h2>
+      <p class="muted">Wildlife photographs from the LWEC community. Any photo uploaded to the college's site appears here automatically.</p>
+      <div class="galleryGrid" id="galleryGrid"></div>
+      <p class="muted" id="galleryStatus" style="margin-top:10px;"></p>
+      <p class="muted" style="margin-top:6px;">All photographs are used with the photographers' written permission.</p>
+    </div>
+  </section>
+
   <!-- ============ PROGRESS ============ -->
   <section id="tab-progress" hidden>
     <div class="card">
@@ -224,7 +248,13 @@
 
 </main>
 
-<footer>Wildlife Photo Tutor · Limpopo Wildlife Eco College · Works offline — no internet needed.<br>Scene photographs © Limpopo Wildlife Eco College.</footer>
+<div id="lightbox">
+  <button class="lbClose" onclick="closeLightbox()">✕</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lbName" id="lbName"></div>
+</div>
+
+<footer>Wildlife Photo Tutor · Limpopo Wildlife Eco College · Works offline — no internet needed.<br>All photographs used with the photographers' written permission.</footer>
 
 <script>
 "use strict";
@@ -250,21 +280,38 @@ const SHUTTERS = [
 const ISOS = [100, 200, 400, 800, 1600, 3200, 6400, 12800];
 
 const SCENES = [
-  {id:"eagle", img:"eagle.jpg", focus:{x:50,y:38,rx:30,ry:26}, name:"🦅 Fish Eagle in flight", emoji:"🦅", ev:14, reqT:1/2000, iso_ok:3200,
-   sky:["#8ec9e8","#d9ecf5"], ground:"🌾🌾🌳🌾", note:"Midday, fast-moving bird — you need a very fast shutter.",
-   subjectY:"-14%"},
-  {id:"impala", img:"impala.jpg", focus:{x:50,y:55,rx:34,ry:30}, name:"🦌 Impala at golden hour", emoji:"🦌", ev:12, reqT:1/250, iso_ok:1600,
-   sky:["#f2b463","#f8dcae"], ground:"🌳🌾🌾🌳", note:"Soft evening light, animal grazing calmly.",
-   subjectY:"6%"},
-  {id:"elephant", img:"elephant.jpg", focus:{x:50,y:55,rx:38,ry:34}, name:"🐘 Elephant at the waterhole", emoji:"🐘", ev:15, reqT:1/125, iso_ok:800,
-   sky:["#9fd0ea","#eaf4f9"], ground:"🌳🌾💧🌾", note:"Bright midday sun — watch out for over-exposure.",
-   subjectY:"6%"},
-  {id:"leopard", img:"leopard.jpg", focus:{x:50,y:55,rx:34,ry:30}, name:"🐆 Leopard at dusk", emoji:"🐆", ev:8, reqT:1/125, iso_ok:6400,
-   sky:["#43507a","#b3778a"], ground:"🌳🌳🌾🌳", note:"Fading light — you will have to push your ISO.",
-   subjectY:"6%"},
-  {id:"owl", img:"owl.jpg", focus:{x:50,y:45,rx:28,ry:26}, name:"🦉 Owl on a night drive", emoji:"🦉", ev:5, reqT:1/60, iso_ok:12800,
-   sky:["#131a2e","#2c3557"], ground:"🌳🌲🌳🌲", note:"Spotlight only. A perched subject lets you use slower shutters.",
-   subjectY:"-4%"}
+  {id:"vulture", img:"beardedvulture.jpg", focus:{x:50,y:45,rx:40,ry:38},
+   name:"🦅 Bearded Vulture portrait", emoji:"🦅", ev:13, reqT:1/250, iso_ok:1600,
+   sky:["#9aa5a8","#cfd6d4"], ground:"🌿🌿🌾🌿", subjectY:"-6%",
+   note:"Soft overcast light — nail the focus on that red eye."},
+  {id:"elenursery", img:"elephantnursery.jpg", focus:{x:50,y:52,rx:42,ry:40},
+   name:"🐘 Elephant nursery", emoji:"🐘", ev:13, reqT:1/250, iso_ok:1600,
+   sky:["#c9b8a2","#e6d9c4"], ground:"🌾🌾🌳🌾", subjectY:"4%",
+   note:"Dusty morning light, calves on the move — keep the shutter up."},
+  {id:"giraffe", img:"giraffewithcalf.jpg", focus:{x:55,y:45,rx:42,ry:36},
+   name:"🦒 Giraffe & calf, golden hour", emoji:"🦒", ev:12, reqT:1/250, iso_ok:1600,
+   sky:["#f2b463","#f8dcae"], ground:"🌳🌾🌾🌳", subjectY:"2%",
+   note:"Warm evening light on a tender moment."},
+  {id:"hyena", img:"hyena.jpg", focus:{x:48,y:48,rx:40,ry:38},
+   name:"🐾 Hyena den at midday", emoji:"🐺", ev:14, reqT:1/250, iso_ok:800,
+   sky:["#d8cdb8","#efe7d4"], ground:"🌾🌾🌾🌿", subjectY:"4%",
+   note:"Hard midday sun — watch those bright highlights."},
+  {id:"kingfisher", img:"kingfisherandelephant.jpg", focus:{x:36,y:32,rx:24,ry:22},
+   name:"🐦 Kingfisher & elephant", emoji:"🐦", ev:13, reqT:1/500, iso_ok:1600,
+   sky:["#b9bdb4","#d9dcd2"], ground:"🌿🌾🌳🌾", subjectY:"-8%",
+   note:"A tiny subject against a giant — small birds fidget, stay fast."},
+  {id:"roller", img:"lilacbreastedroller.jpg", focus:{x:46,y:38,rx:32,ry:30},
+   name:"🌈 Roller with its catch", emoji:"🐦", ev:14, reqT:1/1000, iso_ok:800,
+   sky:["#a8c4de","#e8d9b8"], ground:"🌾🌾🌿🌾", subjectY:"-4%",
+   note:"Feeding action in bright light — freeze that grasshopper."},
+  {id:"lioncub", img:"lioncub.jpg", focus:{x:60,y:42,rx:34,ry:34},
+   name:"🦁 Shy lion cub", emoji:"🦁", ev:10, reqT:1/125, iso_ok:3200,
+   sky:["#8a6f4d","#b39066"], ground:"🌳🌳🌾🌳", subjectY:"0%",
+   note:"Deep shade — light is scarce, but the cub is sitting still."},
+  {id:"lioncubs", img:"lioncubs.jpg", focus:{x:40,y:52,rx:40,ry:36},
+   name:"🦁 Cubs at the kill", emoji:"🦁", ev:10, reqT:1/250, iso_ok:3200,
+   sky:["#6f7a68","#9aa58e"], ground:"🌿🌳🌿🌳", subjectY:"2%",
+   note:"Dawn shade and constant movement — a tough, real exposure."}
 ];
 
 const LESSONS = [
@@ -383,7 +430,7 @@ const BADGES = [
 ];
 
 /* ================= NAV ================= */
-const tabs = ["home","sim","learn","progress"];
+const tabs = ["home","sim","learn","gallery","progress"];
 document.getElementById("nav").addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
   showTab(b.dataset.tab);
@@ -394,6 +441,7 @@ function showTab(t){
   });
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
   if(t==="learn") renderLessons();
+  if(t==="gallery") renderGallery();
   if(t==="progress") renderProgress();
   window.scrollTo(0,0);
 }
@@ -638,6 +686,61 @@ function gradeQuiz(ls){
   }
 }
 function closeLesson(){ renderLessons(); }
+
+
+/* ================= GALLERY ================= */
+const GALLERY_KEY = "lwec-gallery-cache-v1";
+const GALLERY_API = "https://api.github.com/repos/LWEC123/wildlife-sighting-system/contents/";
+const IMG_RE = /\.(jpe?g|png|webp|gif)$/i;
+function prettyName(f){ return f.replace(/\.[^.]+$/,"").replace(/[-_]+/g," "); }
+function drawGallery(files){
+  const grid = document.getElementById("galleryGrid");
+  grid.innerHTML = "";
+  files.forEach(f=>{
+    const d = document.createElement("div");
+    d.className = "gItem";
+    d.innerHTML = `<img loading="lazy" src="${f}" alt="${prettyName(f)}"><div class="gName">${prettyName(f)}</div>`;
+    d.onclick = ()=>openLightbox(f);
+    grid.appendChild(d);
+  });
+}
+async function renderGallery(){
+  const status = document.getElementById("galleryStatus");
+  let cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(GALLERY_KEY)); }catch(e){}
+  let list = (cached && Array.isArray(cached.files)) ? cached.files : null;
+  if(list) drawGallery(list);
+  const stale = !cached || (Date.now() - cached.t) > 3600000;
+  if(stale){
+    status.textContent = list ? "" : "Loading gallery…";
+    try{
+      const r = await fetch(GALLERY_API);
+      if(!r.ok) throw new Error(r.status);
+      const items = await r.json();
+      list = items.filter(it=>it.type==="file" && IMG_RE.test(it.name)).map(it=>it.name);
+      localStorage.setItem(GALLERY_KEY, JSON.stringify({t:Date.now(), files:list}));
+      drawGallery(list);
+      status.textContent = "";
+    }catch(e){
+      status.textContent = (list && list.length) ? "" :
+        "The gallery needs an internet connection the first time you open it.";
+    }
+  } else {
+    status.textContent = "";
+  }
+  if(list && !list.length) status.textContent = "No photos yet — upload photos to the college site and they will appear here.";
+}
+function openLightbox(f){
+  document.getElementById("lbImg").src = f;
+  document.getElementById("lbName").textContent = prettyName(f);
+  document.getElementById("lightbox").classList.add("show");
+}
+function closeLightbox(){
+  document.getElementById("lightbox").classList.remove("show");
+  document.getElementById("lbImg").src = "";
+}
+document.getElementById("lightbox").addEventListener("click", e=>{ if(e.target.id==="lightbox") closeLightbox(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeLightbox(); });
 
 /* ================= PROGRESS ================= */
 function renderProgress(){
