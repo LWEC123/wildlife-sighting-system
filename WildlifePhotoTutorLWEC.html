@@ -14,7 +14,8 @@
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); line-height:1.55;}
-  header{background:linear-gradient(135deg,var(--green-deep),var(--green)); color:#fff; padding:18px 20px 14px;}
+  header{background:linear-gradient(135deg,var(--green-deep),var(--green)); color:#fff; padding:14px 20px 12px; display:flex; align-items:center; gap:14px;}
+  .hLogo{height:54px; width:54px; object-fit:contain; background:#fff; border-radius:12px; padding:4px; box-shadow:0 2px 8px rgba(0,0,0,.25);}
   header h1{font-size:1.35rem; letter-spacing:.3px;}
   header .sub{color:var(--gold-soft); font-size:.85rem; margin-top:2px;}
   nav{display:flex; gap:6px; background:var(--green-deep); padding:0 12px; overflow-x:auto;}
@@ -80,6 +81,8 @@
   /* Tutorials */
   .lessonCard{border:1.5px solid var(--sand-deep); border-radius:12px; padding:14px; background:#fff; cursor:pointer; transition:border-color .15s;}
   .lessonCard:hover{border-color:var(--green-soft);}
+  .lessonCard.locked{opacity:.55; cursor:default;}
+  .lessonCard.locked:hover{border-color:var(--sand-deep);}
   .lessonCard h3{margin:6px 0 4px;}
   .lessonCard .status{font-size:.82rem; margin-top:6px;}
   .lessonCard .status.done{color:var(--good); font-weight:600;}
@@ -91,6 +94,16 @@
   .lessonBody h3{margin-top:16px;}
   .lessonBody ul{margin:0 0 10px 22px;}
   .tipBox{background:#fdf6e3; border-left:4px solid var(--gold); padding:10px 12px; border-radius:8px; margin:10px 0; font-size:.92rem;}
+
+  /* Programme */
+  .weekBox{border:1.5px solid var(--sand-deep); border-radius:10px; margin:10px 0; background:#fff; overflow:hidden;}
+  .weekBox summary{padding:11px 14px; cursor:pointer; font-weight:600; color:var(--green-deep); list-style:none; display:flex; align-items:center; gap:8px;}
+  .weekBox summary::before{content:"▸"; color:var(--gold);}
+  .weekBox[open] summary::before{content:"▾";}
+  .weekBox summary .wDone{margin-left:auto; font-size:.8rem; color:var(--good); font-weight:700;}
+  .weekBody{padding:4px 16px 14px; border-top:1px solid var(--sand-deep);}
+  .weekBody strong{display:block; color:var(--green); margin:10px 0 4px;}
+  .weekBody ul{margin:0 0 4px 20px; font-size:.92rem;}
 
   /* Progress */
   .barWrap{background:var(--sand-deep); border-radius:999px; height:16px; overflow:hidden; margin:6px 0 2px;}
@@ -120,14 +133,18 @@
 <body>
 
 <header>
-  <h1>📷 Wildlife Photo Tutor</h1>
-  <div class="sub">Limpopo Wildlife Eco College — Field Photography Training</div>
+  <img class="hLogo" src="icons/lwec-logo.png" alt="LWEC logo" onerror="this.style.display='none'">
+  <div>
+    <h1>📷 Wildlife Photo Tutor</h1>
+    <div class="sub">Limpopo Wildlife Eco College — Field Photography Training</div>
+  </div>
 </header>
 
 <nav id="nav">
   <button data-tab="home" class="active">🏠 Home</button>
   <button data-tab="sim">📸 Exposure Simulator</button>
   <button data-tab="learn">📚 Tutorials</button>
+  <button data-tab="programme">🎓 Programme</button>
   <button data-tab="gallery">🖼️ Gallery</button>
   <button data-tab="progress">🏆 My Progress</button>
 </nav>
@@ -150,7 +167,8 @@
       <h2>How to use this tutor</h2>
       <p><strong>1. Learn</strong> — work through the tutorials for your level in the 📚 Tutorials tab, and pass each short quiz.</p>
       <p><strong>2. Practise</strong> — open the 📸 Exposure Simulator and try to nail a sharp, well-exposed shot in every scene, from an eagle in flight to a leopard at dusk.</p>
-      <p><strong>3. Track</strong> — watch your badges and completion bars grow in 🏆 My Progress.</p>
+      <p><strong>3. Follow the programme</strong> — the 🎓 Programme tab holds the college's full 18-week training plan, week by week.</p>
+      <p><strong>4. Track</strong> — watch your badges and completion bars grow in 🏆 My Progress.</p>
     </div>
   </section>
 
@@ -218,6 +236,15 @@
     </div>
   </section>
 
+  <!-- ============ PROGRAMME ============ -->
+  <section id="tab-programme" hidden>
+    <div class="card">
+      <h2>🎓 LWEC Wildlife Photography Training Programme</h2>
+      <p class="muted">The college's structured programme: three levels, eighteen weeks of topics and practical fieldwork. Open a week to see its content, and tick it off as your class completes it — your progress is saved on this device.</p>
+    </div>
+    <div id="programmeWrap"></div>
+  </section>
+
   <!-- ============ GALLERY ============ -->
   <section id="tab-gallery" hidden>
     <div class="card">
@@ -260,8 +287,8 @@
 "use strict";
 /* ================= STATE ================= */
 const STORE_KEY = "lwec-photo-tutor-v1";
-let state = { level:"beginner", lessonsDone:{}, scenesDone:{} };
-try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.level) state = Object.assign(state, s); }catch(e){}
+let state = { level:"beginner", lessonsDone:{}, scenesDone:{}, programmeDone:{} };
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.level){ state = Object.assign(state, s); state.programmeDone = state.programmeDone || {}; } }catch(e){}
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 
 /* ================= DATA ================= */
@@ -417,7 +444,96 @@ const LESSONS = [
   quiz:[
    {q:"At night you should generally use…", opts:["Widest aperture and high ISO","Narrow aperture and ISO 100","Fastest possible shutter"], a:0},
    {q:"Ethically, a spotlight should…", opts:["Be aimed straight into the animal's eyes for focus","Be used at its edge or with a red filter","Stay on the animal as long as possible"], a:1}
+  ]},
+ {id:"bifshutter", level:"advanced", icon:"⚡", title:"Birds in Flight I: Shutter Speed Masterclass",
+  body:`<p>From the LWEC training programme: how to use shutter speed for both frozen action and artistic motion blur.</p>
+   <h3>Freezing the action</h3>
+   <ul><li>Large, slower birds (herons, raptors): start at <strong>1/1000&nbsp;s</strong>.</li>
+   <li>Small, fast birds (swallows, kingfishers): <strong>1/2500&nbsp;s or faster</strong>.</li>
+   <li>Aggressive action — a strike, a squabble: <strong>1/4000&nbsp;s</strong>.</li>
+   <li>Use Shutter Priority (Tv/S) or Manual with Auto ISO; continuous AF; high-speed burst.</li></ul>
+   <h3>Intentional motion blur</h3>
+   <ul><li>Subtle wing blur: around <strong>1/250&nbsp;s</strong>.</li>
+   <li>Dramatic wing blur, sharp body: <strong>1/60–1/80&nbsp;s</strong> with good panning.</li>
+   <li>Abstract, impressionistic blur: <strong>1/15&nbsp;s</strong> or slower.</li>
+   <li>Stop down the aperture and keep ISO low to avoid over-exposure; an ND filter helps in bright light.</li></ul>
+   <h3>Panning technique</h3>
+   <p>Track the bird smoothly — twist from your <em>waist</em>, not your arms — follow it before, during and after the shutter press. Set stabilisation to Mode 2 (panning) so it only corrects vertical shake.</p>
+   <h3>Field wisdom & ethics</h3>
+   <ul><li>Overcast light suits motion blur; bright sun suits freezing action.</li>
+   <li>Take-off tells: a bird defecating, going alert, or lifting its head is about to fly.</li>
+   <li><strong>Never flush a bird</strong> for a photo, keep your distance, and no flash on owls.</li></ul>
+   <div class="tipBox">⚡ Try it in the simulator: the roller scene demands 1/1000 s — then deliberately drop to 1/30 s and watch the artistic blur appear.</div>`,
+  quiz:[
+   {q:"A small, fast bird like a kingfisher needs at least…", opts:["1/250 s","1/1000 s","1/2500 s"], a:2},
+   {q:"For panning shots you should…", opts:["Twist smoothly from the waist and follow through","Hold the camera still and let the bird pass","Use your fastest shutter speed"], a:0},
+   {q:"A bird defecates and lifts its head. What does it mean?", opts:["It is relaxed","It is about to take flight — get ready","It wants food"], a:1}
+  ]},
+ {id:"biffocus", level:"advanced", icon:"🎯", title:"Birds in Flight II: Focusing Techniques",
+  body:`<p>The follow-up lecture: sharp focus on a fast, erratic subject is a system — settings plus technique.</p>
+   <h3>Camera setup</h3>
+   <ul><li><strong>Continuous AF (AF-C / AI Servo)</strong> is non-negotiable — it re-focuses constantly as the bird moves. Avoid hybrid auto-switching modes; they hesitate.</li>
+   <li><strong>Focus area:</strong> single-point for large predictable birds; dynamic-area / AF-point-expansion as the versatile default; zone or group AF for small fast birds against clean sky.</li>
+   <li><strong>Back-button focus:</strong> move focusing to a rear button. You can hold to track, release to lock when the bird passes behind a branch, and pre-focus on a perch while you wait.</li></ul>
+   <h3>Field technique</h3>
+   <ul><li><strong>Wide, then tight:</strong> find the bird zoomed out, then zoom in and let AF-C take over.</li>
+   <li><strong>Anticipate:</strong> birds take off and land into the wind — position yourself accordingly.</li>
+   <li><strong>The eye rules:</strong> aim your focus at the head; a sharp eye makes the photo.</li>
+   <li>Shoot high-speed bursts to catch the best wing position.</li></ul>
+   <h3>Troubleshooting</h3>
+   <ul><li>Focus grabs the wings or background → use a smaller AF area.</li>
+   <li>Focus lags in low light → open the aperture or raise ISO to keep AF responsive.</li>
+   <li>Can't even find the bird in the frame → practise tracking cars or gulls until it's muscle memory.</li></ul>
+   <div class="tipBox">🎯 Homework from the programme: 15 minutes in your camera's AF menu, then practise panning on anything that moves predictably.</div>`,
+  quiz:[
+   {q:"The essential autofocus mode for birds in flight is…", opts:["Single-shot AF (AF-S)","Continuous AF (AF-C / AI Servo)","Manual focus"], a:1},
+   {q:"A key benefit of back-button focus is…", opts:["It makes photos brighter","You can lock focus when the bird passes behind an obstacle","It zooms automatically"], a:1},
+   {q:"Which part of the bird must be sharpest?", opts:["The eye","The wingtips","The tail"], a:0}
   ]}
+];
+
+const PROGRAMME = [
+ {id:"beginner", icon:"🌱", title:"Beginner Programme", duration:"4 weeks", pill:"beginner",
+  blurb:"From auto mode to confident fundamentals: camera craft, composition and ethics.",
+  weeks:[
+   {t:"Week 1 — Camera fundamentals", topics:["Essential equipment: cameras, lenses, tripods","The exposure triangle in practice","Autofocus modes for still and moving subjects","Reading and using natural light"],
+    acts:["Camera scavenger hunt through your own camera's settings","Exposure challenge: one subject, many settings","Group photo critique"]},
+   {t:"Week 2 — Mastering composition", topics:["Rule of thirds, leading lines, framing, negative space","Point of view and depth of field for impact","Managing cluttered backgrounds","Visual storytelling in a single frame"],
+    acts:["Composition assignment using the rules deliberately","Group discussion of favourite images","Live critique session"]},
+   {t:"Week 3 — Ethics & animal behaviour", topics:["Do no harm: minimising disturbance","Reading stress signals — knowing when you're too close","Baiting, flash and call imitation: the honest debate","Responsible tourism and reserve rules"],
+    acts:["Ethical scenario role-playing","Guest speaker Q&A with a professional","Short write-up on photography-led conservation"]},
+   {t:"Week 4 — Planning, editing & sharing", topics:["Researching species, locations and behaviour","Editing basics: exposure, contrast, colour","Organising, culling and selecting your best work","Where and how to share your photography"],
+    acts:["\"My Story\" mini-portfolio with creative notes","Editing workflow demonstration","Final peer review"]}]},
+ {id:"intermediate", icon:"🌿", title:"Intermediate Programme", duration:"6 weeks", pill:"intermediate",
+  blurb:"Advanced technique and extensive fieldwork: develop a style and a cohesive body of work.",
+  weeks:[
+   {t:"Week 1 — Advanced focus & exposure control", topics:["Back-button focus, focus stacking, tracking AF","Full manual exposure in difficult light","Exposing for mood: high-key and low-key"],
+    acts:["Back-button focus field practice","Creative exposure challenge","Sharpness-focused critique"]},
+   {t:"Week 2 — Advanced creative composition", topics:["Breaking the rules deliberately","Visual weight: guiding the viewer's eye","Lens compression to isolate the subject"],
+    acts:["Deconstructing iconic wildlife images","A three-image storytelling series"]},
+   {t:"Week 3 — Mastering light", topics:["Rim light, side light and diffused light","Ethical use of fill flash","High-key and low-key artistry"],
+    acts:["Golden hour vs midday field trip","Controlled, ethical flash demonstration"]},
+   {t:"Week 4 — Fieldcraft & finding your subject", topics:["Blinds, camouflage and ethical approaches","Animal behaviour and body language","Patience, preparation and positioning"],
+    acts:["Extended fieldwork at a reserve","A behavioural observation journal"]},
+   {t:"Week 5 — Advanced post-processing & workflow", topics:["Optimising RAW files for detail and dynamic range","Dodging, burning, selective sharpening, noise reduction","Preparing images for web, social and print"],
+    acts:["Before-and-after editing showcase","Peer review of edits"]},
+   {t:"Week 6 — The professional portfolio", topics:["Curating a unique style","Licensing, print sales and photo contests","Ethics in editing, captioning and sharing"],
+    acts:["Final portfolio presentation","One-on-one instructor review"]}]},
+ {id:"advanced", icon:"🌳", title:"Advanced Programme", duration:"8 weeks", pill:"advanced",
+  blurb:"Conservation storytelling at professional level: a real project, a real partner, a real portfolio.",
+  weeks:[
+   {t:"Weeks 1–2 — Developing a conservation project", topics:["Finding a local conservation story worth telling","Partnering with a conservation organisation","Writing the project proposal: goals, ethics, timeline"],
+    acts:["Collaborator outreach with pitch feedback","Introductory meeting with a conservation group","Proposal refinement workshop"]},
+   {t:"Weeks 3–4 — Advanced fieldwork & species tracking", topics:["Professional blinds and remote camera triggers","Long-term behavioural tracking","Night and low-light technique without stressing animals"],
+    acts:["Timed field assignment capturing a behaviour sequence","Fieldcraft show-and-tell","Guided low-light practice"]},
+   {t:"Week 5 — Master-level editing", topics:["RAW workflow mastery","Advanced retouching and colour grading","Image integrity: the ethical line in post-processing"],
+    acts:["Complex-edit showcase with process notes","Critique on technique and emotional impact"]},
+   {t:"Week 6 — Building the portfolio narrative", topics:["Sequencing images to tell the conservation story","Writing statements, captions and the core message","In-depth portfolio critique"],
+    acts:["Narrative sequence presentation","Practice pitch to a simulated client"]},
+   {t:"Week 7 — The business of conservation photography", topics:["Grants and funding for projects","Licensing to media, NGOs and stock agencies","Contracts, rights and professional ethics"],
+    acts:["Grant application practice","Peer review of portfolio websites"]},
+   {t:"Week 8 — The final presentation", topics:["Presenting to a public audience or partner","Impact and legacy: continuing beyond the course"],
+    acts:["Final project presentation","Closing feedback session with peers and instructors"]}]}
 ];
 
 const BADGES = [
@@ -426,11 +542,12 @@ const BADGES = [
   {id:"beginnerDone", icon:"🌱", name:"Bush Apprentice", desc:"Finish all Beginner tutorials", test:s=>LESSONS.filter(l=>l.level==="beginner").every(l=>s.lessonsDone[l.id])},
   {id:"interDone", icon:"🌿", name:"Field Ranger", desc:"Finish all Intermediate tutorials", test:s=>LESSONS.filter(l=>l.level==="intermediate").every(l=>s.lessonsDone[l.id])},
   {id:"advDone", icon:"🌳", name:"Veld Master", desc:"Finish all Advanced tutorials", test:s=>LESSONS.filter(l=>l.level==="advanced").every(l=>s.lessonsDone[l.id])},
-  {id:"allScenes", icon:"🏆", name:"Exposure Master", desc:"Master every simulator scene", test:s=>SCENES.every(sc=>s.scenesDone[sc.id])}
+  {id:"allScenes", icon:"🏆", name:"Exposure Master", desc:"Master every simulator scene", test:s=>SCENES.every(sc=>s.scenesDone[sc.id])},
+  {id:"graduate", icon:"🎓", name:"Programme Graduate", desc:"Tick off every week of the full training programme", test:s=>PROGRAMME.every(lv=>lv.weeks.every((w,i)=>s.programmeDone[lv.id+"-w"+i]))}
 ];
 
 /* ================= NAV ================= */
-const tabs = ["home","sim","learn","gallery","progress"];
+const tabs = ["home","sim","learn","programme","gallery","progress"];
 document.getElementById("nav").addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
   showTab(b.dataset.tab);
@@ -441,6 +558,7 @@ function showTab(t){
   });
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
   if(t==="learn") renderLessons();
+  if(t==="programme") renderProgramme();
   if(t==="gallery") renderGallery();
   if(t==="progress") renderProgress();
   window.scrollTo(0,0);
@@ -622,18 +740,23 @@ function renderLessons(){
   document.getElementById("lessonList").hidden = false;
   const lvName = LEVELS.find(l=>l.id===state.level).name;
   document.getElementById("learnIntro").textContent =
-    `Your level is ${lvName}. Lessons for your level are listed first — but you're welcome to explore them all. Pass the short quiz at the end of each lesson to mark it complete.`;
+    `Your level is ${lvName}. Work through the levels in order — passing every quiz in a level unlocks the next, just like the college programme. Pass the short quiz at the end of each lesson to mark it complete.`;
   const grid = document.getElementById("lessonGrid");
   grid.innerHTML = "";
-  const order = {[state.level]:0, beginner:1, intermediate:2, advanced:3};
+  const begDone = LESSONS.filter(l=>l.level==="beginner").every(l=>state.lessonsDone[l.id]);
+  const intDone = LESSONS.filter(l=>l.level==="intermediate").every(l=>state.lessonsDone[l.id]);
+  const unlocked = {beginner:true, intermediate:begDone, advanced:begDone && intDone};
+  const lockMsg = {intermediate:"🔒 Pass all Beginner tutorials to unlock", advanced:"🔒 Pass all Intermediate tutorials to unlock"};
+  const order = {beginner:1, intermediate:2, advanced:3};
   [...LESSONS].sort((a,b)=>(order[a.level]??9)-(order[b.level]??9)).forEach(ls=>{
     const done = !!state.lessonsDone[ls.id];
+    const open = unlocked[ls.level];
     const c = document.createElement("div");
-    c.className = "lessonCard";
+    c.className = "lessonCard" + (open ? "" : " locked");
     c.innerHTML = `<span class="pill ${ls.level}">${ls.level}</span>
       <h3>${ls.icon} ${ls.title}</h3>
-      <div class="status ${done?'done':''}">${done ? "✔ Completed" : "Not yet completed"}</div>`;
-    c.onclick = ()=>openLesson(ls.id);
+      <div class="status ${done?'done':''}">${done ? "✔ Completed" : (open ? "Not yet completed" : lockMsg[ls.level])}</div>`;
+    if(open) c.onclick = ()=>openLesson(ls.id);
     grid.appendChild(c);
   });
 }
@@ -687,6 +810,41 @@ function gradeQuiz(ls){
 }
 function closeLesson(){ renderLessons(); }
 
+
+/* ================= PROGRAMME ================= */
+function renderProgramme(){
+  const wrap = document.getElementById("programmeWrap");
+  wrap.innerHTML = "";
+  PROGRAMME.forEach(lv=>{
+    const doneCount = lv.weeks.filter((w,i)=>state.programmeDone[lv.id+"-w"+i]).length;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<h2>${lv.icon} ${lv.title} <span class="pill ${lv.pill}">${lv.duration}</span></h2>
+      <p class="muted">${lv.blurb}</p>
+      <div class="barWrap"><div class="bar" style="width:${Math.round(doneCount/lv.weeks.length*100)}%"></div></div>
+      <p class="muted">${doneCount} of ${lv.weeks.length} sections completed</p>`;
+    lv.weeks.forEach((w,i)=>{
+      const key = lv.id+"-w"+i;
+      const done = !!state.programmeDone[key];
+      const det = document.createElement("details");
+      det.className = "weekBox";
+      det.innerHTML = `<summary>${w.t}${done?'<span class="wDone">✔ done</span>':''}</summary>
+        <div class="weekBody">
+          <strong>Topics</strong><ul>${w.topics.map(t=>`<li>${t}</li>`).join("")}</ul>
+          <strong>Practical activities</strong><ul>${w.acts.map(a=>`<li>${a}</li>`).join("")}</ul>
+          <button class="btn small ${done?'ghost':'gold'}" style="margin-top:10px;">${done?"Mark as not done":"Mark week complete ✔"}</button>
+        </div>`;
+      det.querySelector("button").onclick = (e)=>{
+        e.preventDefault();
+        state.programmeDone[key] = !done;
+        if(!state.programmeDone[key]) delete state.programmeDone[key];
+        save(); renderProgramme();
+      };
+      card.appendChild(det);
+    });
+    wrap.appendChild(card);
+  });
+}
 
 /* ================= GALLERY ================= */
 const GALLERY_KEY = "lwec-gallery-cache-v1";
@@ -753,6 +911,10 @@ function renderProgress(){
   });
   const scDone = SCENES.filter(sc=>state.scenesDone[sc.id]).length;
   wrap.appendChild(barBlock("📸 Simulator scenes mastered", scDone, SCENES.length));
+  PROGRAMME.forEach(lv=>{
+    const d = lv.weeks.filter((w,i)=>state.programmeDone[lv.id+"-w"+i]).length;
+    wrap.appendChild(barBlock(`🎓 ${lv.title}`, d, lv.weeks.length));
+  });
 
   const bg = document.getElementById("badgeGrid");
   bg.innerHTML = "";
@@ -774,7 +936,7 @@ function barBlock(label, done, total){
 }
 function resetProgress(){
   if(confirm("Erase all progress and badges? This cannot be undone.")){
-    state = { level:"beginner", lessonsDone:{}, scenesDone:{} };
+    state = { level:"beginner", lessonsDone:{}, scenesDone:{}, programmeDone:{} };
     save(); renderLevels(); renderScenes(); renderProgress(); updateSim();
   }
 }
