@@ -160,7 +160,7 @@
     </div>
     <div class="card">
       <h2>Choose your level</h2>
-      <p class="muted">This tailors which tutorials are recommended to you. You can change it any time.</p>
+      <p class="muted">Pick a level to jump straight into its tutorials. You can change it any time.</p>
       <div class="levelRow" id="levelRow"></div>
     </div>
     <div class="card">
@@ -572,7 +572,7 @@ function renderLevels(){
     const b = document.createElement("button");
     b.className = "levelBtn" + (state.level===lv.id ? " selected":"");
     b.innerHTML = `<div class="lvName">${lv.name}</div><div class="lvDesc">${lv.desc}</div>`;
-    b.onclick = ()=>{ state.level = lv.id; save(); renderLevels(); };
+    b.onclick = ()=>{ state.level = lv.id; save(); renderLevels(); showTab("learn"); };
     row.appendChild(b);
   });
 }
