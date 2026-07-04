@@ -17,11 +17,14 @@
   .apps{display:flex; gap:20px; flex-wrap:wrap; justify-content:center; width:100%; max-width:760px;}
   a.app{
     flex:1 1 280px; max-width:340px; text-decoration:none; color:#25301f;
-    background:#f4efe4; border-radius:18px; padding:28px 22px;
+    background:#f4efe4; border-radius:18px; padding:0 0 26px;
+    overflow:hidden;
     box-shadow:0 6px 24px rgba(0,0,0,.25); transition:transform .15s, box-shadow .15s;
   }
+  .banner{width:100%; height:170px; object-fit:cover; display:block;}
   a.app:hover{transform:translateY(-4px); box-shadow:0 10px 30px rgba(0,0,0,.35);}
-  .icon{font-size:3rem;}
+  .icon{font-size:1.6rem; margin-top:14px;}
+  .app .name,.app .desc,.app .go,.app .icon{padding-left:22px; padding-right:22px;}
   .name{font-size:1.15rem; font-weight:700; color:#1e3a2a; margin:10px 0 6px;}
   .desc{font-size:.88rem; color:#5c6653; line-height:1.45;}
   .go{display:inline-block; margin-top:14px; background:#2d5741; color:#fff; border-radius:999px; padding:8px 22px; font-size:.9rem; font-weight:600;}
@@ -33,12 +36,14 @@
   <div class="sub">Student Field Apps — choose a tool to begin</div>
   <div class="apps">
     <a class="app" href="index.htm">
+      <img class="banner" src="elephantnursery.jpg" alt="Elephant herd photographed in the field">
       <div class="icon">🦌</div>
       <div class="name">Wildlife Sighting System</div>
       <div class="desc">Record wildlife sightings in the field: species, GPS location, habitat, behaviour and weather — works offline.</div>
       <span class="go">Open ➜</span>
     </a>
     <a class="app" href="WildlifePhotoTutorLWEC.html">
+      <img class="banner" src="lilacbreastedroller.jpg" alt="Lilac-breasted roller with its catch">
       <div class="icon">📷</div>
       <div class="name">Wildlife Photo Tutor</div>
       <div class="desc">Learn wildlife photography: practise exposure on African scenes, complete tutorials and earn badges.</div>
