@@ -159,6 +159,15 @@
       <p class="muted">Your progress is saved automatically on this computer, so you can close this page and pick up where you left off.</p>
     </div>
     <div class="card">
+      <h2>🎓 Part of your Level 4 Nature Site Guide training</h2>
+      <p>At LWEC, the camera is professional equipment. The skills in this app are woven into the Level 4 NGuide Programme:</p>
+      <p><strong>🐆 Interpretation</strong> — anticipating an animal's next move is how you position for the Golden Shot, and how you keep guests safe.</p>
+      <p><strong>🤝 Client care</strong> — elite guides coach their guests' photography: better sightings, better reviews, professional recognition.</p>
+      <p><strong>🦏 Conservation</strong> — biometric photographs of tracks and markings feed research and anti-poaching monitoring.</p>
+      <p><strong>🌍 Ethics</strong> — the pursuit of a photograph never compromises the animal or the wilderness. The sighting always comes first.</p>
+      <p class="muted">By graduation, an LWEC guide is not just a driver — but a professional storyteller.</p>
+    </div>
+    <div class="card">
       <h2>Choose your level</h2>
       <p class="muted">Pick a level to jump straight into its tutorials. You can change it any time.</p>
       <div class="levelRow" id="levelRow"></div>
@@ -552,6 +561,61 @@ const LESSONS = [
    {q:"The essential autofocus mode for birds in flight is…", opts:["Single-shot AF (AF-S)","Continuous AF (AF-C / AI Servo)","Manual focus"], a:1},
    {q:"A key benefit of back-button focus is…", opts:["It makes photos brighter","You can lock focus when the bird passes behind an obstacle","It zooms automatically"], a:1},
    {q:"Which part of the bird must be sharpest?", opts:["The eye","The wingtips","The tail"], a:0}
+  ]},
+ {id:"coach", scene:"giraffe", level:"advanced", icon:"🤝", title:"The Photography Coach: Helping Your Guests",
+  body:`<p>A Level 4 guide manages the expectations of international guests — and today's guests almost all carry cameras. A guide who can quietly rescue a guest's photographs turns a good drive into an unforgettable one, and that shows in reviews and repeat bookings.</p>
+   <h3>The 60-second diagnosis</h3>
+   <p>You don't need to know their camera — you need to read their <em>photos</em>:</p>
+   <ul><li><strong>"My photos are too dark"</strong> → light problem: raise ISO, open shutter time within reason, or reposition for better light.</li>
+   <li><strong>"Everything is blurry"</strong> → motion problem: faster shutter (sport mode on simple cameras), brace on the vehicle, burst mode.</li>
+   <li><strong>"It's sharp but boring"</strong> → composition problem: get lower, wait for the head-turn, mind the background.</li></ul>
+   <h3>Universal fixes that work on any camera</h3>
+   <ul><li>Every camera has <strong>exposure compensation (+/−)</strong> — one dial that fixes most "too dark / too bright" complaints.</li>
+   <li>Every camera has a <strong>burst mode</strong> — the single biggest upgrade for wildlife beginners.</li>
+   <li><strong>Phone photographers:</strong> tap the animal to focus, brace both elbows, never pinch-zoom (move the vehicle instead — that's your job!), and shoot bursts.</li></ul>
+   <h3>Positioning for your guests, not just yourself</h3>
+   <p>Think of the vehicle as a camera platform: light over your guests' shoulders, engine off for stability, and <em>call the moment</em> — "she's about to jump, cameras up" — a few seconds before it happens. That anticipation is what makes an elite guide.</p>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>As guests board, quietly note who carries what: phone, compact, big lens.</li>
+   <li>At the sighting, position for the guests' light first, your view second.</li>
+   <li>Offer <strong>one</strong> tip per sighting, at the moment it's needed — never a lecture.</li>
+   <li>Call the action before it happens so cameras are up and ready.</li>
+   <li>Afterwards, ask to see someone's favourite shot — and celebrate it.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: grabbing a guest's camera uninvited; jargon-dumping ("just shoot f/5.6 at 1/1250"); coaching one guest so intently the others lose the sighting; forgetting rule one — the sighting itself always outranks every photograph.</div>`,
+  quiz:[
+   {q:"A guest's photos of moving animals keep blurring. Your first suggestion?", opts:["Use a faster shutter — sport mode or raised ISO","Zoom in more","Clean the lens"], a:0},
+   {q:"The best way to coach a guest is…", opts:["A full settings lecture before the drive","One clear tip at the moment it's needed","Taking their camera and shooting for them"], a:1},
+   {q:"A phone photographer wants a distant leopard. You advise…", opts:["Pinch-zoom as far as possible","Tap to focus, brace, avoid digital zoom — and let you position the vehicle","Use the flash"], a:1}
+  ]},
+ {id:"biometric", scene:"vulture", level:"advanced", icon:"🦏", title:"Biometric & Conservation Recording",
+  body:`<p>At Level 4 your camera becomes a research instrument. Clear photographs of tracks and unique markings feed identification databases, research projects and anti-poaching work — this is the Wildlife Practitioner side of guiding.</p>
+   <h3>Evidence, not art</h3>
+   <p>An identification photo has different rules: everything sharp (f/8), even light, the whole feature in frame, and consistent angles — a left-flank and right-flank shot where safely possible.</p>
+   <h3>What identifies an individual</h3>
+   <ul><li><strong>Rhino:</strong> ear-notch combinations and horn profile</li>
+   <li><strong>Leopard:</strong> rosette patterns on the flank</li>
+   <li><strong>Lion:</strong> whisker-spot rows and scars</li>
+   <li><strong>Elephant:</strong> ear tears, holes and tusk shape</li>
+   <li><strong>Wild dog:</strong> every coat is unique</li></ul>
+   <h3>Photographing tracks</h3>
+   <ul><li>Shoot straight down, track filling the frame.</li>
+   <li>Always include a <strong>scale reference</strong> — a ruler, or any object of known size.</li>
+   <li>Low side-light (or shading the track) reveals depth and detail.</li>
+   <li>Also photograph the <em>gait</em> — a stretch of trail showing stride pattern.</li></ul>
+   <h3>Data discipline — this part protects animals' lives</h3>
+   <ul><li>Log every ID photo with a record in the <strong>Wildlife Sighting System</strong>: GPS, date, time, behaviour.</li>
+   <li><strong>Never publish sensitive locations.</strong> A rhino photo posted with GPS metadata is a gift to poachers: strip location data before sharing, and post sensitive sightings days later, if at all.</li></ul>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Detail shots at f/8, focused on the identifying feature.</li>
+   <li>Both flanks where the situation safely allows — never push the animal for it.</li>
+   <li>Tracks: scale reference, straight down, shaded or side-lit.</li>
+   <li>Log the sighting record immediately, while details are fresh.</li>
+   <li>Before any sharing: remove GPS data; delay sensitive posts.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: posting rhino images with location metadata intact; artistic background blur on what should be an ID record; a beautiful track photo that's useless without scale; approaching too close for "the notch shot" — no data point is worth stressing the animal.</div>`,
+  quiz:[
+   {q:"Why photograph a rhino's ear notches?", opts:["They look dramatic","They identify the individual for monitoring and anti-poaching work","To measure its age"], a:1},
+   {q:"A track photograph is incomplete without…", opts:["A scale reference","A wide aperture","The animal in the background"], a:0},
+   {q:"Before posting a rhino photo online you must…", opts:["Add the GPS location so others can find it","Strip location metadata and consider delaying the post","Brighten it"], a:1}
   ]}
 ];
 
