@@ -342,30 +342,44 @@ const SCENES = [
 ];
 
 const LESSONS = [
- {id:"triangle", level:"beginner", icon:"🔺", title:"The Exposure Triangle",
+ {id:"triangle", scene:"elenursery", level:"beginner", icon:"🔺", title:"The Exposure Triangle",
   body:`<p>Every photograph is made from light, and three settings control how much light reaches your sensor:</p>
    <ul><li><strong>Aperture</strong> — how wide the lens opening is (f/2.8 is wide, f/22 is narrow).</li>
    <li><strong>Shutter speed</strong> — how long the sensor collects light (1/2000&nbsp;s is a blink; 1/8&nbsp;s is an age).</li>
    <li><strong>ISO</strong> — how strongly the camera amplifies the light it received.</li></ul>
    <p>They form a triangle because changing one forces you to compensate with another. Open the aperture one stop and you must halve the shutter time or drop the ISO to keep the same brightness.</p>
    <h3>Stops</h3><p>Photographers measure light in <strong>stops</strong>. One stop = double (or half) the light. Each step on the simulator's sliders is exactly one stop — watch the exposure meter as you move them.</p>
-   <div class="tipBox">🐘 Field example: a bright waterhole at midday needs far less gathering of light than a leopard at dusk — the triangle is how you adapt.</div>`,
+   <div class="tipBox">🐘 Field example: a bright waterhole at midday needs far less gathering of light than a leopard at dusk — the triangle is how you adapt.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Half-press the shutter and check the exposure meter on your subject.</li>
+   <li>Choose your <strong>aperture</strong> first for the look you want (blurry or sharp background).</li>
+   <li>Set the <strong>shutter speed</strong> the movement demands — never slower.</li>
+   <li>Let <strong>ISO</strong> take up the slack until the meter sits near 0.</li>
+   <li>Take a test shot and check it — then change <em>one</em> setting at a time.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: chasing a perfect meter while the animal blurs; changing two settings at once and losing track; forgetting last night's ISO 6400 the next sunny morning.</div>`,
   quiz:[
    {q:"Which three settings make up the exposure triangle?", opts:["Zoom, focus, flash","Aperture, shutter speed, ISO","White balance, ISO, zoom"], a:1},
    {q:"One 'stop' of light means…", opts:["Double or half the light","10% more light","A camera malfunction"], a:0}
   ]},
- {id:"aperture", level:"beginner", icon:"🌀", title:"Aperture & Depth of Field",
+ {id:"aperture", scene:"giraffe", level:"beginner", icon:"🌀", title:"Aperture & Depth of Field",
   body:`<p>The aperture is the adjustable opening inside your lens. Its size is written as an <strong>f-number</strong>: the smaller the number, the wider the opening.</p>
    <ul><li><strong>f/2.8 (wide)</strong> — lots of light, and a <em>shallow</em> depth of field: your subject is sharp, the background melts into a soft blur.</li>
    <li><strong>f/16 (narrow)</strong> — little light, and a <em>deep</em> depth of field: nearly everything is sharp.</li></ul>
    <h3>Why wildlife photographers love wide apertures</h3>
    <p>A blurred background makes an impala pop out of the thornveld instead of vanishing into it, and the extra light lets you keep the shutter fast. But beware: at f/2.8 the zone of sharpness can be centimetres deep — focus on the eye!</p>
-   <div class="tipBox">🦌 Try it: in the simulator, slide the aperture from f/22 to f/2.8 and watch the trees behind the impala blur away.</div>`,
+   <div class="tipBox">🦌 Try it: in the simulator, slide the aperture from f/22 to f/2.8 and watch the trees behind the impala blur away.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Switch to Aperture Priority (A / Av).</li>
+   <li>Single animal portrait: start at <strong>f/4</strong>.</li>
+   <li>Focus precisely on the <strong>nearest eye</strong>.</li>
+   <li>Glance at the background — messy? Open wider. Two animals? Stop down to <strong>f/8</strong>.</li>
+   <li>Re-check focus after every aperture change — the sharp zone moves.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: f/2.8 on two animals (one sharp, one soft); shooting through grass wide open (ghostly smears); hoping blur will hide a truly ugly background.</div>`,
   quiz:[
    {q:"Which aperture lets in the MOST light?", opts:["f/22","f/8","f/2.8"], a:2},
    {q:"A shallow depth of field means…", opts:["Everything is sharp","Only a thin zone is sharp, the rest blurs","The photo is dark"], a:1}
   ]},
- {id:"shutter", level:"beginner", icon:"⏱️", title:"Shutter Speed & Motion",
+ {id:"shutter", scene:"roller", level:"beginner", icon:"⏱️", title:"Shutter Speed & Motion",
   body:`<p>Shutter speed decides whether movement is <strong>frozen</strong> or <strong>smeared</strong>. Wildlife moves — so this is usually the first setting to protect.</p>
    <h3>Rules of thumb in the bush</h3>
    <ul><li>Bird in flight: <strong>1/2000&nbsp;s</strong> or faster</li>
@@ -373,24 +387,37 @@ const LESSONS = [
    <li>Resting animal, braced camera: <strong>1/125&nbsp;s</strong> can work</li>
    <li>Perched owl at night, beanbag support: <strong>1/60&nbsp;s</strong> if you're steady</li></ul>
    <p>Too slow, and your subject becomes a ghost-trail. In the simulator, motion blur appears the moment your shutter drops below what the scene demands.</p>
-   <div class="tipBox">🦅 A fish eagle strike is over in half a second. At 1/125&nbsp;s you get a smear; at 1/2000&nbsp;s you get feathers frozen mid-splash.</div>`,
+   <div class="tipBox">🦅 A fish eagle strike is over in half a second. At 1/125&nbsp;s you get a smear; at 1/2000&nbsp;s you get feathers frozen mid-splash.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li><strong>Before</strong> approaching, pre-set the speed the sighting demands (bird 1/2000, walking game 1/250).</li>
+   <li>Switch on burst mode.</li>
+   <li>Brace: elbows in, beanbag or window mount if available.</li>
+   <li>Shoot a test frame and <strong>zoom to 100%</strong> on the eye to check true sharpness.</li>
+   <li>Light fading? Raise ISO before you dare slow the shutter.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: trusting the small screen (everything looks sharp until you zoom); leaving 1/60 s set from a resting lion when a kudu bolts; confusing camera shake (whole frame smeared) with subject blur (only the animal smeared).</div>`,
   quiz:[
    {q:"A fish eagle in flight is best captured at…", opts:["1/60 s","1/250 s","1/2000 s"], a:2},
    {q:"What happens when the shutter is too slow for a moving animal?", opts:["Motion blur — the subject smears","The image gets grainy","Nothing changes"], a:0}
   ]},
- {id:"iso", level:"beginner", icon:"✨", title:"ISO & Noise",
+ {id:"iso", scene:"lioncub", level:"beginner", icon:"✨", title:"ISO & Noise",
   body:`<p>ISO is your volume knob for light. Turn it up and the image brightens — but like turning up a small radio, the signal gets rough. That roughness is <strong>noise</strong> (grain).</p>
    <ul><li><strong>ISO 100–400</strong> — clean and crisp; use in good light.</li>
    <li><strong>ISO 800–3200</strong> — visible grain, still very usable.</li>
    <li><strong>ISO 6400+</strong> — grainy, but often the only way to get a dusk or night shot at all.</li></ul>
    <h3>The golden rule</h3>
    <p><strong>A sharp, noisy photo beats a clean, blurry one.</strong> Raise the ISO as high as you must to keep your shutter fast enough — you can reduce noise later, but you can never un-blur a leopard.</p>
-   <div class="tipBox">🐆 At dusk in the simulator, try keeping ISO at 100 — you'll see why night photographers make peace with grain.</div>`,
+   <div class="tipBox">🐆 At dusk in the simulator, try keeping ISO at 100 — you'll see why night photographers make peace with grain.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Know your camera's ceiling: test once at 1600, 3200, 6400 and decide what you can live with.</li>
+   <li>As light fades: open the aperture first, then raise ISO, and only then slow the shutter.</li>
+   <li>In low light, expose slightly <em>brighter</em> — brightening a dark photo later creates worse noise.</li>
+   <li>Do noise clean-up at home, not by sacrificing the shot in the field.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: "ISO 100 pride" that costs the whole sighting; blowing out bright highlights at high ISO; judging noise on the camera's tiny screen instead of a real monitor.</div>`,
   quiz:[
    {q:"High ISO causes…", opts:["Motion blur","Digital noise (grain)","A wider aperture"], a:1},
    {q:"Which is usually the better photo?", opts:["Sharp but noisy","Clean but blurry"], a:0}
   ]},
- {id:"light", level:"intermediate", icon:"🌅", title:"Reading Light in the Bush",
+ {id:"light", scene:"hyena", level:"intermediate", icon:"🌅", title:"Reading Light in the Bush",
   body:`<p>Light in the Lowveld changes character through the day, and great wildlife photographers plan around it.</p>
    <h3>Golden hour (first & last hour of sun)</h3>
    <p>Warm, low, soft light that models fur and feathers beautifully and lights the animal's eyes. This is prime time — game is active, too.</p>
@@ -400,12 +427,18 @@ const LESSONS = [
    <p>A giant softbox: even, gentle light, great for portraits and detail — though the sky itself is usually dull and best kept out of frame.</p>
    <h3>Dusk & night</h3>
    <p>Light falls off fast. Open your aperture wide, accept high ISO, and lean on supports (beanbag, window mount) as shutters slow.</p>
-   <div class="tipBox">🌅 Plan: golden hour at a waterhole beats midday almost anywhere.</div>`,
+   <div class="tipBox">🌅 Plan: golden hour at a waterhole beats midday almost anywhere.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Plan drives around the first and last hour of sun — arrive <em>before</em> the light does.</li>
+   <li>Position the vehicle so the sun is <strong>behind you</strong> for classic lighting, to the <strong>side</strong> for texture, or <strong>behind the animal</strong> for rim-light drama.</li>
+   <li>At harsh midday: seek shade, water reflections, or think in black-and-white.</li>
+   <li>After sunset, stop fighting: switch to silhouettes against the sky.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: packing up when clouds roll in (overcast is a giant softbox!); ignoring light direction when parking; leaving a blown-out white sky in the frame.</div>`,
   quiz:[
    {q:"When is the light generally best for wildlife photography?", opts:["Midday","The first and last hour of sunlight","Any time"], a:1},
    {q:"Overcast light is like…", opts:["A giant softbox — even and soft","A spotlight — hard and directional"], a:0}
   ]},
- {id:"composition", level:"intermediate", icon:"🖼️", title:"Composition & Focus for Wildlife",
+ {id:"composition", scene:"kingfisher", level:"intermediate", icon:"🖼️", title:"Composition & Focus for Wildlife",
   body:`<p>A technically perfect exposure still fails if the picture is poorly built. Three habits will lift your images immediately:</p>
    <h3>1. Focus on the eye</h3>
    <p>Viewers connect with the eyes. If the eye is sharp, the photo usually works — even if the tail is soft.</p>
@@ -413,12 +446,18 @@ const LESSONS = [
    <p>Place your subject off-centre, on a third-line, with open space in the direction it faces or moves. A kudu staring into empty frame edge feels trapped.</p>
    <h3>3. Get low, mind the background</h3>
    <p>Shooting at the animal's eye level is intimate and dramatic. Before you press the shutter, scan the background for bright sticks, dustbins, vehicles — a clean backdrop is half the photograph.</p>
-   <div class="tipBox">🦓 Exercise: next game drive, take one animal and photograph it three ways — eye level, thirds-placed, clean background. Compare.</div>`,
+   <div class="tipBox">🦓 Exercise: next game drive, take one animal and photograph it three ways — eye level, thirds-placed, clean background. Compare.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Get to the animal's <strong>eye level</strong> — window mount beats standing through the roof.</li>
+   <li>Place the eye on a third-line; leave space where the animal is looking.</li>
+   <li>Sweep the frame edges for clutter <em>before</em> pressing the shutter.</li>
+   <li>Then wait — for the head turn, the ear flick, the catchlight in the eye.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: centring every subject like a passport photo; accidentally amputating feet, tails or horn tips at the frame edge; branches and poles "growing" out of the animal's head.</div>`,
   quiz:[
    {q:"The most important part of the animal to keep sharp is…", opts:["The tail","The eye","The feet"], a:1},
    {q:"'Space to move' means…", opts:["Leaving open frame in the direction the animal faces","Zooming out fully","Standing far away"], a:0}
   ]},
- {id:"bif", level:"advanced", icon:"🦅", title:"Mastering Birds in Flight",
+ {id:"bif", scene:"vulture", level:"advanced", icon:"🦅", title:"Mastering Birds in Flight",
   body:`<p>The toughest everyday challenge in wildlife photography: a small, erratic subject moving fast against a changing background.</p>
    <h3>Settings first</h3>
    <ul><li>Shutter <strong>1/2000–1/4000&nbsp;s</strong>; let ISO float as high as needed.</li>
@@ -426,12 +465,18 @@ const LESSONS = [
    <li>Continuous autofocus (AI-Servo / AF-C) with a burst of frames.</li></ul>
    <h3>Technique</h3>
    <p>Pick the bird up early, track it smoothly ("pan"), keep both eyes open, and squeeze the burst as it passes your ideal light angle. Anticipate behaviour: raptors typically take off into the wind, and a kingfisher returns to the same perch.</p>
-   <div class="tipBox">🪶 Practice target: start with slow, predictable fliers — herons, hornbills — before attempting swallows.</div>`,
+   <div class="tipBox">🪶 Practice target: start with slow, predictable fliers — herons, hornbills — before attempting swallows.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Rig the camera <em>before</em> the action: AF-C, burst mode, 1/2000 s, auto-ISO.</li>
+   <li>Practise panning on anything that moves — no shooting, just tracking.</li>
+   <li>Start on big, slow, predictable birds and earn your way down in size.</li>
+   <li>Watch for take-off cues so you're already tracking when it happens.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: zooming so tight you can't find the bird; leaving the camera in single-shot AF; deleting the first hundred failures in despair — everyone's first hundred look like that.</div>`,
   quiz:[
    {q:"A good starting shutter speed for birds in flight is…", opts:["1/250 s","1/2000 s","1/30 s"], a:1},
    {q:"Why choose f/8 rather than f/2.8 for flight shots?", opts:["More depth of field forgives focus errors","It lets in more light","It adds motion blur"], a:0}
   ]},
- {id:"night", level:"advanced", icon:"🌙", title:"Low-Light & Ethical Night Photography",
+ {id:"night", scene:"lioncubs", level:"advanced", icon:"🌙", title:"Low-Light & Ethical Night Photography",
   body:`<p>Night drives reveal leopards, owls, genets — and push your camera to its limits.</p>
    <h3>Technique</h3>
    <ul><li>Widest aperture you own (f/2.8–f/4), ISO 6400+, shutter as slow as the subject and your support allow.</li>
@@ -440,12 +485,18 @@ const LESSONS = [
    <h3>Ethics — this matters at LWEC</h3>
    <ul><li>Never shine spotlights directly into the eyes of nocturnal hunters or nesting birds; use the beam's edge or a red filter.</li>
    <li>No flash on close subjects at night.</li><li>The sighting always outranks the photograph: if the animal changes behaviour because of you, back off.</li></ul>
-   <div class="tipBox">🌙 A grainy, honest image of natural behaviour is worth more than a crisp shot of a blinded animal.</div>`,
+   <div class="tipBox">🌙 A grainy, honest image of natural behaviour is worth more than a crisp shot of a blinded animal.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Set up in daylight: widest aperture, auto-ISO ceiling high, beanbag ready.</li>
+   <li>Engine and lights off at the sighting; let your eyes adjust.</li>
+   <li>Expose for the animal in the spotlight's edge — let the night stay black.</li>
+   <li>Shutter as slow as the animal and your support allow; burst gently.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: direct spotlight in the eyes of a hunting leopard; refusing high ISO and getting nothing but blur; vehicle vibration from an idling engine softening every frame.</div>`,
   quiz:[
    {q:"At night you should generally use…", opts:["Widest aperture and high ISO","Narrow aperture and ISO 100","Fastest possible shutter"], a:0},
    {q:"Ethically, a spotlight should…", opts:["Be aimed straight into the animal's eyes for focus","Be used at its edge or with a red filter","Stay on the animal as long as possible"], a:1}
   ]},
- {id:"bifshutter", level:"advanced", icon:"⚡", title:"Birds in Flight I: Shutter Speed Masterclass",
+ {id:"bifshutter", scene:"roller", level:"advanced", icon:"⚡", title:"Birds in Flight I: Shutter Speed Masterclass",
   body:`<p>From the LWEC training programme: how to use shutter speed for both frozen action and artistic motion blur.</p>
    <h3>Freezing the action</h3>
    <ul><li>Large, slower birds (herons, raptors): start at <strong>1/1000&nbsp;s</strong>.</li>
@@ -463,13 +514,19 @@ const LESSONS = [
    <ul><li>Overcast light suits motion blur; bright sun suits freezing action.</li>
    <li>Take-off tells: a bird defecating, going alert, or lifting its head is about to fly.</li>
    <li><strong>Never flush a bird</strong> for a photo, keep your distance, and no flash on owls.</li></ul>
-   <div class="tipBox">⚡ Try it in the simulator: the roller scene demands 1/1000 s — then deliberately drop to 1/30 s and watch the artistic blur appear.</div>`,
+   <div class="tipBox">⚡ Try it in the simulator: the roller scene demands 1/1000 s — then deliberately drop to 1/30 s and watch the artistic blur appear.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Decide your intent <em>first</em>: frozen detail or artistic blur — they need opposite settings.</li>
+   <li>Use Shutter Priority (Tv/S) with auto-ISO so you only manage one dial.</li>
+   <li>Shoot a test pass, review, then adjust one stop at a time.</li>
+   <li>For slow pans in bright light, stop down or fit an ND filter.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: the 1/500 s "compromise" that freezes nothing and blurs nothing; leaving stabilisation in full mode so it fights your pan (use Mode 2); forgetting bright light makes slow shutters over-expose.</div>`,
   quiz:[
    {q:"A small, fast bird like a kingfisher needs at least…", opts:["1/250 s","1/1000 s","1/2500 s"], a:2},
    {q:"For panning shots you should…", opts:["Twist smoothly from the waist and follow through","Hold the camera still and let the bird pass","Use your fastest shutter speed"], a:0},
    {q:"A bird defecates and lifts its head. What does it mean?", opts:["It is relaxed","It is about to take flight — get ready","It wants food"], a:1}
   ]},
- {id:"biffocus", level:"advanced", icon:"🎯", title:"Birds in Flight II: Focusing Techniques",
+ {id:"biffocus", scene:"kingfisher", level:"advanced", icon:"🎯", title:"Birds in Flight II: Focusing Techniques",
   body:`<p>The follow-up lecture: sharp focus on a fast, erratic subject is a system — settings plus technique.</p>
    <h3>Camera setup</h3>
    <ul><li><strong>Continuous AF (AF-C / AI Servo)</strong> is non-negotiable — it re-focuses constantly as the bird moves. Avoid hybrid auto-switching modes; they hesitate.</li>
@@ -484,7 +541,13 @@ const LESSONS = [
    <ul><li>Focus grabs the wings or background → use a smaller AF area.</li>
    <li>Focus lags in low light → open the aperture or raise ISO to keep AF responsive.</li>
    <li>Can't even find the bird in the frame → practise tracking cars or gulls until it's muscle memory.</li></ul>
-   <div class="tipBox">🎯 Homework from the programme: 15 minutes in your camera's AF menu, then practise panning on anything that moves predictably.</div>`,
+   <div class="tipBox">🎯 Homework from the programme: 15 minutes in your camera's AF menu, then practise panning on anything that moves predictably.</div>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Ten minutes in the menu: set AF-C, pick a zone/dynamic area, assign back-button focus.</li>
+   <li>Calibrate your habit: track gulls, ducks or cars daily until it's boring.</li>
+   <li>In the field, acquire wide, then zoom in and let AF-C hold the bird.</li>
+   <li>Keep the active AF point on the head; burst through the best moments.</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: the focus point drifting onto wings or sky; hunting endlessly through branches (pre-focus the distance first); full-auto area AF grabbing the wrong bird in a flock.</div>`,
   quiz:[
    {q:"The essential autofocus mode for birds in flight is…", opts:["Single-shot AF (AF-S)","Continuous AF (AF-C / AI Servo)","Manual focus"], a:1},
    {q:"A key benefit of back-button focus is…", opts:["It makes photos brighter","You can lock focus when the bird passes behind an obstacle","It zooms automatically"], a:1},
@@ -769,6 +832,7 @@ function openLesson(id){
   let html = `<span class="pill ${ls.level}">${ls.level}</span>
     <h2 style="margin-top:8px;">${ls.icon} ${ls.title}</h2>
     <div class="lessonBody">${ls.body}</div>
+    ${ls.scene ? '<button class="btn small" id="practiseBtn" style="margin-top:14px;">📸 Practise this in the simulator</button>' : ''}
     <h3 style="margin-top:20px;">📝 Quick quiz ${done ? "— already passed ✔" : "(answer all to complete this lesson)"}</h3>
     <form id="quizForm">`;
   ls.quiz.forEach((qq,qi)=>{
@@ -782,6 +846,12 @@ function openLesson(id){
     <p class="muted" id="quizResult" style="margin-top:10px;"></p>`;
   document.getElementById("lessonContent").innerHTML = html;
   document.getElementById("quizSubmit").onclick = ()=>gradeQuiz(ls);
+  const pb = document.getElementById("practiseBtn");
+  if(pb) pb.onclick = ()=>{
+    const sc = SCENES.find(x=>x.id===ls.scene);
+    if(sc){ curScene = sc; renderScenes(); updateSim(); }
+    showTab("sim");
+  };
   window.scrollTo(0,0);
 }
 function gradeQuiz(ls){
