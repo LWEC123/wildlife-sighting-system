@@ -95,6 +95,12 @@
   .lessonBody ul{margin:0 0 10px 22px;}
   .tipBox{background:#fdf6e3; border-left:4px solid var(--gold); padding:10px 12px; border-radius:8px; margin:10px 0; font-size:.92rem;}
 
+  /* Assignments */
+  .acMeta{display:flex; gap:8px; flex-wrap:wrap; font-size:.8rem; color:var(--ink-soft); margin:6px 0 10px;}
+  .acMeta span{background:var(--sand); padding:3px 10px; border-radius:999px;}
+  .checkItem{display:block; padding:8px 11px; margin-top:6px; background:#fff; border:1.5px solid var(--sand-deep); border-radius:8px; font-size:.92rem; cursor:pointer;}
+  #assignContent ul, #assignContent ol{margin:0 0 10px 22px;}
+
   /* Programme */
   .weekBox{border:1.5px solid var(--sand-deep); border-radius:10px; margin:10px 0; background:#fff; overflow:hidden;}
   .weekBox summary{padding:11px 14px; cursor:pointer; font-weight:600; color:var(--green-deep); list-style:none; display:flex; align-items:center; gap:8px;}
@@ -144,6 +150,7 @@
   <button data-tab="home" class="active">🏠 Home</button>
   <button data-tab="sim">📸 Exposure Simulator</button>
   <button data-tab="learn">📚 Tutorials</button>
+  <button data-tab="assign">🃏 Assignments</button>
   <button data-tab="programme">🎓 Programme</button>
   <button data-tab="gallery">🖼️ Gallery</button>
   <button data-tab="progress">🏆 My Progress</button>
@@ -185,8 +192,9 @@
       <h2>How to use this tutor</h2>
       <p><strong>1. Learn</strong> — work through the tutorials for your level in the 📚 Tutorials tab, and pass each short quiz.</p>
       <p><strong>2. Practise</strong> — open the 📸 Exposure Simulator and try to nail a sharp, well-exposed shot in every scene, from an eagle in flight to a leopard at dusk.</p>
-      <p><strong>3. Follow the programme</strong> — the 🎓 Programme tab holds the college's full 18-week training plan, week by week.</p>
-      <p><strong>4. Track</strong> — watch your badges and completion bars grow in 🏆 My Progress.</p>
+      <p><strong>3. Do</strong> — pick a 🃏 Field Assignment card for your off-time: a real project with self-check, camera in hand.</p>
+      <p><strong>4. Follow the programme</strong> — the 🎓 Programme tab holds the college's full 18-week training plan, week by week.</p>
+      <p><strong>5. Track</strong> — watch your badges and completion bars grow in 🏆 My Progress.</p>
     </div>
   </section>
 
@@ -254,6 +262,21 @@
     </div>
   </section>
 
+  <!-- ============ ASSIGNMENTS ============ -->
+  <section id="tab-assign" hidden>
+    <div id="assignList">
+      <div class="card">
+        <h2>🃏 Field Assignment Cards</h2>
+        <p class="muted">Photography is learned by doing — and your camera does not make the photograph, your vision does. Each original LWEC card below is a complete field project: a takeaway lesson, the gear, starting settings, real assignments, and an honest self-check. Pick a card for your next off-time between field sessions.</p>
+      </div>
+      <div class="grid two" id="assignGrid"></div>
+    </div>
+    <div id="assignView" hidden>
+      <div class="backRow"><button class="btn ghost small" onclick="closeAssign()">← Back to assignment cards</button></div>
+      <div class="card" id="assignContent"></div>
+    </div>
+  </section>
+
   <!-- ============ PROGRAMME ============ -->
   <section id="tab-programme" hidden>
     <div class="card">
@@ -305,8 +328,8 @@
 "use strict";
 /* ================= STATE ================= */
 const STORE_KEY = "lwec-photo-tutor-v1";
-let state = { level:"beginner", lessonsDone:{}, scenesDone:{}, programmeDone:{} };
-try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.level){ state = Object.assign(state, s); state.programmeDone = state.programmeDone || {}; } }catch(e){}
+let state = { level:"beginner", lessonsDone:{}, scenesDone:{}, programmeDone:{}, assignDone:{} };
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s && s.level){ state = Object.assign(state, s); state.programmeDone = state.programmeDone || {}; state.assignDone = state.assignDone || {}; } }catch(e){}
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 
 /* ================= DATA ================= */
@@ -625,6 +648,31 @@ const LESSONS = [
    {q:"Why photograph a rhino's ear notches?", opts:["They look dramatic","They identify the individual for monitoring and anti-poaching work","To measure its age"], a:1},
    {q:"A track photograph is incomplete without…", opts:["A scale reference","A wide aperture","The animal in the background"], a:0},
    {q:"Before posting a rhino photo online you must…", opts:["Add the GPS location so others can find it","Strip location metadata and consider delaying the post","Brighten it"], a:1}
+  ]},
+ {id:"share", scene:"roller", level:"advanced", icon:"📱", title:"Sharing Your Work as a Professional Guide",
+  body:`<p>Guests find guides online before they ever meet them, and lodges check profiles before they hire. Your photographs, published well, are your CV — published carelessly, they can harm animals and your career in equal measure.</p>
+   <h3>The professional profile</h3>
+   <ul><li><strong>Consistency beats virality:</strong> one strong wildlife image a few times a week outworks ten random posts a day.</li>
+   <li><strong>Portfolio thinking:</strong> your public profile is your best twenty images, not your last two hundred.</li>
+   <li>Put your name, your role and the college on it with pride — you are building a professional identity, not a meme page.</li></ul>
+   <h3>Caption in your guide voice</h3>
+   <p>The interpretation skill you use on the vehicle is exactly what works online. "Impala ram during the autumn rut — that roar carries over a kilometre" earns attention; "impala, Kruger" earns a scroll-past. One fact plus one feeling, every caption.</p>
+   <h3>The non-negotiables (this protects animals' lives)</h3>
+   <ul><li><strong>Never geotag sensitive species.</strong> A rhino post with location data is actionable intelligence for poachers. Strip GPS/EXIF, post days later, keep locations vague ("Limpopo lowveld").</li>
+   <li><strong>Guests appear only with their permission</strong> — ask on the drive, not after posting.</li>
+   <li>Your ethics must be visible <em>in</em> the images: respectful distances, natural behaviour, no fence-pushing drama.</li>
+   <li>Every post carries the college's name with yours. Post as the professional you are becoming.</li></ul>
+   <h3>👣 Step by step in the field</h3>
+   <ol><li>Select your best twenty images — that is your portfolio. Cull it quarterly.</li>
+   <li>Set a rhythm you can hold: one to two posts a week, every week.</li>
+   <li>Write each caption as one fact plus one feeling, in your interpretation voice.</li>
+   <li>Before posting: strip location data, check guest permissions, re-read once.</li>
+   <li>Every three months, ask: would a luxury lodge hire the guide behind this profile?</li></ol>
+   <div class="tipBox">⚠️ Common mistakes: a geotagged rhino photo (career-ending and worse); posting guests without asking; chasing quantity over quality; arguing with strangers in comments under the college's name; and using photographs that aren't yours — you of all people know how permission works now.</div>`,
+  quiz:[
+   {q:"The stronger caption for a professional guide is…", opts:["\"impala, Kruger\"","\"Impala ram in the autumn rut — that roar carries over a kilometre\"","No caption, the photo speaks"], a:1},
+   {q:"Posting a rhino sighting, you must…", opts:["Tag the exact location so others can enjoy it","Strip location data and delay the post","Post immediately for engagement"], a:1},
+   {q:"A hire-worthy profile is built on…", opts:["Daily posting of everything you shoot","A consistent rhythm of your best work","One viral clip"], a:1}
   ]}
 ];
 
@@ -672,6 +720,73 @@ const PROGRAMME = [
     acts:["Final project presentation","Closing feedback session with peers and instructors"]}]}
 ];
 
+const ASSIGNMENTS = [
+ {id:"waterhole", icon:"💧", title:"The Waterhole Hour", stars:2, time:"2–3 hours", skills:["Patience","Light"],
+  lesson:"Wildlife photography is 90% patience and 10% timing. A fixed point with reliable traffic teaches you to let the animals come to you — and to watch light change on a single stage.",
+  equipment:["Any camera or phone","Beanbag or window rest","Water, hat, notebook"],
+  settings:"Aperture Priority, f/5.6, auto-ISO, burst on. Shutter check: at least 1/500 s for drinking birds.",
+  tasks:["Settle at a waterhole (or campus dam / bird bath) an hour before golden hour. Photograph the same view in three different light phases and note how colour and shadow change.",
+   "Capture one true behaviour moment — drinking, wallowing, a squabble — not just an animal standing.",
+   "Make one reflection composition: animal plus mirror image."],
+  selfCheck:["The eye is sharp in my best frame.","I waited for behaviour instead of shooting arrivals.","I can say where the light came from in each shot without looking.","My horizon is straight."]},
+ {id:"tenframes", icon:"🕊️", title:"One Bird, Ten Frames", stars:2, time:"1 hour", skills:["Creativity","Working a subject"],
+  lesson:"Amateurs take one photo of ten birds. Professionals take ten photographs of one bird. Working a single subject forces you to see, not just to spot.",
+  equipment:["Any camera","One common, cooperative bird (dove, hornbill, starling)"],
+  settings:"Shutter Priority 1/1000 s, auto-ISO. Move your feet, not the zoom.",
+  tasks:["Make ten deliberately different frames of one individual: change your height, angle, distance, background and light side.",
+   "Choose your best three and write one sentence each on why they work.",
+   "Delete-discipline: bin everything that is not the ten."],
+  selfCheck:["My ten frames are genuinely different, not ten copies.","I know which change improved the image most: angle, light or background.","A stranger could pick my best three without my help."]},
+ {id:"tracks", icon:"🐾", title:"Track & Sign Documentation", stars:2, time:"1–2 hours", skills:["Biometrics","Data discipline"],
+  lesson:"A guide's photograph of a track is data. Scale, sharpness and angle turn a pretty picture into a record that can identify and count.",
+  equipment:["Camera or phone","Ruler or object of known size","The Wildlife Sighting System open and ready"],
+  settings:"f/8, shoot straight down, focus on the track floor. Shade harsh sun with your own body.",
+  tasks:["Photograph five different tracks, each with a scale reference, straight down.",
+   "Capture one gait series — several strides in a single frame.",
+   "Log every track in the Wildlife Sighting System with GPS and notes, before you drive on."],
+  selfCheck:["The scale reference is visible and readable in every shot.","Detail is crisp edge to edge.","Another guide could identify the species from my photo alone.","All records are logged."]},
+ {id:"goldenportrait", icon:"🌅", title:"Golden Hour Portrait", stars:1, time:"1 hour", skills:["Light","Focus"],
+  lesson:"The first and last hour of sun is the most forgiving classroom in photography. Low, warm light models fur and feather and puts a catchlight in every eye.",
+  equipment:["Any camera","One accessible animal — campus antelope, garden birds, even cattle"],
+  settings:"Aperture Priority f/4–f/5.6, auto-ISO, sun over your shoulder.",
+  tasks:["Make a portrait with a visible catchlight in the eye.",
+   "Photograph the same animal rim-lit — sun behind the animal, exposing for the subject.",
+   "Compare the two and write one line on the mood each creates."],
+  selfCheck:["The catchlight is there.","The background is calm, not cluttered.","My rim-lit shot is exposed for the animal, not the sky."]},
+ {id:"guestseat", icon:"🚙", title:"The Guest's Seat", stars:3, time:"One game drive", skills:["Client care","Positioning"],
+  lesson:"A Level 4 guide photographs from wherever the vehicle serves the guests — never the other way around. This card puts you in your guest's shoes for a whole drive.",
+  equipment:["Game-drive vehicle (any car works for practice)","A partner playing 'guest' if you can recruit one"],
+  settings:"Handicap yourself on purpose: phone or camera on full auto. Your positioning must do the work.",
+  tasks:["Shoot one full drive only from the guest seat behind the driver.",
+   "Position the vehicle three times specifically for the guest side's light — note everything you had to consider.",
+   "Write the three tips you would give a phone-photographer guest at your best sighting of the drive."],
+  selfCheck:["Positioning beat zooming at least once.","My three tips are one-liners a guest could follow mid-sighting.","The sightings stayed completely undisturbed."]},
+ {id:"badweather", icon:"⛈️", title:"Weather You Like It or Not", stars:2, time:"Half a day", skills:["Adaptability","Exposure"],
+  lesson:"There is no bad light — only unread light. Overcast is a giant softbox, dust is atmosphere, and harsh noon is graphic contrast waiting to be used.",
+  equipment:["Any camera","A day you would normally leave the camera in the bag"],
+  settings:"Watch the histogram. Under overcast, +2/3 exposure compensation often saves the mood.",
+  tasks:["Bring home five keepers made in 'bad' light: overcast, midday, dust or rain.",
+   "Make one deliberate silhouette.",
+   "Convert one frame to black-and-white — did the contrast become a feature?"],
+  selfCheck:["All five are frames I would actually show someone.","My silhouette has a clean, readable shape.","I can name one thing this weather gave me that sunshine could not."]},
+ {id:"triostory", icon:"📖", title:"The Storyteller's Trio", stars:3, time:"1–2 days", skills:["Storytelling","Conservation"],
+  lesson:"One image shows; three images tell. The classic conservation sequence: the wide scene, the behaviour, the telling detail.",
+  equipment:["Camera","A subject with a conservation angle — a waterhole in drought, dung beetles at work, an erosion line"],
+  settings:"Your choice — for the first time, the story dictates the settings. That is the point.",
+  tasks:["Shoot a three-frame story: wide establishing shot, behaviour or action, close detail.",
+   "Sequence them and write a two-sentence caption for each in your interpretation voice.",
+   "Present the trio to a classmate — can they retell the story without your help?"],
+  selfCheck:["The frame order matters — shuffled, the story breaks.","My captions interpret (why it matters), they don't just describe.","I know which frame is weakest, and why."]},
+ {id:"nightwatch", icon:"🌌", title:"Night Watch", stars:3, time:"One evening", skills:["Low light","Ethics"],
+  lesson:"Night work examines everything at once — exposure, support, patience and ethics — with the animal's welfare as the pass mark.",
+  equipment:["Beanbag or solid support","Torch with red filter, or a partner on the spotlight","Warm clothes and patience"],
+  settings:"Widest aperture you own, ISO 3200 and upward without fear, shutter to your support's limit. Focus on the light's edge.",
+  tasks:["Make an after-sunset silhouette against the sky.",
+   "Make one ethical spotlight-edge portrait — nocturnal animal, or a house cat as a stand-in.",
+   "Find the shutter/ISO combination where YOUR sharpness fails. Write it down: that is your personal night limit."],
+  selfCheck:["No animal was spotlit directly in the eyes — not once.","The noise at my chosen ISO is a price worth paying.","I now know my own handheld night limit by heart."]}
+];
+
 const BADGES = [
   {id:"firstLesson", icon:"📖", name:"First Steps", desc:"Complete your first tutorial", test:s=>Object.keys(s.lessonsDone).length>=1},
   {id:"firstShot", icon:"📸", name:"First Shot", desc:"Master any simulator scene", test:s=>Object.keys(s.scenesDone).length>=1},
@@ -679,11 +794,13 @@ const BADGES = [
   {id:"interDone", icon:"🌿", name:"Field Ranger", desc:"Finish all Intermediate tutorials", test:s=>LESSONS.filter(l=>l.level==="intermediate").every(l=>s.lessonsDone[l.id])},
   {id:"advDone", icon:"🌳", name:"Veld Master", desc:"Finish all Advanced tutorials", test:s=>LESSONS.filter(l=>l.level==="advanced").every(l=>s.lessonsDone[l.id])},
   {id:"allScenes", icon:"🏆", name:"Exposure Master", desc:"Master every simulator scene", test:s=>SCENES.every(sc=>s.scenesDone[sc.id])},
-  {id:"graduate", icon:"🎓", name:"Programme Graduate", desc:"Tick off every week of the full training programme", test:s=>PROGRAMME.every(lv=>lv.weeks.every((w,i)=>s.programmeDone[lv.id+"-w"+i]))}
+  {id:"graduate", icon:"🎓", name:"Programme Graduate", desc:"Tick off every week of the full training programme", test:s=>PROGRAMME.every(lv=>lv.weeks.every((w,i)=>s.programmeDone[lv.id+"-w"+i]))},
+  {id:"fieldworker", icon:"🃏", name:"Field Worker", desc:"Complete three assignment cards", test:s=>Object.keys(s.assignDone||{}).length>=3},
+  {id:"assignace", icon:"🎯", name:"Assignment Ace", desc:"Complete every assignment card", test:s=>ASSIGNMENTS.every(a=>(s.assignDone||{})[a.id])}
 ];
 
 /* ================= NAV ================= */
-const tabs = ["home","sim","learn","programme","gallery","progress"];
+const tabs = ["home","sim","learn","assign","programme","gallery","progress"];
 document.getElementById("nav").addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b) return;
   showTab(b.dataset.tab);
@@ -694,6 +811,7 @@ function showTab(t){
   });
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
   if(t==="learn") renderLessons();
+  if(t==="assign") renderAssignments();
   if(t==="programme") renderProgramme();
   if(t==="gallery") renderGallery();
   if(t==="progress") renderProgress();
@@ -954,6 +1072,45 @@ function gradeQuiz(ls){
 function closeLesson(){ renderLessons(); }
 
 
+/* ================= ASSIGNMENTS ================= */
+function renderAssignments(){
+  document.getElementById("assignView").hidden = true;
+  document.getElementById("assignList").hidden = false;
+  const grid = document.getElementById("assignGrid");
+  grid.innerHTML = "";
+  ASSIGNMENTS.forEach(ac=>{
+    const done = !!state.assignDone[ac.id];
+    const c = document.createElement("div");
+    c.className = "lessonCard";
+    c.innerHTML = `<h3>${ac.icon} ${ac.title}</h3>
+      <div class="acMeta"><span>${"⭐".repeat(ac.stars)}</span><span>⏱ ${ac.time}</span>${ac.skills.map(k=>`<span>${k}</span>`).join("")}</div>
+      <div class="status ${done?'done':''}">${done ? "✔ Completed" : "Not yet completed"}</div>`;
+    c.onclick = ()=>openAssign(ac.id);
+    grid.appendChild(c);
+  });
+}
+function openAssign(id){
+  const ac = ASSIGNMENTS.find(a=>a.id===id);
+  document.getElementById("assignList").hidden = true;
+  document.getElementById("assignView").hidden = false;
+  const done = !!state.assignDone[ac.id];
+  document.getElementById("assignContent").innerHTML = `
+    <h2>${ac.icon} ${ac.title}</h2>
+    <div class="acMeta"><span>Difficulty ${"⭐".repeat(ac.stars)}</span><span>⏱ ${ac.time}</span>${ac.skills.map(k=>`<span>${k}</span>`).join("")}</div>
+    <div class="tipBox">💡 ${ac.lesson}</div>
+    <h3>🎒 Equipment</h3><ul>${ac.equipment.map(e=>`<li>${e}</li>`).join("")}</ul>
+    <h3>⚙️ Starting settings</h3><p>${ac.settings}</p>
+    <h3>🎯 Your assignments</h3><ol>${ac.tasks.map(t=>`<li>${t}</li>`).join("")}</ol>
+    <h3>🔍 Self-check — be honest</h3>${ac.selfCheck.map(q=>`<label class="checkItem"><input type="checkbox"> ${q}</label>`).join("")}
+    <button class="btn ${done?'ghost':'gold'}" id="acDoneBtn" style="margin-top:14px;">${done ? "Mark as not completed" : "Mark card complete ✔"}</button>`;
+  document.getElementById("acDoneBtn").onclick = ()=>{
+    if(state.assignDone[ac.id]) delete state.assignDone[ac.id]; else state.assignDone[ac.id] = true;
+    save(); openAssign(id);
+  };
+  window.scrollTo(0,0);
+}
+function closeAssign(){ renderAssignments(); }
+
 /* ================= PROGRAMME ================= */
 function renderProgramme(){
   const wrap = document.getElementById("programmeWrap");
@@ -1058,6 +1215,8 @@ function renderProgress(){
     const d = lv.weeks.filter((w,i)=>state.programmeDone[lv.id+"-w"+i]).length;
     wrap.appendChild(barBlock(`🎓 ${lv.title}`, d, lv.weeks.length));
   });
+  const aDone = ASSIGNMENTS.filter(a=>state.assignDone[a.id]).length;
+  wrap.appendChild(barBlock("🃏 Assignment cards completed", aDone, ASSIGNMENTS.length));
 
   const bg = document.getElementById("badgeGrid");
   bg.innerHTML = "";
@@ -1079,7 +1238,7 @@ function barBlock(label, done, total){
 }
 function resetProgress(){
   if(confirm("Erase all progress and badges? This cannot be undone.")){
-    state = { level:"beginner", lessonsDone:{}, scenesDone:{}, programmeDone:{} };
+    state = { level:"beginner", lessonsDone:{}, scenesDone:{}, programmeDone:{}, assignDone:{} };
     save(); renderLevels(); renderScenes(); renderProgress(); updateSim();
   }
 }
