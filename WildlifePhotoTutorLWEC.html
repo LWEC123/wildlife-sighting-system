@@ -100,6 +100,7 @@
   .acMeta span{background:var(--sand); padding:3px 10px; border-radius:999px;}
   .checkItem{display:block; padding:8px 11px; margin-top:6px; background:#fff; border:1.5px solid var(--sand-deep); border-radius:8px; font-size:.92rem; cursor:pointer;}
   #assignContent ul, #assignContent ol{margin:0 0 10px 22px;}
+  .setHead{margin:20px 0 10px; color:var(--green-deep); font-size:1.08rem;}
 
   /* Programme */
   .weekBox{border:1.5px solid var(--sand-deep); border-radius:10px; margin:10px 0; background:#fff; overflow:hidden;}
@@ -267,9 +268,9 @@
     <div id="assignList">
       <div class="card">
         <h2>🃏 Field Assignment Cards</h2>
-        <p class="muted">Photography is learned by doing — and your camera does not make the photograph, your vision does. Each original LWEC card below is a complete field project: a takeaway lesson, the gear, starting settings, real assignments, and an honest self-check. Pick a card for your next off-time between field sessions.</p>
+        <p class="muted">Photography is learned by doing — and your camera does not make the photograph, your vision does. Each original LWEC card below is a complete field project: a takeaway lesson, the gear, starting settings, real assignments, and an honest self-check. The deck comes in two sets: <strong>🟩 Field Projects</strong> — complete outings that train patience, positioning and data discipline — and <strong>🟨 Composition Techniques</strong> — eleven ways of seeing, one card each. Pick a card for your next off-time between field sessions.</p>
       </div>
-      <div class="grid two" id="assignGrid"></div>
+      <div id="assignGrid"></div>
     </div>
     <div id="assignView" hidden>
       <div class="backRow"><button class="btn ghost small" onclick="closeAssign()">← Back to assignment cards</button></div>
@@ -721,7 +722,7 @@ const PROGRAMME = [
 ];
 
 const ASSIGNMENTS = [
- {id:"waterhole", icon:"💧", title:"The Waterhole Hour", stars:2, time:"2–3 hours", skills:["Patience","Light"],
+ {id:"waterhole", set:"field", icon:"💧", title:"The Waterhole Hour", stars:2, time:"2–3 hours", skills:["Patience","Light"],
   lesson:"Wildlife photography is 90% patience and 10% timing. A fixed point with reliable traffic teaches you to let the animals come to you — and to watch light change on a single stage.",
   equipment:["Any camera or phone","Beanbag or window rest","Water, hat, notebook"],
   settings:"Aperture Priority, f/5.6, auto-ISO, burst on. Shutter check: at least 1/500 s for drinking birds.",
@@ -729,7 +730,7 @@ const ASSIGNMENTS = [
    "Capture one true behaviour moment — drinking, wallowing, a squabble — not just an animal standing.",
    "Make one reflection composition: animal plus mirror image."],
   selfCheck:["The eye is sharp in my best frame.","I waited for behaviour instead of shooting arrivals.","I can say where the light came from in each shot without looking.","My horizon is straight."]},
- {id:"tenframes", icon:"🕊️", title:"One Bird, Ten Frames", stars:2, time:"1 hour", skills:["Creativity","Working a subject"],
+ {id:"tenframes", set:"field", icon:"🕊️", title:"One Bird, Ten Frames", stars:2, time:"1 hour", skills:["Creativity","Working a subject"],
   lesson:"Amateurs take one photo of ten birds. Professionals take ten photographs of one bird. Working a single subject forces you to see, not just to spot.",
   equipment:["Any camera","One common, cooperative bird (dove, hornbill, starling)"],
   settings:"Shutter Priority 1/1000 s, auto-ISO. Move your feet, not the zoom.",
@@ -737,7 +738,7 @@ const ASSIGNMENTS = [
    "Choose your best three and write one sentence each on why they work.",
    "Delete-discipline: bin everything that is not the ten."],
   selfCheck:["My ten frames are genuinely different, not ten copies.","I know which change improved the image most: angle, light or background.","A stranger could pick my best three without my help."]},
- {id:"tracks", icon:"🐾", title:"Track & Sign Documentation", stars:2, time:"1–2 hours", skills:["Biometrics","Data discipline"],
+ {id:"tracks", set:"field", icon:"🐾", title:"Track & Sign Documentation", stars:2, time:"1–2 hours", skills:["Biometrics","Data discipline"],
   lesson:"A guide's photograph of a track is data. Scale, sharpness and angle turn a pretty picture into a record that can identify and count.",
   equipment:["Camera or phone","Ruler or object of known size","The Wildlife Sighting System open and ready"],
   settings:"f/8, shoot straight down, focus on the track floor. Shade harsh sun with your own body.",
@@ -745,7 +746,7 @@ const ASSIGNMENTS = [
    "Capture one gait series — several strides in a single frame.",
    "Log every track in the Wildlife Sighting System with GPS and notes, before you drive on."],
   selfCheck:["The scale reference is visible and readable in every shot.","Detail is crisp edge to edge.","Another guide could identify the species from my photo alone.","All records are logged."]},
- {id:"goldenportrait", icon:"🌅", title:"Golden Hour Portrait", stars:1, time:"1 hour", skills:["Light","Focus"],
+ {id:"goldenportrait", set:"field", icon:"🌅", title:"Golden Hour Portrait", stars:1, time:"1 hour", skills:["Light","Focus"],
   lesson:"The first and last hour of sun is the most forgiving classroom in photography. Low, warm light models fur and feather and puts a catchlight in every eye.",
   equipment:["Any camera","One accessible animal — campus antelope, garden birds, even cattle"],
   settings:"Aperture Priority f/4–f/5.6, auto-ISO, sun over your shoulder.",
@@ -753,7 +754,7 @@ const ASSIGNMENTS = [
    "Photograph the same animal rim-lit — sun behind the animal, exposing for the subject.",
    "Compare the two and write one line on the mood each creates."],
   selfCheck:["The catchlight is there.","The background is calm, not cluttered.","My rim-lit shot is exposed for the animal, not the sky."]},
- {id:"guestseat", icon:"🚙", title:"The Guest's Seat", stars:3, time:"One game drive", skills:["Client care","Positioning"],
+ {id:"guestseat", set:"field", icon:"🚙", title:"The Guest's Seat", stars:3, time:"One game drive", skills:["Client care","Positioning"],
   lesson:"A Level 4 guide photographs from wherever the vehicle serves the guests — never the other way around. This card puts you in your guest's shoes for a whole drive.",
   equipment:["Game-drive vehicle (any car works for practice)","A partner playing 'guest' if you can recruit one"],
   settings:"Handicap yourself on purpose: phone or camera on full auto. Your positioning must do the work.",
@@ -761,7 +762,7 @@ const ASSIGNMENTS = [
    "Position the vehicle three times specifically for the guest side's light — note everything you had to consider.",
    "Write the three tips you would give a phone-photographer guest at your best sighting of the drive."],
   selfCheck:["Positioning beat zooming at least once.","My three tips are one-liners a guest could follow mid-sighting.","The sightings stayed completely undisturbed."]},
- {id:"badweather", icon:"⛈️", title:"Weather You Like It or Not", stars:2, time:"Half a day", skills:["Adaptability","Exposure"],
+ {id:"badweather", set:"field", icon:"⛈️", title:"Weather You Like It or Not", stars:2, time:"Half a day", skills:["Adaptability","Exposure"],
   lesson:"There is no bad light — only unread light. Overcast is a giant softbox, dust is atmosphere, and harsh noon is graphic contrast waiting to be used.",
   equipment:["Any camera","A day you would normally leave the camera in the bag"],
   settings:"Watch the histogram. Under overcast, +2/3 exposure compensation often saves the mood.",
@@ -769,7 +770,7 @@ const ASSIGNMENTS = [
    "Make one deliberate silhouette.",
    "Convert one frame to black-and-white — did the contrast become a feature?"],
   selfCheck:["All five are frames I would actually show someone.","My silhouette has a clean, readable shape.","I can name one thing this weather gave me that sunshine could not."]},
- {id:"triostory", icon:"📖", title:"The Storyteller's Trio", stars:3, time:"1–2 days", skills:["Storytelling","Conservation"],
+ {id:"triostory", set:"field", icon:"📖", title:"The Storyteller's Trio", stars:3, time:"1–2 days", skills:["Storytelling","Conservation"],
   lesson:"One image shows; three images tell. The classic conservation sequence: the wide scene, the behaviour, the telling detail.",
   equipment:["Camera","A subject with a conservation angle — a waterhole in drought, dung beetles at work, an erosion line"],
   settings:"Your choice — for the first time, the story dictates the settings. That is the point.",
@@ -777,7 +778,7 @@ const ASSIGNMENTS = [
    "Sequence them and write a two-sentence caption for each in your interpretation voice.",
    "Present the trio to a classmate — can they retell the story without your help?"],
   selfCheck:["The frame order matters — shuffled, the story breaks.","My captions interpret (why it matters), they don't just describe.","I know which frame is weakest, and why."]},
- {id:"nightwatch", icon:"🌌", title:"Night Watch", stars:3, time:"One evening", skills:["Low light","Ethics"],
+ {id:"nightwatch", set:"field", icon:"🌌", title:"Night Watch", stars:3, time:"One evening", skills:["Low light","Ethics"],
   lesson:"Night work examines everything at once — exposure, support, patience and ethics — with the animal's welfare as the pass mark.",
   equipment:["Beanbag or solid support","Torch with red filter, or a partner on the spotlight","Warm clothes and patience"],
   settings:"Widest aperture you own, ISO 3200 and upward without fear, shutter to your support's limit. Focus on the light's edge.",
@@ -785,6 +786,95 @@ const ASSIGNMENTS = [
    "Make one ethical spotlight-edge portrait — nocturnal animal, or a house cat as a stand-in.",
    "Find the shutter/ISO combination where YOUR sharpness fails. Write it down: that is your personal night limit."],
   selfCheck:["No animal was spotlit directly in the eyes — not once.","The noise at my chosen ISO is a price worth paying.","I now know my own handheld night limit by heart."]}
+,
+ {id:"thirds", set:"comp", icon:"📐", title:"The Off-Centre Eye (Rule of Thirds)", stars:1, time:"1 hour", skills:["Placement"],
+  lesson:"Put the interest where the grid lines cross, not in the middle. Thirds is not a law — it is a reliable default that instantly improves nine photographs out of ten.",
+  equipment:["Any camera or phone with the grid overlay switched on"],
+  settings:"Turn on the grid display. Any exposure mode — this card is about placement only.",
+  tasks:["Make ten frames with the subject's eye on a grid intersection — vary which crossing you use.",
+   "Shoot the same subject dead-centre and on a third. Compare honestly: which frame breathes?",
+   "Horizon discipline: one frame with the horizon on the lower third (sky story), one on the upper third (land story)."],
+  selfCheck:["The eye sits on a crossing point, not near it.","There is space in the direction the animal looks.","I can explain why the centred frame worked or failed.","My horizons were placed on purpose, not by accident."]},
+ {id:"leadlines", set:"comp", icon:"🛤️", title:"Trails That Point (Leading Lines)", stars:2, time:"1–2 hours", skills:["Depth","Storytelling"],
+  lesson:"A line in the frame is a road for the viewer's eye. Game trails, riverbeds, fallen trunks and fence lines all point — your job is to make them point at the subject.",
+  equipment:["Any camera","A landscape with trails, a riverbed or a road"],
+  settings:"f/8–f/11 for front-to-back sharpness. Get low — lines stretch and strengthen from down there.",
+  tasks:["Make three images where a natural line leads the eye to the subject.",
+   "Break it once on purpose: a line that leads OUT of the frame. Feel what goes wrong.",
+   "One diagonal composition versus one straight-on: which has more energy, and why?"],
+  selfCheck:["Every line in my keepers arrives somewhere.","Getting lower made the line stronger.","No line drags the eye off the edge of the frame."]},
+ {id:"isolate", set:"comp", icon:"🔭", title:"Alone in the Frame (Isolating the Subject)", stars:2, time:"1 hour", skills:["Separation"],
+  lesson:"The viewer must never wonder what your photograph is about. Isolation — by blur, light, distance or clean space — makes one animal unmistakably the point.",
+  equipment:["Any camera; a longer lens helps but feet work too"],
+  settings:"Widest aperture, longest focal length, and move yourself to change the background.",
+  tasks:["Isolate the same subject three different ways: background blur, a dark or clean backdrop, and empty negative space.",
+   "Make one deliberately busy failure — then study exactly why it fails.",
+   "Your cleanest isolation of a small subject: a single bird or insect."],
+  selfCheck:["The subject is instantly obvious in every keeper.","The background contributes calm rather than just being absent.","I know which isolation tool fits my own style best."]},
+ {id:"layers", set:"comp", icon:"🏞️", title:"Bushveld in Layers (Foreground & Depth)", stars:3, time:"Golden hour", skills:["Depth","Landscape"],
+  lesson:"Flat photographs die; layered ones breathe. Foreground grass, midground subject, background ridge — three planes turn a scene into a place.",
+  equipment:["Any camera","A viewpoint with distance: a ridge, a floodplain, a long road"],
+  settings:"f/11, focus about a third of the way into the scene. Haze and backlight are your friends here.",
+  tasks:["A landscape with a clear foreground, midground and background.",
+   "Shoot through foreground grass or leaves so they frame the subject.",
+   "Telephoto compression: stack ridgelines, or a herd, into layered bands."],
+  selfCheck:["I can point to three distinct planes.","The foreground helps the frame instead of blocking it.","I know where the eye enters the image and where it travels."]},
+ {id:"compcolour", set:"comp", icon:"🎨", title:"Opposites Attract (Complementary Colour)", stars:2, time:"Flexible", skills:["Colour"],
+  lesson:"Colours opposite each other on the wheel electrify one another: gold against blue, rust against green. The bush serves these pairings daily — learn to see them coming.",
+  equipment:["Any camera","Golden light and blue shade, or any bold natural colour"],
+  settings:"Underexpose slightly (−1/3) to keep colours rich.",
+  tasks:["Gold-on-blue: a warm-lit subject against blue sky or water.",
+   "Find a red/green or orange/teal pairing occurring naturally.",
+   "For contrast, make one frame in a single colour family — how does it feel next to the pairs?"],
+  selfCheck:["My colour pairs are genuine opposites, not near-neighbours.","The pairing makes the subject pop from across the room.","No accidental colour clash sneaked into a corner."]},
+ {id:"symmetry", set:"comp", icon:"🪞", title:"The Mirror Test (Symmetry)", stars:2, time:"1 hour", skills:["Balance"],
+  lesson:"Symmetry is calm authority — a face dead straight-on, a reflection doubled. Use it when you want stillness; break it deliberately when you want tension.",
+  equipment:["Any camera","Still water: waterhole, dam, even a puddle"],
+  settings:"Centre the subject — this is the one card where the middle is correct. Level the camera precisely.",
+  tasks:["A reflection image with the axis perfectly level.",
+   "A head-on portrait, both eyes carrying equal weight.",
+   "Near-symmetry broken by one single element — feel the tension it creates."],
+  selfCheck:["My axis is truly level and centred.","The centring was a decision, not a habit.","In the broken frame, the intruding element earns its place."]},
+ {id:"patterns", set:"comp", icon:"🦓", title:"Repeat After Nature (Patterns)", stars:1, time:"1 hour", skills:["Seeing"],
+  lesson:"Nature repeats itself: zebra stripes, guineafowl spots, ripples, seed heads. A pattern filling the frame mesmerises — a pattern broken tells a story.",
+  equipment:["Any camera; a telephoto flattens repeats beautifully"],
+  settings:"Fill the frame completely — no edges, no context.",
+  tasks:["A pattern running edge to edge with no border showing.",
+   "The break: the same pattern interrupted by one element, placed on a strong point.",
+   "A pattern found somewhere unexpected — bark, cracked mud, feathers."],
+  selfCheck:["The repeat truly fills the frame.","The interruption sits on a deliberate spot.","It would hold as a print with no caption needed."]},
+ {id:"minimal", set:"comp", icon:"🌫️", title:"Less Bush, More Story (Minimalism)", stars:2, time:"Flexible", skills:["Restraint"],
+  lesson:"One subject, acres of space, nothing else. Minimalism trusts silence — the lone tree, the single bird on a wire of sky.",
+  equipment:["Any camera","Open space: sky, water, dust, winter grass"],
+  settings:"Expose for the mood. Let the empty space stay empty.",
+  tasks:["A frame where the subject occupies less than a tenth of the image and the space does the talking.",
+   "A one-colour minimal frame.",
+   "Put it beside your busiest photo of the week: which one do you remember tomorrow?"],
+  selfCheck:["Nothing more could be removed.","The small subject is still sharp and placed with intent.","The empty space feels like part of the story, not a mistake."]},
+ {id:"silhouette", set:"comp", icon:"🌇", title:"Shapes at Sundown (Silhouettes)", stars:2, time:"Sunset", skills:["Exposure control"],
+  lesson:"When the light dies, shape lives. Expose for the sky and let the animal go black — silhouettes reward clean outlines and punish clutter without mercy.",
+  equipment:["Any camera","A subject that can get between you and the western sky"],
+  settings:"Meter on the bright sky (or −2 exposure compensation). Get low. Flash off — obviously.",
+  tasks:["A clean single-animal silhouette against open sky.",
+   "A silhouette showing recognisable behaviour — drinking, sparring, taking flight.",
+   "Fail one on purpose: let shapes overlap, and study the mess it makes."],
+  selfCheck:["The outline reads instantly.","No shape-mergers — legs, horns and branches all separate.","The sky colour earns its place in the frame."]},
+ {id:"spotcolour", set:"comp", icon:"🔴", title:"One Drop of Colour (Spot Colour)", stars:3, time:"Flexible", skills:["Colour","Editing"],
+  lesson:"A single point of colour in a muted scene is a magnet for the eye. Find it in nature first — a roller on a grey day — long before you ever fake it in editing.",
+  equipment:["Any camera","A muted scene hiding one bright element"],
+  settings:"Expose for the colour patch itself; let the dull surround go dull.",
+  tasks:["Find naturally occurring spot colour: one vivid element in a muted scene.",
+   "Place that colour on a thirds crossing and reshoot.",
+   "Editing exercise (optional): desaturate a copy except one colour — then judge coldly: honest image or gimmick?"],
+  selfCheck:["The eye flies straight to the colour.","The muted surround is genuinely muted, not just underexposed.","If I did the edit, I would still show it to a professional."]},
+ {id:"shadows", set:"comp", icon:"🌗", title:"Drawing with Darkness (Shadows)", stars:2, time:"Early or late", skills:["Light"],
+  lesson:"Photograph the shadow, not just the animal. Long morning shadows double your subject; dappled shade paints patterns on skin and soil.",
+  equipment:["Any camera","Low side-light or hard midday shade lines"],
+  settings:"Expose for the highlights and let the shadows fall to black.",
+  tasks:["Make the shadow the subject: the animal's shadow larger or clearer than the animal itself.",
+   "A dappled-light portrait handled honestly — no rescue-brightening.",
+   "A high-contrast abstract built purely from shadow patterns."],
+  selfCheck:["My shadows are deep black, not muddy grey.","The shadow's shape is readable on its own.","I metered for the highlights and let the rest go."]}
 ];
 
 const BADGES = [
@@ -796,7 +886,8 @@ const BADGES = [
   {id:"allScenes", icon:"🏆", name:"Exposure Master", desc:"Master every simulator scene", test:s=>SCENES.every(sc=>s.scenesDone[sc.id])},
   {id:"graduate", icon:"🎓", name:"Programme Graduate", desc:"Tick off every week of the full training programme", test:s=>PROGRAMME.every(lv=>lv.weeks.every((w,i)=>s.programmeDone[lv.id+"-w"+i]))},
   {id:"fieldworker", icon:"🃏", name:"Field Worker", desc:"Complete three assignment cards", test:s=>Object.keys(s.assignDone||{}).length>=3},
-  {id:"assignace", icon:"🎯", name:"Assignment Ace", desc:"Complete every assignment card", test:s=>ASSIGNMENTS.every(a=>(s.assignDone||{})[a.id])}
+  {id:"assignace", icon:"🎯", name:"Assignment Ace", desc:"Complete every assignment card", test:s=>ASSIGNMENTS.every(a=>(s.assignDone||{})[a.id])},
+  {id:"compmaster", icon:"🖼️", name:"Composition Master", desc:"Complete all eleven composition cards", test:s=>ASSIGNMENTS.filter(a=>a.set==="comp").every(a=>(s.assignDone||{})[a.id])}
 ];
 
 /* ================= NAV ================= */
@@ -1076,17 +1167,28 @@ function closeLesson(){ renderLessons(); }
 function renderAssignments(){
   document.getElementById("assignView").hidden = true;
   document.getElementById("assignList").hidden = false;
-  const grid = document.getElementById("assignGrid");
-  grid.innerHTML = "";
-  ASSIGNMENTS.forEach(ac=>{
-    const done = !!state.assignDone[ac.id];
-    const c = document.createElement("div");
-    c.className = "lessonCard";
-    c.innerHTML = `<h3>${ac.icon} ${ac.title}</h3>
-      <div class="acMeta"><span>${"⭐".repeat(ac.stars)}</span><span>⏱ ${ac.time}</span>${ac.skills.map(k=>`<span>${k}</span>`).join("")}</div>
-      <div class="status ${done?'done':''}">${done ? "✔ Completed" : "Not yet completed"}</div>`;
-    c.onclick = ()=>openAssign(ac.id);
-    grid.appendChild(c);
+  const wrap = document.getElementById("assignGrid");
+  wrap.innerHTML = "";
+  [["field","🟩 Field Projects"],["comp","🟨 Composition Techniques"]].forEach(([key,label])=>{
+    const cards = ASSIGNMENTS.filter(a=>a.set===key);
+    const doneN = cards.filter(a=>state.assignDone[a.id]).length;
+    const h = document.createElement("h3");
+    h.className = "setHead";
+    h.innerHTML = `${label} <span style="font-weight:400; color:var(--ink-soft); font-size:.85rem;">— ${doneN} of ${cards.length} complete</span>`;
+    wrap.appendChild(h);
+    const grid = document.createElement("div");
+    grid.className = "grid two";
+    cards.forEach(ac=>{
+      const done = !!state.assignDone[ac.id];
+      const c = document.createElement("div");
+      c.className = "lessonCard";
+      c.innerHTML = `<h3>${ac.icon} ${ac.title}</h3>
+        <div class="acMeta"><span>${"⭐".repeat(ac.stars)}</span><span>⏱ ${ac.time}</span>${ac.skills.map(k=>`<span>${k}</span>`).join("")}</div>
+        <div class="status ${done?'done':''}">${done ? "✔ Completed" : "Not yet completed"}</div>`;
+      c.onclick = ()=>openAssign(ac.id);
+      grid.appendChild(c);
+    });
+    wrap.appendChild(grid);
   });
 }
 function openAssign(id){
@@ -1215,8 +1317,10 @@ function renderProgress(){
     const d = lv.weeks.filter((w,i)=>state.programmeDone[lv.id+"-w"+i]).length;
     wrap.appendChild(barBlock(`🎓 ${lv.title}`, d, lv.weeks.length));
   });
-  const aDone = ASSIGNMENTS.filter(a=>state.assignDone[a.id]).length;
-  wrap.appendChild(barBlock("🃏 Assignment cards completed", aDone, ASSIGNMENTS.length));
+  [["field","🟩 Field Project cards"],["comp","🟨 Composition cards"]].forEach(([key,label])=>{
+    const cards = ASSIGNMENTS.filter(a=>a.set===key);
+    wrap.appendChild(barBlock(label, cards.filter(a=>state.assignDone[a.id]).length, cards.length));
+  });
 
   const bg = document.getElementById("badgeGrid");
   bg.innerHTML = "";
