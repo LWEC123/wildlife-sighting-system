@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wildlife-sighting-v2';
+const CACHE_NAME = 'wildlife-sighting-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -6,118 +6,87 @@ const urlsToCache = [
   './WildlifePhotoTutorLWEC.html',
   './LWECFieldLogbook.html',
   './manifest.json',
-  './sw.js',
   './icons/lwec-logo.png',
   './icons/icon-192x192.png',
   'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js',
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js'
 ];
 
-// Install service worker and cache the static assets
+// Hosts the service worker must never intercept: Firebase auth and Firestore
+// sync traffic manage their own offline behaviour.
+function isLiveBackend(url) {
+  return url.hostname.endsWith('googleapis.com')
+      || url.hostname.endsWith('firebaseapp.com')
+      || url.hostname.endsWith('firebasestorage.app')
+      || url.hostname === 'tile.openstreetmap.org';
+}
+
+// Install: pre-cache best-effort — one unreachable CDN file must not break install
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => Promise.allSettled(urlsToCache.map(u => cache.add(u))))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Serve cached content when offline
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request)
-          .then(response => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          });
-      })
-      .catch(() => {
-        // Return a custom offline page or handle as needed
-        if (event.request.url.indexOf('.html') > -1) {
-          return caches.match('./index.html');
-        }
-      })
-  );
-});
-
-// Update the cache when a new service worker is activated
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            // If this cache name isn't in the whitelist, delete it
-            return caches.delete(cacheName);
+    caches.keys()
+      .then(names => Promise.all(names.map(n => n === CACHE_NAME ? null : caches.delete(n))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (isLiveBackend(url)) return; // let Firebase and map tiles talk directly
+
+  const isPage = request.mode === 'navigate'
+    || url.pathname.endsWith('.html')
+    || url.pathname.endsWith('.htm')
+    || url.pathname.endsWith('/');
+
+  if (url.origin === location.origin && isPage) {
+    // Network-first for our pages: students get updates immediately when
+    // online, and the cached copy when offline.
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
+          return response;
         })
-      );
+        .catch(() =>
+          caches.match(request).then(hit => hit || caches.match('./index.html'))
+        )
+    );
+    return;
+  }
+
+  // Everything else (libraries, images): cache-first with background fill.
+  event.respondWith(
+    caches.match(request).then(hit => {
+      if (hit) return hit;
+      return fetch(request).then(response => {
+        if (response && response.ok && (response.type === 'basic' || response.type === 'cors')) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        }
+        return response;
+      });
     })
   );
 });
-
-// Handle offline data submission 
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-sightings') {
-    event.waitUntil(syncSightings());
-  }
-});
-
-// Function to sync stored offline data
-function syncSightings() {
-  const pendingSightings = JSON.parse(localStorage.getItem('pendingSightings') || '[]');
-  
-  if (pendingSightings.length === 0) {
-    return Promise.resolve();
-  }
-  
-  return self.clients.matchAll()
-    .then(clients => {
-      clients.forEach(client => {
-        // Inform the client that we're syncing
-        client.postMessage({
-          message: 'sync-started',
-          tag: 'sync-sightings'
-        });
-      });
-      
-      // In a real application, you would send this data to a server
-      // For now, we'll just move it to the regular storage
-      const savedSightings = JSON.parse(localStorage.getItem('wildlifeSightings') || '[]');
-      const mergedSightings = [...savedSightings, ...pendingSightings];
-      
-      localStorage.setItem('wildlifeSightings', JSON.stringify(mergedSightings));
-      localStorage.removeItem('pendingSightings');
-      
-      return clients.forEach(client => {
-        // Inform the client that the sync is complete
-        client.postMessage({
-          message: 'sync-complete',
-          tag: 'sync-sightings'
-        });
-      });
-    });
-}
