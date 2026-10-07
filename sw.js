@@ -1,7 +1,10 @@
-const CACHE_NAME = 'wildlife-sighting-v1';
+const CACHE_NAME = 'wildlife-sighting-v2';
 const urlsToCache = [
   './',
   './index.html',
+  './index.htm',
+  './WildlifePhotoTutorLWEC.html',
+  './LWECFieldLogbook.html',
   './manifest.json',
   './sw.js',
   './icons/lwec-logo.png',
