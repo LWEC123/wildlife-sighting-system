@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LWEC Field Logbook — Portfolio of Evidence</title>
 <meta name="theme-color" content="#1e3a2a">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" defer></script>
 <style>
 :root{
   --green-deep:#1e3a2a; --green:#2d5741; --green-soft:#3e7257;
@@ -15,8 +17,13 @@
 body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); min-height:100vh;}
 header{background:var(--green-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px;}
 header img{height:46px; width:auto;}
+header .t{flex:1; min-width:0;}
 header .t b{display:block; font-size:1.05rem; letter-spacing:.3px;}
 header .t span{font-size:.75rem; color:var(--gold);}
+.who{display:flex; align-items:center; gap:8px; font-size:.78rem; color:#dfe9e0; flex:0 0 auto;}
+.who .dot{width:10px; height:10px; border-radius:50%; background:#7ec98f; flex:0 0 auto;}
+.who .dot.off{background:#d9a13c;}
+.who button{background:none; border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:999px; padding:4px 12px; font-size:.72rem; cursor:pointer;}
 nav{display:flex; overflow-x:auto; background:var(--green); position:sticky; top:0; z-index:40;}
 nav button{flex:0 0 auto; background:none; border:none; color:#dfe9e0; padding:12px 16px; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap;}
 nav button.active{color:#fff; border-bottom-color:var(--gold); background:rgba(255,255,255,.06);}
@@ -27,6 +34,7 @@ main{max-width:860px; margin:0 auto; padding:16px 12px 90px;}
 .note{font-size:.82rem; color:var(--muted); line-height:1.5;}
 label{display:block; font-size:.82rem; font-weight:600; color:var(--green-deep); margin:10px 0 4px;}
 input,select,textarea{width:100%; padding:10px; border:1px solid #cfd8cc; border-radius:8px; font-size:.95rem; background:#fff; color:var(--ink);}
+input[readonly]{background:var(--sand); color:var(--muted);}
 textarea{min-height:64px; resize:vertical;}
 .row{display:flex; gap:10px; flex-wrap:wrap;}
 .row>div{flex:1 1 150px;}
@@ -35,11 +43,13 @@ textarea{min-height:64px; resize:vertical;}
 .btn.ghost{background:transparent; border:1.5px solid var(--green); color:var(--green);}
 .btn.danger{background:#fff; border:1.5px solid var(--danger); color:var(--danger);}
 .btn.small{padding:7px 14px; font-size:.8rem;}
+.btn.wide{width:100%; text-align:center;}
 .btn:disabled{opacity:.45; cursor:not-allowed;}
 .btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
 .pill{display:inline-block; background:var(--sand); border-radius:999px; padding:3px 10px; font-size:.72rem; font-weight:700; color:var(--green);}
 .pill.gold{background:var(--gold); color:var(--green-deep);}
 .pill.locked{background:var(--green-deep); color:var(--gold);}
+.pill.sync{background:#fdf3dd; color:#8a6116;}
 .statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:8px;}
 .stat{background:var(--sand); border-radius:10px; padding:12px; text-align:center;}
 .stat b{display:block; font-size:1.5rem; color:var(--green-deep);}
@@ -58,14 +68,35 @@ textarea{min-height:64px; resize:vertical;}
 .filterrow{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
 .filterrow button{border:1.5px solid var(--green); background:#fff; color:var(--green); border-radius:999px; padding:6px 14px; font-size:.8rem; cursor:pointer;}
 .filterrow button.active{background:var(--green); color:#fff;}
+.stuRow{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; border:1px solid #e3ddcc; border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff;}
+.stuRow b{color:var(--green-deep);}
+.stuRow .sub{font-size:.78rem; color:var(--muted);}
 .modal{position:fixed; inset:0; background:rgba(8,14,9,.75); display:none; align-items:center; justify-content:center; z-index:100; padding:14px;}
 .modal.open{display:flex;}
-.modal .box{background:#fff; border-radius:14px; padding:18px; width:100%; max-width:460px;}
+.modal .box{background:#fff; border-radius:14px; padding:18px; width:100%; max-width:460px; max-height:92vh; overflow:auto;}
 canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border-radius:10px; touch-action:none; background:#fffdf7;}
 .gpsline{font-size:.78rem; color:var(--muted); margin-top:4px;}
-.toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--green-deep); color:#fff; padding:10px 20px; border-radius:999px; font-size:.85rem; opacity:0; transition:opacity .3s; z-index:200; pointer-events:none;}
+.toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--green-deep); color:#fff; padding:10px 20px; border-radius:999px; font-size:.85rem; opacity:0; transition:opacity .3s; z-index:200; pointer-events:none; max-width:92vw; text-align:center;}
 .toast.show{opacity:1;}
 .catgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px;}
+#map{height:62vh; min-height:340px; border-radius:12px; z-index:1;}
+.maplegend{font-size:.78rem; color:var(--muted); margin-top:8px;}
+.maplegend i{display:inline-block; width:11px; height:11px; border-radius:50%; margin:0 4px 0 10px; vertical-align:middle;}
+
+/* ---- auth screens ---- */
+#authView{min-height:calc(100vh - 80px); display:flex; align-items:center; justify-content:center; padding:20px 14px;}
+.authbox{width:100%; max-width:420px;}
+.authbox .card{padding:24px 20px;}
+.authbox h2{text-align:center;}
+.authbox .sub{text-align:center; font-size:.8rem; color:var(--muted); margin-bottom:8px;}
+.authlinks{margin-top:16px; text-align:center; font-size:.82rem;}
+.authlinks a{color:var(--green); font-weight:700; cursor:pointer; text-decoration:underline;}
+.autherr{display:none; background:#fbeae7; color:var(--danger); border-radius:8px; padding:10px 12px; font-size:.82rem; margin-top:12px; line-height:1.45;}
+.autherr.show{display:block;}
+#boot{position:fixed; inset:0; background:var(--green-deep); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:500; font-size:.95rem;}
+#boot .spin{width:34px; height:34px; border:4px solid rgba(255,255,255,.25); border-top-color:var(--gold); border-radius:50%; animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
 #printArea{display:none;}
 @media print{
   body *{visibility:hidden;}
@@ -87,18 +118,86 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 </style>
 </head>
 <body>
+<div id="boot"><div class="spin"></div><div>Opening your Field Logbook…</div></div>
+
 <header>
   <img src="icons/lweclogo.png" alt="LWEC logo" onerror="this.style.display='none'">
   <div class="t"><b>LWEC Field Logbook</b><span>Limpopo Wildlife Eco College — Practical Record &amp; Portfolio of Evidence</span></div>
+  <div class="who" id="whoBox" hidden>
+    <span class="dot" id="syncDot" title="Connected"></span>
+    <span id="whoName"></span>
+    <button onclick="doLogout()">Sign out</button>
+  </div>
 </header>
-<nav id="nav">
+
+<!-- ================= AUTH ================= -->
+<section id="authView" hidden>
+  <div class="authbox">
+
+    <div class="card" id="authLogin">
+      <h2>Sign in 🐾</h2>
+      <p class="sub">Your logbook follows your account — sign in on any phone or computer.</p>
+      <form onsubmit="doLogin(event)">
+        <label>Email</label><input type="email" id="li_email" autocomplete="email" required>
+        <label>Password</label><input type="password" id="li_pass" autocomplete="current-password" required>
+        <div class="btnrow"><button type="submit" class="btn wide" id="li_btn">Sign in</button></div>
+      </form>
+      <div class="autherr" id="li_err"></div>
+      <div class="authlinks">
+        New student? <a onclick="authMode('reg')">Create your account</a><br><br>
+        <a onclick="authMode('reset')">Forgot your password?</a>
+      </div>
+    </div>
+
+    <div class="card" id="authReg" hidden>
+      <h2>Create your account 🎓</h2>
+      <p class="sub">One account for your whole training — your entries are stored safely with the college.</p>
+      <form onsubmit="doRegister(event)">
+        <label>Full name (as on your ID)</label><input id="rg_name" autocomplete="name" required>
+        <label>Email</label><input type="email" id="rg_email" autocomplete="email" required>
+        <label>Programme</label>
+        <select id="rg_prog">
+          <option value="">— choose programme —</option>
+          <option data-saqa="58930">FETC: Professional Hunting (SAQA 58930, NQF 4)</option>
+          <option data-saqa="71549">FETC: Tourist Guiding (SAQA 71549, NQF 4)</option>
+          <option data-saqa="14110">National Certificate: Accommodation Services (SAQA 14110, NQF 2)</option>
+          <option data-saqa="">Tracker Skills Programme</option>
+          <option data-saqa="">12 Day Professional Hunting Course</option>
+          <option data-saqa="">Other</option>
+        </select>
+        <label>Password (at least 6 characters)</label><input type="password" id="rg_pass" autocomplete="new-password" required minlength="6">
+        <label>Repeat password</label><input type="password" id="rg_pass2" autocomplete="new-password" required minlength="6">
+        <div class="btnrow"><button type="submit" class="btn wide" id="rg_btn">Create account</button></div>
+      </form>
+      <div class="autherr" id="rg_err"></div>
+      <div class="authlinks">Already registered? <a onclick="authMode('login')">Sign in</a></div>
+    </div>
+
+    <div class="card" id="authReset" hidden>
+      <h2>Reset password 🔑</h2>
+      <p class="sub">We'll email you a link to choose a new password.</p>
+      <form onsubmit="doReset(event)">
+        <label>Email</label><input type="email" id="rs_email" autocomplete="email" required>
+        <div class="btnrow"><button type="submit" class="btn wide" id="rs_btn">Send reset email</button></div>
+      </form>
+      <div class="autherr" id="rs_err"></div>
+      <div class="authlinks"><a onclick="authMode('login')">Back to sign in</a></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= APP ================= -->
+<nav id="nav" hidden>
   <button data-tab="dash" class="active">🏠 Dashboard</button>
   <button data-tab="new">➕ New Entry</button>
   <button data-tab="list">📒 My Entries</button>
-  <button data-tab="student">🧑 Student &amp; Targets</button>
+  <button data-tab="map">🗺️ Map</button>
+  <button data-tab="student">🧑 My Details</button>
   <button data-tab="export">🖨️ Export / PoE</button>
+  <button data-tab="students" id="navStudents" hidden>🧑‍🏫 Students</button>
 </nav>
-<main>
+<main id="appMain" hidden>
 
 <!-- DASHBOARD -->
 <section id="tab-dash">
@@ -106,6 +205,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <h2 id="dashHello">Welcome to your Field Logbook 🐾</h2>
     <p class="note">Every field day, trail walk and dangerous-game encounter you log here builds your verified practical record. Signed entries are locked and form part of your <b>Portfolio of Evidence</b> on your student file at Limpopo Wildlife Eco College.</p>
     <p class="note" id="profileSummary" style="margin-top:8px;"></p>
+    <p class="note" id="syncNote" style="margin-top:8px;"></p>
   </div>
   <div class="card">
     <h2>📊 Field days</h2>
@@ -128,6 +228,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <section id="tab-new" hidden>
   <div class="card">
     <h2>What are you logging?</h2>
+    <p class="note" style="margin-bottom:10px;">No signal? Log anyway — entries and GPS pins are kept on your phone and upload themselves the moment you're back in range.</p>
     <div class="filterrow" id="kindPick">
       <button data-kind="day" class="active">🌅 Field day</button>
       <button data-kind="walk">🥾 Trail walk</button>
@@ -226,11 +327,23 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
   </div>
 </section>
 
-<!-- STUDENT & TARGETS -->
+<!-- MAP -->
+<section id="tab-map" hidden>
+  <div class="card">
+    <h2>🗺️ Where you've been</h2>
+    <p class="note" id="mapIntro">Every entry you capture with a GPS pin appears here.</p>
+    <div id="map" style="margin-top:12px;"></div>
+    <div class="maplegend">Pins:<i style="background:#2d5741;"></i>field days <i style="background:#3e7257;"></i>trail walks <i style="background:#c4a054;"></i>encounters</div>
+    <p class="note" style="margin-top:6px;">The map picture itself needs signal to load — your pins are safe either way and will show once you're connected.</p>
+  </div>
+</section>
+
+<!-- MY DETAILS -->
 <section id="tab-student" hidden>
   <div class="card">
-    <h2>🧑 Student details</h2>
+    <h2>🧑 My details</h2>
     <p class="note">These details print on the cover of your Portfolio of Evidence pack.</p>
+    <label>Account email</label><input id="p_email" readonly>
     <div class="row">
       <div><label>Full name</label><input id="p_name"></div>
       <div><label>Student number</label><input id="p_sno"></div>
@@ -254,40 +367,40 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
   </div>
   <div class="card">
     <h2>🎯 Programme targets</h2>
-    <p class="note"><b>Enter the official requirements issued by the college for your programme.</b> Targets left at 0 simply show your running totals without a progress bar. Your mentor or the college office will confirm the correct numbers.</p>
-    <div class="row">
-      <div><label>Field days (total)</label><input type="number" id="t_days" min="0"></div>
-      <div><label>Guest-facing days</label><input type="number" id="t_gdays" min="0"></div>
-      <div><label>Trail hours on foot</label><input type="number" id="t_walk" min="0"></div>
-      <div><label>Encounters (total)</label><input type="number" id="t_enc" min="0"></div>
-    </div>
-    <h3>Minimum encounters per category</h3>
-    <div class="catgrid" id="t_cats"></div>
-    <div class="btnrow"><button class="btn" onclick="saveTargets()">Save targets</button></div>
+    <p class="note">Your official targets are issued by the college office and set by your mentor — they appear here and on your dashboard automatically. If something looks wrong, speak to your mentor.</p>
+    <div id="targetsView" style="margin-top:6px;"></div>
   </div>
 </section>
 
 <!-- EXPORT -->
 <section id="tab-export" hidden>
+  <div class="card" id="migrateCard" hidden>
+    <h2>📦 Old entries found on this device</h2>
+    <p class="note" id="migrateNote"></p>
+    <div class="btnrow"><button class="btn" onclick="migrateLocal()" id="migrateBtn">Move them into my account</button></div>
+  </div>
   <div class="card">
     <h2>🖨️ Portfolio of Evidence pack</h2>
     <p class="note">Prints a cover page with your details and declaration, a summary of totals, and every entry in chronological order with its signature status. Hand the printed pack to your assessor for your student file — or print to PDF.</p>
-    <div class="btnrow"><button class="btn" onclick="printPoE()">Print / Save PoE pack</button></div>
+    <div class="btnrow"><button class="btn" onclick="printMyPoE()">Print / Save PoE pack</button></div>
   </div>
   <div class="card">
-    <h2>📄 Data exports</h2>
+    <h2>📄 Data export</h2>
     <div class="btnrow">
       <button class="btn secondary" onclick="exportCSV()">Download CSV</button>
-      <button class="btn ghost" onclick="backupJSON()">Backup file</button>
-      <button class="btn ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup</button>
-      <input type="file" id="restoreFile" accept=".json" hidden onchange="restoreJSON(this)">
     </div>
-    <p class="note" style="margin-top:10px;">Your logbook lives on this device. Make a backup file regularly — and after restoring on a new device, check your totals before continuing.</p>
+    <p class="note" style="margin-top:10px;">Your logbook is stored safely in your college account and synced to every device you sign in on — no manual backups needed any more.</p>
   </div>
+</section>
+
+<!-- MENTOR: STUDENTS -->
+<section id="tab-students" hidden>
   <div class="card">
-    <h2>⚠️ Start over</h2>
-    <div class="btnrow"><button class="btn danger" onclick="wipeAll()">Erase all logbook data on this device</button></div>
+    <h2>🧑‍🏫 Students</h2>
+    <p class="note">Every registered student, with their logged totals. Open a student to check entries, sign them off, set their official programme targets, or print their PoE pack.</p>
+    <div id="studentList" style="margin-top:10px;"></div>
   </div>
+  <div id="studentDetail"></div>
 </section>
 </main>
 
@@ -310,128 +423,315 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <div class="toast" id="toast"></div>
 <div id="printArea"></div>
 
-<script>
-const CATS = ["Elephant","Rhino","Lion","Leopard","Buffalo","Hippo","Other dangerous game"];
-const KEY = "lwec_logbook_v1";
-let state = load();
-let signTarget = null;
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         sendPasswordResetEmail, signOut, onAuthStateChanged
+       } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
+         doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
+         onSnapshot, serverTimestamp
+       } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-function load(){
-  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.entries) return s; }catch(e){}
-  return { profile:{}, targets:{cats:{}}, entries:[] };
+const firebaseConfig = {
+  apiKey: "AIzaSyCBM6qjgvMZcpQDj_ZyIEFrWp5fzJjmNiY",
+  authDomain: "lwec-field-logbook.firebaseapp.com",
+  projectId: "lwec-field-logbook",
+  storageBucket: "lwec-field-logbook.firebasestorage.app",
+  messagingSenderId: "67985548748",
+  appId: "1:67985548748:web:a541ff7e7dba59ae7a6969"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+let db;
+try{
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+}catch(e){
+  db = getFirestore(app); // private-browsing fallback: online-only
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
-function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
-function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
-/* ---------- tabs ---------- */
-document.getElementById('nav').addEventListener('click', e=>{
+/* ================= shared helpers ================= */
+const CATS = ["Elephant","Rhino","Lion","Leopard","Buffalo","Hippo","Other dangerous game"];
+const OLDKEY = "lwec_logbook_v1";
+const $ = id => document.getElementById(id);
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function val(id){ return $(id).value.trim(); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+/* ================= state ================= */
+let me = null;                                  // firebase user
+let state = { profile:{}, targets:{cats:{}}, entries:[] };
+let isMentor = false;
+let allStudents = [];                            // mentor: users with role student
+let allEntries = [];                             // mentor: every entry
+let curStudent = null;                           // mentor: open student uid
+let curStudentTargets = {cats:{}};
+let unsubs = [];
+
+function friendlyAuthError(e){
+  const c = (e && e.code) || '';
+  if(c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found'))
+    return "Email or password doesn't match. Check both, or use “Forgot your password?”.";
+  if(c.includes('email-already-in-use')) return "There's already an account with this email — go back and sign in instead.";
+  if(c.includes('invalid-email')) return "That email address doesn't look right — please check it.";
+  if(c.includes('weak-password')) return "Please choose a password of at least 6 characters.";
+  if(c.includes('too-many-requests')) return "Too many attempts — wait a few minutes and try again.";
+  if(c.includes('network-request-failed')) return "No internet connection. You need signal the first time you sign in on a device — after that the app works offline.";
+  return "Something went wrong (" + c.replace('auth/','') + "). Please try again.";
+}
+function showErr(id,msg){ const el=$(id); el.textContent=msg; el.classList.add('show'); }
+function hideErrs(){ ['li_err','rg_err','rs_err'].forEach(i=>$(i).classList.remove('show')); }
+
+/* ================= auth screens ================= */
+window.authMode = m=>{
+  hideErrs();
+  $('authLogin').hidden = m!=='login';
+  $('authReg').hidden = m!=='reg';
+  $('authReset').hidden = m!=='reset';
+};
+window.doLogin = async ev=>{
+  ev.preventDefault(); hideErrs(); $('li_btn').disabled=true;
+  try{ await signInWithEmailAndPassword(auth, val('li_email'), $('li_pass').value); }
+  catch(e){ showErr('li_err', friendlyAuthError(e)); }
+  $('li_btn').disabled=false;
+};
+window.doRegister = async ev=>{
+  ev.preventDefault(); hideErrs();
+  if($('rg_pass').value !== $('rg_pass2').value){ showErr('rg_err','The two passwords don\'t match.'); return; }
+  $('rg_btn').disabled=true;
+  const name=val('rg_name'), email=val('rg_email');
+  const progSel=$('rg_prog'); const prog=progSel.value;
+  const saqa = progSel.selectedOptions[0] && progSel.selectedOptions[0].dataset.saqa ? 'SAQA ID '+progSel.selectedOptions[0].dataset.saqa : '';
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, $('rg_pass').value);
+    await setDoc(doc(db,'users',cred.user.uid), {
+      name, email, role:'student', sno:'', idno:'', mentor:'', prog, saqa,
+      createdAt: serverTimestamp()
+    });
+    toast('Welcome to LWEC, '+name.split(' ')[0]+'! 🎓');
+  }catch(e){ showErr('rg_err', friendlyAuthError(e)); }
+  $('rg_btn').disabled=false;
+};
+window.doReset = async ev=>{
+  ev.preventDefault(); hideErrs(); $('rs_btn').disabled=true;
+  try{
+    await sendPasswordResetEmail(auth, val('rs_email'));
+    toast('Reset email sent — check your inbox (and spam folder).');
+    authMode('login');
+  }catch(e){ showErr('rs_err', friendlyAuthError(e)); }
+  $('rs_btn').disabled=false;
+};
+window.doLogout = async ()=>{ if(confirm('Sign out of your logbook on this device?')) await signOut(auth); };
+
+/* ================= auth gate ================= */
+onAuthStateChanged(auth, async user=>{
+  $('boot').style.display='none';
+  me = user;
+  if(!user){
+    stopListeners();
+    isMentor=false; curStudent=null;
+    state={profile:{},targets:{cats:{}},entries:[]};
+    $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
+    $('navStudents').hidden=true;
+    authMode('login');
+    return;
+  }
+  $('authView').hidden=true; $('nav').hidden=false; $('appMain').hidden=false; $('whoBox').hidden=false;
+  await ensureUserDoc(user);
+  startListeners(user.uid);
+  checkMentor(user.uid);
+  checkMigration();
+});
+
+async function ensureUserDoc(user){
+  try{
+    const snap = await getDoc(doc(db,'users',user.uid));
+    if(!snap.exists()){
+      await setDoc(doc(db,'users',user.uid), {
+        name:'', email:user.email||'', role:'student', sno:'', idno:'', mentor:'', prog:'', saqa:'',
+        createdAt: serverTimestamp()
+      });
+    }
+  }catch(e){ /* offline on a device that has cached data — listeners still serve the cache */ }
+}
+
+function stopListeners(){ unsubs.forEach(u=>{ try{u();}catch(e){} }); unsubs=[]; }
+
+function startListeners(uid){
+  stopListeners();
+  unsubs.push(onSnapshot(doc(db,'users',uid), snap=>{
+    state.profile = snap.exists()? snap.data() : {};
+    fillProfileForm(); renderDash(); updateWho();
+  }, err=>console.warn('profile listener', err)));
+
+  unsubs.push(onSnapshot(doc(db,'targets',uid), snap=>{
+    state.targets = snap.exists()? Object.assign({cats:{}}, snap.data()) : {cats:{}};
+    if(!state.targets.cats) state.targets.cats={};
+    renderTargetsView(); renderDash();
+  }, err=>console.warn('targets listener', err)));
+
+  unsubs.push(onSnapshot(query(collection(db,'entries'), where('uid','==',uid)),
+    { includeMetadataChanges:true },
+    snap=>{
+      state.entries = snap.docs.map(d=>Object.assign({id:d.id, pending:d.metadata.hasPendingWrites}, d.data()));
+      state.entries.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+      updateSync(); renderDash(); renderList(curFilter); refreshMap();
+    }, err=>console.warn('entries listener', err)));
+}
+
+async function checkMentor(uid){
+  try{
+    const m = await getDoc(doc(db,'mentors',uid));
+    isMentor = m.exists();
+  }catch(e){ isMentor=false; }
+  $('navStudents').hidden = !isMentor;
+  if(isMentor){
+    unsubs.push(onSnapshot(query(collection(db,'users'), where('role','==','student')), snap=>{
+      allStudents = snap.docs.map(d=>Object.assign({uid:d.id}, d.data()));
+      allStudents.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      renderStudentList(); refreshMap();
+    }, err=>console.warn('students listener', err)));
+    unsubs.push(onSnapshot(collection(db,'entries'), snap=>{
+      allEntries = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      renderStudentList(); if(curStudent) openStudent(curStudent, true); refreshMap();
+    }, err=>console.warn('all-entries listener', err)));
+  }
+}
+
+function updateWho(){
+  const n = state.profile.name || (me && me.email) || '';
+  $('whoName').textContent = n + (isMentor?' · mentor':'');
+}
+function updateSync(){
+  const pending = state.entries.filter(e=>e.pending).length;
+  const online = navigator.onLine;
+  const dot=$('syncDot');
+  dot.classList.toggle('off', !online || pending>0);
+  dot.title = pending? pending+' entr'+(pending===1?'y':'ies')+' waiting for signal' : (online?'Connected — all synced':'Offline');
+  $('syncNote').innerHTML = pending
+    ? '<span class="pill sync">⏳ '+pending+' entr'+(pending===1?'y':'ies')+' saved on this phone, waiting for signal to upload</span>'
+    : (online ? '<span class="pill">✔ All entries synced to your college account</span>'
+              : '<span class="pill sync">📴 Offline — keep logging, everything uploads when signal returns</span>');
+}
+window.addEventListener('online', updateSync);
+window.addEventListener('offline', updateSync);
+
+/* ================= tabs ================= */
+const TABS=['dash','new','list','map','student','export','students'];
+$('nav').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x===b));
-  ['dash','new','list','student','export'].forEach(t=>{
-    document.getElementById('tab-'+t).hidden = (t!==b.dataset.tab);
-  });
+  TABS.forEach(t=>{ $('tab-'+t).hidden = (t!==b.dataset.tab); });
   if(b.dataset.tab==='dash') renderDash();
   if(b.dataset.tab==='list') renderList(curFilter);
+  if(b.dataset.tab==='map') initMap();
+  if(b.dataset.tab==='students') renderStudentList();
 });
 
-/* ---------- new entry kind picker ---------- */
-document.getElementById('kindPick').addEventListener('click', e=>{
+/* ================= new entry ================= */
+$('kindPick').addEventListener('click', e=>{
   const b=e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#kindPick button').forEach(x=>x.classList.toggle('active',x===b));
-  document.getElementById('formDay').hidden = b.dataset.kind!=='day';
-  document.getElementById('formWalk').hidden = b.dataset.kind!=='walk';
-  document.getElementById('formEnc').hidden = b.dataset.kind!=='enc';
+  $('formDay').hidden = b.dataset.kind!=='day';
+  $('formWalk').hidden = b.dataset.kind!=='walk';
+  $('formEnc').hidden = b.dataset.kind!=='enc';
 });
 
-/* ---------- GPS ---------- */
 const gpsTemp = {};
-function grabGPS(which){
+window.grabGPS = which=>{
   if(!navigator.geolocation){ toast('GPS not available on this device'); return; }
-  document.getElementById(which+'_gps').textContent = 'Getting location…';
+  $(which+'_gps').textContent = 'Getting location… (works without signal, give it a moment)';
   navigator.geolocation.getCurrentPosition(p=>{
     gpsTemp[which] = {lat:+p.coords.latitude.toFixed(5), lng:+p.coords.longitude.toFixed(5)};
-    document.getElementById(which+'_gps').textContent = '📍 '+gpsTemp[which].lat+', '+gpsTemp[which].lng;
-  }, ()=>{ document.getElementById(which+'_gps').textContent='Could not get GPS (allow location, or try outdoors)'; }, {enableHighAccuracy:true, timeout:12000});
+    $(which+'_gps').textContent = '📍 '+gpsTemp[which].lat+', '+gpsTemp[which].lng;
+  }, ()=>{ $(which+'_gps').textContent='Could not get GPS (allow location, or try open sky)'; },
+  {enableHighAccuracy:true, timeout:25000, maximumAge:30000});
+};
+
+['day_date','walk_date','enc_date'].forEach(id=>{ $(id).value = todayISO(); });
+
+function addEntry(data, formId, gpsId, msg){
+  if(!me) return;
+  addDoc(collection(db,'entries'), Object.assign({uid:me.uid, createdAt:serverTimestamp()}, data))
+    .catch(e=>toast('Could not save: '+e.code));
+  $(formId).reset();
+  ['day_date','walk_date','enc_date'].forEach(id=>{ const el=$(id); if(el) el.value=todayISO(); });
+  $(gpsId).textContent='';
+  toast(navigator.onLine? msg : msg+' — stored on this phone, uploads when signal returns');
 }
-
-/* ---------- forms ---------- */
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-['day_date','walk_date','enc_date'].forEach(id=>{ document.getElementById(id).value = todayISO(); });
-
-document.getElementById('formDay').addEventListener('submit', e=>{
+$('formDay').addEventListener('submit', e=>{
   e.preventDefault();
-  state.entries.push({ id:uid(), kind:'day',
-    date:val('day_date'), hours:+val('day_hours')||0, type:val('day_type'),
+  addEntry({ kind:'day', date:val('day_date'), hours:+val('day_hours')||0, type:val('day_type'),
     loc:val('day_loc'), notes:val('day_notes'), mentor:val('day_mentor')||state.profile.mentor||'',
-    gps:gpsTemp.day||null, signed:null });
-  delete gpsTemp.day; afterSave('formDay','day_gps','Field day saved ✔');
+    gps:gpsTemp.day||null, signed:null }, 'formDay','day_gps','Field day saved ✔');
+  delete gpsTemp.day;
 });
-document.getElementById('formWalk').addEventListener('submit', e=>{
+$('formWalk').addEventListener('submit', e=>{
   e.preventDefault();
-  state.entries.push({ id:uid(), kind:'walk',
-    date:val('walk_date'), hours:+val('walk_hours')||0, role:val('walk_role'),
+  addEntry({ kind:'walk', date:val('walk_date'), hours:+val('walk_hours')||0, role:val('walk_role'),
     area:val('walk_area'), notes:val('walk_notes'), mentor:val('walk_mentor')||state.profile.mentor||'',
-    gps:gpsTemp.walk||null, signed:null });
-  delete gpsTemp.walk; afterSave('formWalk','walk_gps','Trail walk saved ✔');
+    gps:gpsTemp.walk||null, signed:null }, 'formWalk','walk_gps','Trail walk saved ✔');
+  delete gpsTemp.walk;
 });
-document.getElementById('formEnc').addEventListener('submit', e=>{
+$('formEnc').addEventListener('submit', e=>{
   e.preventDefault();
-  state.entries.push({ id:uid(), kind:'enc',
-    date:val('enc_date'), time:val('enc_time'), cat:val('enc_cat'), species:val('enc_species'),
+  addEntry({ kind:'enc', date:val('enc_date'), time:val('enc_time'), cat:val('enc_cat'), species:val('enc_species'),
     dist:val('enc_dist'), mode:val('enc_mode'), beh:val('enc_beh'), act:val('enc_act'),
     notes:val('enc_notes'), mentor:val('enc_mentor')||state.profile.mentor||'',
-    gps:gpsTemp.enc||null, signed:null });
-  delete gpsTemp.enc; afterSave('formEnc','enc_gps','Encounter saved ✔');
+    gps:gpsTemp.enc||null, signed:null }, 'formEnc','enc_gps','Encounter saved ✔');
+  delete gpsTemp.enc;
 });
-function val(id){ return document.getElementById(id).value.trim(); }
-function afterSave(formId,gpsId,msg){
-  save(); document.getElementById(formId).reset();
-  ['day_date','walk_date','enc_date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=todayISO(); });
-  document.getElementById(gpsId).textContent='';
-  toast(msg); renderDash();
+
+/* ================= entry rendering (shared) ================= */
+function entryHTML(en, opts){
+  opts = opts||{};
+  const title = en.kind==='day' ? '🌅 '+esc(en.type) : en.kind==='walk' ? '🥾 Trail walk — '+esc(en.role) : '🐘 '+esc(en.cat)+(en.mode==='On foot'?' (on foot)':'');
+  const meta=[];
+  if(en.kind==='day'){ if(en.hours) meta.push(en.hours+' h'); if(en.loc) meta.push(esc(en.loc)); }
+  if(en.kind==='walk'){ meta.push(en.hours+' h on foot'); if(en.area) meta.push(esc(en.area)); }
+  if(en.kind==='enc'){ if(en.species) meta.push(esc(en.species)); if(en.dist) meta.push('~'+esc(en.dist)+' m'); if(en.beh) meta.push(esc(en.beh)); }
+  if(en.mentor) meta.push('Mentor: '+esc(en.mentor));
+  if(en.gps) meta.push('📍 '+en.gps.lat+', '+en.gps.lng);
+  if(en.notes) meta.push(esc(en.notes));
+  let pills = en.signed
+    ? '<span class="pill locked">✔ Signed — '+esc(en.signed.name)+'</span>'
+    : '<span class="pill">awaiting signature</span>';
+  if(en.pending) pills += ' <span class="pill sync">⏳ syncing</span>';
+  let btns='';
+  if(en.signed && en.signed.png) btns='<img class="sig" src="'+en.signed.png+'" alt="signature">';
+  if(!en.signed && opts.canSign){
+    btns='<div class="btnrow"><button class="btn small" onclick="openSign(\''+en.id+'\')">✍️ Mentor sign</button>'
+        +(opts.canDelete?'<button class="btn small danger" onclick="delEntry(\''+en.id+'\')">Delete</button>':'')
+        +'</div>';
+  }
+  return '<div class="entry '+en.kind+'"><div class="head"><b>'+esc(en.date)+(en.time?' '+esc(en.time):'')+' · '+title+'</b><span>'+pills+'</span></div><div class="meta">'+meta.join(' · ')+'</div>'+btns+'</div>';
 }
 
-/* ---------- entries list ---------- */
 let curFilter='all';
-document.getElementById('listFilter').addEventListener('click', e=>{
+$('listFilter').addEventListener('click', e=>{
   const b=e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#listFilter button').forEach(x=>x.classList.toggle('active',x===b));
   curFilter=b.dataset.f; renderList(curFilter);
 });
 function renderList(f){
-  const box=document.getElementById('entryList');
-  let list=[...state.entries].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  const box=$('entryList');
+  let list=[...state.entries];
   if(f==='day'||f==='walk'||f==='enc') list=list.filter(x=>x.kind===f);
   if(f==='unsigned') list=list.filter(x=>!x.signed);
   if(!list.length){ box.innerHTML='<p class="note" style="margin-top:10px;">Nothing here yet — log your first entry under ➕ New Entry.</p>'; return; }
-  box.innerHTML=list.map(en=>{
-    const title = en.kind==='day' ? '🌅 '+esc(en.type) : en.kind==='walk' ? '🥾 Trail walk — '+esc(en.role) : '🐘 '+esc(en.cat)+(en.mode==='On foot'?' (on foot)':'');
-    const meta=[];
-    if(en.kind==='day'){ if(en.hours) meta.push(en.hours+' h'); if(en.loc) meta.push(esc(en.loc)); }
-    if(en.kind==='walk'){ meta.push(en.hours+' h on foot'); if(en.area) meta.push(esc(en.area)); }
-    if(en.kind==='enc'){ if(en.species) meta.push(esc(en.species)); if(en.dist) meta.push('~'+esc(en.dist)+' m'); if(en.beh) meta.push(esc(en.beh)); }
-    if(en.mentor) meta.push('Mentor: '+esc(en.mentor));
-    if(en.gps) meta.push('📍 '+en.gps.lat+', '+en.gps.lng);
-    if(en.notes) meta.push(esc(en.notes));
-    const lock = en.signed
-      ? '<span class="pill locked">✔ Signed — '+esc(en.signed.name)+'</span>'
-      : '<span class="pill">awaiting signature</span>';
-    const btns = en.signed
-      ? (en.signed.png ? '<img class="sig" src="'+en.signed.png+'" alt="signature">' : '')
-      : '<div class="btnrow"><button class="btn small" onclick="openSign(\''+en.id+'\')">✍️ Mentor sign</button><button class="btn small danger" onclick="delEntry(\''+en.id+'\')">Delete</button></div>';
-    return '<div class="entry '+en.kind+'"><div class="head"><b>'+esc(en.date)+(en.time?' '+esc(en.time):'')+' · '+title+'</b>'+lock+'</div><div class="meta">'+meta.join(' · ')+'</div>'+btns+'</div>';
-  }).join('');
+  box.innerHTML=list.map(en=>entryHTML(en,{canSign:true,canDelete:true})).join('');
 }
-function delEntry(id){
-  const en=state.entries.find(x=>x.id===id);
+window.delEntry = id=>{
+  const en=state.entries.find(x=>x.id===id) || allEntries.find(x=>x.id===id);
   if(!en||en.signed) return;
-  if(confirm('Delete this unsigned entry?')){ state.entries=state.entries.filter(x=>x.id!==id); save(); renderList(curFilter); renderDash(); }
-}
+  if(confirm('Delete this unsigned entry?')) deleteDoc(doc(db,'entries',id)).catch(e=>toast('Could not delete: '+e.code));
+};
 
-/* ---------- signature pad ---------- */
-const pad=document.getElementById('sigpad'); const pctx=pad.getContext('2d');
+/* ================= signature pad ================= */
+let signTarget=null;
+const pad=$('sigpad'); const pctx=pad.getContext('2d');
 let drawing=false, hasInk=false;
 function sizePad(){ const r=pad.getBoundingClientRect(); pad.width=r.width*2; pad.height=r.height*2; pctx.scale(2,2); pctx.lineWidth=2; pctx.lineCap='round'; pctx.strokeStyle='#1e3a2a'; }
 function posOf(ev){ const r=pad.getBoundingClientRect(); const t=ev.touches?ev.touches[0]:ev; return {x:t.clientX-r.left, y:t.clientY-r.top}; }
@@ -441,62 +741,68 @@ function endD(){ drawing=false; }
 pad.addEventListener('mousedown',startD); pad.addEventListener('mousemove',moveD); window.addEventListener('mouseup',endD);
 pad.addEventListener('touchstart',startD,{passive:false}); pad.addEventListener('touchmove',moveD,{passive:false}); pad.addEventListener('touchend',endD);
 
-function openSign(id){
+window.openSign = id=>{
   signTarget=id;
-  const en=state.entries.find(x=>x.id===id);
-  document.getElementById('sig_name').value = en&&en.mentor ? en.mentor : (state.profile.mentor||'');
-  document.getElementById('signModal').classList.add('open');
+  const en=state.entries.find(x=>x.id===id) || allEntries.find(x=>x.id===id);
+  $('sig_name').value = en&&en.mentor ? en.mentor : (isMentor? (state.profile.name||'') : (state.profile.mentor||''));
+  $('signModal').classList.add('open');
   setTimeout(()=>{ sizePad(); clearSig(); },60);
-}
-function clearSig(){ pctx.setTransform(1,0,0,1,0,0); pctx.clearRect(0,0,pad.width,pad.height); pctx.scale(2,2); hasInk=false; }
-function closeSign(){ document.getElementById('signModal').classList.remove('open'); signTarget=null; }
-function saveSig(){
-  const name=document.getElementById('sig_name').value.trim();
+};
+window.clearSig = ()=>{ pctx.setTransform(1,0,0,1,0,0); pctx.clearRect(0,0,pad.width,pad.height); pctx.scale(2,2); hasInk=false; };
+window.closeSign = ()=>{ $('signModal').classList.remove('open'); signTarget=null; };
+window.saveSig = ()=>{
+  const name=$('sig_name').value.trim();
   if(!name){ toast('Enter the mentor’s name'); return; }
   if(!hasInk){ toast('Please sign in the box'); return; }
-  const en=state.entries.find(x=>x.id===signTarget); if(!en) return;
-  en.signed={ name:name, png:pad.toDataURL('image/png'), at:new Date().toISOString() };
-  save(); closeSign(); toast('Entry signed and locked ✔'); renderList(curFilter); renderDash();
-}
+  if(!signTarget) return;
+  updateDoc(doc(db,'entries',signTarget), { signed:{ name:name, png:pad.toDataURL('image/png'), at:new Date().toISOString() } })
+    .catch(e=>toast('Could not sign: '+e.code));
+  closeSign(); toast('Entry signed and locked ✔');
+};
 
-/* ---------- profile & targets ---------- */
-const progSel=document.getElementById('p_prog');
+/* ================= profile ================= */
+const progSel=$('p_prog');
 progSel.addEventListener('change', ()=>{
   const opt=progSel.selectedOptions[0];
-  if(opt && opt.dataset.saqa) document.getElementById('p_saqa').value='SAQA ID '+opt.dataset.saqa;
+  if(opt && opt.dataset.saqa) $('p_saqa').value='SAQA ID '+opt.dataset.saqa;
 });
 function fillProfileForm(){
   const p=state.profile||{};
-  document.getElementById('p_name').value=p.name||'';
-  document.getElementById('p_sno').value=p.sno||'';
-  document.getElementById('p_idno').value=p.idno||'';
-  document.getElementById('p_mentor').value=p.mentor||'';
+  $('p_email').value=p.email||(me&&me.email)||'';
+  $('p_name').value=p.name||'';
+  $('p_sno').value=p.sno||'';
+  $('p_idno').value=p.idno||'';
+  $('p_mentor').value=p.mentor||'';
   progSel.value=p.prog||'';
-  document.getElementById('p_saqa').value=p.saqa||'';
+  $('p_saqa').value=p.saqa||'';
+}
+window.saveProfile = ()=>{
+  if(!me) return;
+  updateDoc(doc(db,'users',me.uid), {
+    name:val('p_name'), sno:val('p_sno'), idno:val('p_idno'),
+    mentor:val('p_mentor'), prog:progSel.value, saqa:val('p_saqa')
+  }).then(()=>toast('Details saved ✔')).catch(e=>toast('Could not save: '+e.code));
+};
+
+function renderTargetsView(){
   const t=state.targets||{cats:{}};
-  document.getElementById('t_days').value=t.days||'';
-  document.getElementById('t_gdays').value=t.gdays||'';
-  document.getElementById('t_walk').value=t.walk||'';
-  document.getElementById('t_enc').value=t.enc||'';
-  const grid=document.getElementById('t_cats');
-  grid.innerHTML=CATS.map(c=>'<div><label>'+c+'</label><input type="number" min="0" data-cat="'+c+'" value="'+(t.cats&&t.cats[c]||'')+'"></div>').join('');
-}
-function saveProfile(){
-  state.profile={ name:val('p_name'), sno:val('p_sno'), idno:val('p_idno'),
-    mentor:val('p_mentor'), prog:progSel.value, saqa:val('p_saqa') };
-  save(); toast('Student details saved ✔'); renderDash();
-}
-function saveTargets(){
-  const cats={};
-  document.querySelectorAll('#t_cats input').forEach(i=>{ if(+i.value>0) cats[i.dataset.cat]=+i.value; });
-  state.targets={ days:+val('t_days')||0, gdays:+val('t_gdays')||0, walk:+val('t_walk')||0, enc:+val('t_enc')||0, cats:cats };
-  save(); toast('Targets saved ✔'); renderDash();
+  const any = (t.days||t.gdays||t.walk||t.enc||Object.keys(t.cats||{}).length);
+  if(!any){ $('targetsView').innerHTML='<p class="note"><b>No targets issued yet.</b> Your dashboard shows running totals in the meantime.</p>'; return; }
+  let html='<div class="statgrid">';
+  if(t.days) html+='<div class="stat"><b>'+t.days+'</b><span>field days required</span></div>';
+  if(t.gdays) html+='<div class="stat"><b>'+t.gdays+'</b><span>guest-facing days</span></div>';
+  if(t.walk) html+='<div class="stat"><b>'+t.walk+'</b><span>trail hours on foot</span></div>';
+  if(t.enc) html+='<div class="stat"><b>'+t.enc+'</b><span>encounters (total)</span></div>';
+  html+='</div>';
+  const cats=Object.keys(t.cats||{});
+  if(cats.length){ html+='<h3>Minimum encounters per category</h3><div class="statgrid">'+cats.map(c=>'<div class="stat"><b>'+t.cats[c]+'</b><span>'+esc(c)+'</span></div>').join('')+'</div>'; }
+  $('targetsView').innerHTML=html;
 }
 
-/* ---------- dashboard ---------- */
-function totals(){
+/* ================= dashboard ================= */
+function totalsOf(entries){
   const t={ days:0, gdays:0, dayHours:0, walkH:0, roles:{}, enc:0, cats:{}, encFoot:0 };
-  state.entries.forEach(e=>{
+  entries.forEach(e=>{
     if(e.kind==='day'){ t.days++; t.dayHours+=(+e.hours||0); if(e.type==='Guest-facing guiding') t.gdays++; }
     if(e.kind==='walk'){ t.walkH+=(+e.hours||0); t.roles[e.role]=(t.roles[e.role]||0)+(+e.hours||0); }
     if(e.kind==='enc'){ t.enc++; t.cats[e.cat]=(t.cats[e.cat]||0)+1; if(e.mode==='On foot') t.encFoot++; }
@@ -509,30 +815,126 @@ function bar(label,have,want){
   return '<div class="tline"><span>'+esc(label)+'</span><span><b>'+have+'</b> / '+want+'</span></div><div class="bar'+(pct>=100?' done':'')+'"><i style="width:'+pct+'%"></i></div>';
 }
 function renderDash(){
-  const p=state.profile||{}, tg=state.targets||{cats:{}}, t=totals();
-  document.getElementById('dashHello').textContent = p.name ? 'Welcome back, '+p.name.split(' ')[0]+'! 🐾' : 'Welcome to your Field Logbook 🐾';
-  document.getElementById('profileSummary').innerHTML = p.prog
+  const p=state.profile||{}, tg=state.targets||{cats:{}}, t=totalsOf(state.entries);
+  $('dashHello').textContent = p.name ? 'Welcome back, '+p.name.split(' ')[0]+'! 🐾' : 'Welcome to your Field Logbook 🐾';
+  $('profileSummary').innerHTML = p.prog
     ? '<b>'+esc(p.prog)+'</b>'+(p.saqa?' · '+esc(p.saqa):'')+(p.sno?' · Student no '+esc(p.sno):'')
-    : 'Set your programme under 🧑 Student &amp; Targets so your PoE pack prints with the right details.';
+    : 'Set your programme under 🧑 My Details so your PoE pack prints with the right details.';
   const signedCount=state.entries.filter(e=>e.signed).length;
-  document.getElementById('statDays').innerHTML =
+  $('statDays').innerHTML =
     '<div class="stat"><b>'+t.days+'</b><span>field days</span></div>'+
     '<div class="stat"><b>'+t.gdays+'</b><span>guest-facing</span></div>'+
     '<div class="stat"><b>'+t.dayHours.toFixed(1)+'</b><span>hours logged</span></div>'+
     '<div class="stat"><b>'+signedCount+'</b><span>entries signed</span></div>';
-  document.getElementById('progDays').innerHTML = bar('Field days', t.days, tg.days) + bar('Guest-facing days', t.gdays, tg.gdays);
+  $('progDays').innerHTML = bar('Field days', t.days, tg.days) + bar('Guest-facing days', t.gdays, tg.gdays);
   const roleBits = Object.keys(t.roles).map(r=>'<div class="stat"><b>'+t.roles[r].toFixed(1)+'</b><span>'+esc(r)+'</span></div>').join('');
-  document.getElementById('statWalk').innerHTML = '<div class="stat"><b>'+t.walkH.toFixed(1)+'</b><span>total hours</span></div>'+roleBits;
-  document.getElementById('progWalk').innerHTML = bar('Trail hours on foot', +t.walkH.toFixed(1), tg.walk);
+  $('statWalk').innerHTML = '<div class="stat"><b>'+t.walkH.toFixed(1)+'</b><span>total hours</span></div>'+roleBits;
+  $('progWalk').innerHTML = bar('Trail hours on foot', +t.walkH.toFixed(1), tg.walk);
   const catBits = CATS.filter(c=>t.cats[c]).map(c=>'<div class="stat"><b>'+t.cats[c]+'</b><span>'+esc(c)+'</span></div>').join('');
-  document.getElementById('statEnc').innerHTML = '<div class="stat"><b>'+t.enc+'</b><span>total encounters</span></div><div class="stat"><b>'+t.encFoot+'</b><span>on foot</span></div>'+catBits;
+  $('statEnc').innerHTML = '<div class="stat"><b>'+t.enc+'</b><span>total encounters</span></div><div class="stat"><b>'+t.encFoot+'</b><span>on foot</span></div>'+catBits;
   let encBars = bar('Encounters (total)', t.enc, tg.enc);
   Object.keys(tg.cats||{}).forEach(c=>{ encBars += bar(c, t.cats[c]||0, tg.cats[c]); });
-  document.getElementById('progEnc').innerHTML = encBars;
+  $('progEnc').innerHTML = encBars;
 }
 
-/* ---------- exports ---------- */
-function exportCSV(){
+/* ================= map ================= */
+let map=null, markerLayer=null;
+function initMap(){
+  if(typeof L==='undefined'){ $('mapIntro').textContent='The map module needs signal to load the first time — try again when connected.'; return; }
+  if(!map){
+    map = L.map('map').setView([-23.3, 29.75], 7); // Limpopo
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'© OpenStreetMap contributors'}).addTo(map);
+    markerLayer = L.layerGroup().addTo(map);
+  }
+  setTimeout(()=>map.invalidateSize(), 120);
+  refreshMap();
+}
+function refreshMap(){
+  if(!map || !markerLayer) return;
+  markerLayer.clearLayers();
+  const src = isMentor && allEntries.length ? allEntries : state.entries;
+  const nameOf = uid=>{ const s=allStudents.find(x=>x.uid===uid); return s? s.name||s.email : ''; };
+  const colors={day:'#2d5741', walk:'#3e7257', enc:'#c4a054'};
+  const pts=[];
+  src.forEach(en=>{
+    if(!en.gps) return;
+    pts.push([en.gps.lat, en.gps.lng]);
+    const kindTitle = en.kind==='day'?'Field day': en.kind==='walk'?'Trail walk': 'Encounter — '+esc(en.cat||'');
+    const who = isMentor && en.uid && en.uid!==(me&&me.uid) ? '<br>Student: '+esc(nameOf(en.uid)) : '';
+    L.circleMarker([en.gps.lat,en.gps.lng],{radius:8,color:colors[en.kind]||'#2d5741',fillColor:colors[en.kind]||'#2d5741',fillOpacity:.85,weight:2})
+      .bindPopup('<b>'+kindTitle+'</b><br>'+esc(en.date||'')+(en.time?' '+esc(en.time):'')+who+(en.notes?'<br>'+esc(en.notes):''))
+      .addTo(markerLayer);
+  });
+  $('mapIntro').textContent = isMentor
+    ? 'Every GPS-pinned entry across all students ('+pts.length+' pins).'
+    : (pts.length? pts.length+' of your entries have GPS pins.' : 'Every entry you capture with a GPS pin appears here — use 📍 Capture GPS when logging.');
+  if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:13});
+}
+
+/* ================= mentor: students ================= */
+function renderStudentList(){
+  if(!isMentor) return;
+  const box=$('studentList'); if(!box) return;
+  if(!allStudents.length){ box.innerHTML='<p class="note">No students have registered yet. Send them the app link — they create their own accounts.</p>'; return; }
+  box.innerHTML = allStudents.map(s=>{
+    const ens = allEntries.filter(e=>e.uid===s.uid);
+    const t = totalsOf(ens);
+    const unsigned = ens.filter(e=>!e.signed).length;
+    return '<div class="stuRow"><div><b>'+esc(s.name||s.email)+'</b><div class="sub">'+esc(s.prog||'no programme set')+(s.sno?' · '+esc(s.sno):'')+'</div>'
+      +'<div class="sub">'+t.days+' days · '+t.walkH.toFixed(1)+' h on foot · '+t.enc+' encounters'+(unsigned?' · <b>'+unsigned+' awaiting signature</b>':'')+'</div></div>'
+      +'<button class="btn small secondary" onclick="openStudent(\''+s.uid+'\')">Open</button></div>';
+  }).join('');
+}
+
+window.openStudent = async (uid, keepScroll)=>{
+  curStudent=uid;
+  const s=allStudents.find(x=>x.uid===uid); if(!s) return;
+  try{
+    const tSnap = await getDoc(doc(db,'targets',uid));
+    curStudentTargets = tSnap.exists()? Object.assign({cats:{}}, tSnap.data()) : {cats:{}};
+    if(!curStudentTargets.cats) curStudentTargets.cats={};
+  }catch(e){ curStudentTargets={cats:{}}; }
+  const ens = allEntries.filter(e=>e.uid===uid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const t=totalsOf(ens); const tg=curStudentTargets;
+  let html='<div class="card"><h2>🎓 '+esc(s.name||s.email)+'</h2>'
+    +'<p class="note">'+esc(s.prog||'No programme set')+(s.saqa?' · '+esc(s.saqa):'')+(s.sno?' · Student no '+esc(s.sno):'')+' · '+esc(s.email||'')+'</p>'
+    +'<div class="statgrid">'
+    +'<div class="stat"><b>'+t.days+'</b><span>field days</span></div>'
+    +'<div class="stat"><b>'+t.walkH.toFixed(1)+'</b><span>trail hours</span></div>'
+    +'<div class="stat"><b>'+t.enc+'</b><span>encounters</span></div>'
+    +'<div class="stat"><b>'+ens.filter(e=>e.signed).length+'/'+ens.length+'</b><span>signed</span></div>'
+    +'</div>'
+    +'<div class="btnrow"><button class="btn" onclick="printStudentPoE(\''+uid+'\')">🖨️ Print PoE pack</button>'
+    +'<button class="btn ghost" onclick="closeStudent()">Close</button></div></div>';
+
+  html+='<div class="card"><h2>🎯 Official targets for this student</h2>'
+    +'<p class="note">Enter the official requirements issued by the college for this student’s programme. The student sees these on their dashboard but cannot change them.</p>'
+    +'<div class="row">'
+    +'<div><label>Field days (total)</label><input type="number" id="mt_days" min="0" value="'+(tg.days||'')+'"></div>'
+    +'<div><label>Guest-facing days</label><input type="number" id="mt_gdays" min="0" value="'+(tg.gdays||'')+'"></div>'
+    +'<div><label>Trail hours on foot</label><input type="number" id="mt_walk" min="0" value="'+(tg.walk||'')+'"></div>'
+    +'<div><label>Encounters (total)</label><input type="number" id="mt_enc" min="0" value="'+(tg.enc||'')+'"></div>'
+    +'</div><h3>Minimum encounters per category</h3><div class="catgrid">'
+    +CATS.map(c=>'<div><label>'+c+'</label><input type="number" min="0" data-mcat="'+c+'" value="'+(tg.cats&&tg.cats[c]||'')+'"></div>').join('')
+    +'</div><div class="btnrow"><button class="btn" onclick="saveStudentTargets(\''+uid+'\')">Save targets</button></div></div>';
+
+  html+='<div class="card"><h2>📒 Entries</h2>'
+    +(ens.length? ens.map(en=>entryHTML(en,{canSign:true,canDelete:false})).join('') : '<p class="note">No entries yet.</p>')
+    +'</div>';
+  $('studentDetail').innerHTML=html;
+  if(!keepScroll) $('studentDetail').scrollIntoView({behavior:'smooth'});
+};
+window.closeStudent = ()=>{ curStudent=null; $('studentDetail').innerHTML=''; };
+window.saveStudentTargets = uid=>{
+  const cats={};
+  document.querySelectorAll('[data-mcat]').forEach(i=>{ if(+i.value>0) cats[i.dataset.mcat]=+i.value; });
+  const t={ days:+($('mt_days').value)||0, gdays:+($('mt_gdays').value)||0, walk:+($('mt_walk').value)||0, enc:+($('mt_enc').value)||0, cats:cats };
+  setDoc(doc(db,'targets',uid), t).then(()=>toast('Targets saved ✔')).catch(e=>toast('Could not save: '+e.code));
+  curStudentTargets=t;
+};
+
+/* ================= exports ================= */
+window.exportCSV = ()=>{
   const rows=[['kind','date','time','type_or_role_or_category','hours','detail','distance_m','mode','behaviour','response','location_area','notes','mentor','gps_lat','gps_lng','signed_by','signed_at']];
   state.entries.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(e=>{
     rows.push([e.kind, e.date||'', e.time||'',
@@ -543,36 +945,23 @@ function exportCSV(){
       e.signed?e.signed.name:'', e.signed?e.signed.at:'' ]);
   });
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  download(new Blob([csv],{type:'text/csv'}), 'LWEC-logbook.csv');
-}
-function backupJSON(){ download(new Blob([JSON.stringify(state,null,1)],{type:'application/json'}), 'LWEC-logbook-backup.json'); }
-function restoreJSON(inp){
-  const f=inp.files[0]; if(!f) return;
-  const r=new FileReader();
-  r.onload=()=>{ try{ const s=JSON.parse(r.result);
-      if(!s.entries) throw 0;
-      if(confirm('Replace the logbook on this device with the backup ('+s.entries.length+' entries)?')){ state=s; save(); fillProfileForm(); renderDash(); renderList(curFilter); toast('Backup restored ✔'); }
-    }catch(e){ toast('That file is not a valid logbook backup'); } inp.value=''; };
-  r.readAsText(f);
-}
-function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
-function wipeAll(){
-  if(confirm('This permanently erases ALL logbook data on this device. Are you sure?') && confirm('Really sure? Signed PoE entries will be lost unless you have a backup or printed pack.')){
-    state={profile:{},targets:{cats:{}},entries:[]}; save(); fillProfileForm(); renderDash(); renderList(curFilter); toast('Logbook erased');
-  }
-}
+  const a=document.createElement('a'); const blob=new Blob([csv],{type:'text/csv'});
+  a.href=URL.createObjectURL(blob); a.download='LWEC-logbook.csv'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+};
 
-/* ---------- PoE print pack ---------- */
-function printPoE(){
-  const p=state.profile||{}, t=totals(), tg=state.targets||{cats:{}};
-  const list=state.entries.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+/* ================= PoE print pack ================= */
+function printPack(p, tg, entries){
+  const t=totalsOf(entries);
+  const list=entries.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const dates=list.map(e=>e.date).filter(Boolean);
   const range=dates.length? dates[0]+' to '+dates[dates.length-1] : '—';
-  const rowsDay=list.filter(e=>e.kind==='day').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.loc||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+(e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—')+'</td></tr>').join('');
-  const rowsWalk=list.filter(e=>e.kind==='walk').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.role)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.area||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+(e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—')+'</td></tr>').join('');
-  const rowsEnc=list.filter(e=>e.kind==='enc').map(e=>'<tr><td>'+esc(e.date)+(e.time?' '+esc(e.time):'')+'</td><td>'+esc(e.cat)+'</td><td>'+esc(e.species||'')+'</td><td>'+esc(e.mode||'')+'</td><td>'+esc(e.dist||'')+'</td><td>'+esc(e.beh||'')+' / '+esc(e.act||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+(e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—')+'</td></tr>').join('');
+  const sigCell=e=> e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—';
+  const rowsDay=list.filter(e=>e.kind==='day').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.loc||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
+  const rowsWalk=list.filter(e=>e.kind==='walk').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.role)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.area||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
+  const rowsEnc=list.filter(e=>e.kind==='enc').map(e=>'<tr><td>'+esc(e.date)+(e.time?' '+esc(e.time):'')+'</td><td>'+esc(e.cat)+'</td><td>'+esc(e.species||'')+'</td><td>'+esc(e.mode||'')+'</td><td>'+esc(e.dist||'')+'</td><td>'+esc(e.beh||'')+' / '+esc(e.act||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
   const catSum = CATS.map(c=>'<tr><td>'+c+'</td><td>'+(t.cats[c]||0)+'</td><td>'+(tg.cats&&tg.cats[c]||'—')+'</td></tr>').join('');
-  document.getElementById('printArea').innerHTML =
+  $('printArea').innerHTML =
   '<div class="pr-page"><div class="pr-h"><h1>Limpopo Wildlife Eco College</h1><div class="sub">CONSERVATION · EDUCATION · LEADERSHIP</div><h1 style="margin-top:10mm;">Practical Field Logbook</h1><div class="sub">PORTFOLIO OF EVIDENCE — PRACTICAL RECORD</div></div>'+
   '<table class="pr"><tr><th style="width:38%">Student name</th><td>'+esc(p.name||'')+'</td></tr>'+
   '<tr><th>Student number</th><td>'+esc(p.sno||'')+'</td></tr>'+
@@ -593,9 +982,39 @@ function printPoE(){
   (rowsEnc?'<div class="pr-page"><h3>Dangerous-game encounters</h3><table class="pr"><tr><th>Date</th><th>Category</th><th>Detail</th><th>Mode</th><th>Dist (m)</th><th>Behaviour / response</th><th>Mentor</th><th>Verification</th></tr>'+rowsEnc+'</table></div>':'');
   window.print();
 }
+window.printMyPoE = ()=> printPack(state.profile||{}, state.targets||{cats:{}}, state.entries);
+window.printStudentPoE = uid=>{
+  const s=allStudents.find(x=>x.uid===uid)||{};
+  printPack(s, curStudentTargets||{cats:{}}, allEntries.filter(e=>e.uid===uid));
+};
 
-/* ---------- boot ---------- */
-fillProfileForm(); renderDash(); renderList('all');
+/* ================= migration from v1 (device-local) ================= */
+function oldData(){
+  try{ const s=JSON.parse(localStorage.getItem(OLDKEY)); if(s && s.entries && s.entries.length) return s; }catch(e){}
+  return null;
+}
+function checkMigration(){
+  const s=oldData();
+  if(!s){ $('migrateCard').hidden=true; return; }
+  $('migrateCard').hidden=false;
+  $('migrateNote').textContent = 'This phone still holds '+s.entries.length+' entr'+(s.entries.length===1?'y':'ies')+' from the old version of the logbook (before accounts). Move them into your account once — they’ll sync like everything else, signatures included.';
+}
+window.migrateLocal = ()=>{
+  const s=oldData(); if(!s||!me) return;
+  if(!confirm('Move '+s.entries.length+' old entries into the account '+(me.email||'')+'? Do this only on your own phone, signed in as yourself.')) return;
+  $('migrateBtn').disabled=true;
+  s.entries.forEach(en=>{
+    const data=Object.assign({}, en); delete data.id;
+    addDoc(collection(db,'entries'), Object.assign({uid:me.uid, createdAt:serverTimestamp(), migrated:true}, data))
+      .catch(e=>console.warn('migrate', e));
+  });
+  localStorage.setItem(OLDKEY+'_imported', localStorage.getItem(OLDKEY));
+  localStorage.removeItem(OLDKEY);
+  $('migrateCard').hidden=true;
+  toast(s.entries.length+' old entries moved into your account ✔');
+};
+
+/* ================= boot ================= */
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>
 </body>
