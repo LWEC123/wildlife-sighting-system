@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LWEC Field Logbook — Portfolio of Evidence</title>
+<meta name="theme-color" content="#1e3a2a">
+<style>
+:root{
+  --green-deep:#1e3a2a; --green:#2d5741; --green-soft:#3e7257;
+  --sand:#f4efe4; --sand-deep:#e8e0cd; --gold:#e9c87b; --gold-deep:#c4a054;
+  --ink:#25301f; --muted:#5c6653; --card:#ffffff; --danger:#a03c2e;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); min-height:100vh;}
+header{background:var(--green-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px;}
+header img{height:46px; width:auto;}
+header .t b{display:block; font-size:1.05rem; letter-spacing:.3px;}
+header .t span{font-size:.75rem; color:var(--gold);}
+nav{display:flex; overflow-x:auto; background:var(--green); position:sticky; top:0; z-index:40;}
+nav button{flex:0 0 auto; background:none; border:none; color:#dfe9e0; padding:12px 16px; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap;}
+nav button.active{color:#fff; border-bottom-color:var(--gold); background:rgba(255,255,255,.06);}
+main{max-width:860px; margin:0 auto; padding:16px 12px 90px;}
+.card{background:var(--card); border-radius:12px; box-shadow:0 2px 10px rgba(30,58,42,.10); padding:18px 16px; margin-bottom:16px;}
+.card h2{color:var(--green-deep); font-size:1.15rem; margin-bottom:10px;}
+.card h3{color:var(--green); font-size:.98rem; margin:12px 0 6px;}
+.note{font-size:.82rem; color:var(--muted); line-height:1.5;}
+label{display:block; font-size:.82rem; font-weight:600; color:var(--green-deep); margin:10px 0 4px;}
+input,select,textarea{width:100%; padding:10px; border:1px solid #cfd8cc; border-radius:8px; font-size:.95rem; background:#fff; color:var(--ink);}
+textarea{min-height:64px; resize:vertical;}
+.row{display:flex; gap:10px; flex-wrap:wrap;}
+.row>div{flex:1 1 150px;}
+.btn{display:inline-block; border:none; border-radius:999px; padding:11px 22px; font-weight:700; font-size:.92rem; cursor:pointer; background:var(--gold); color:var(--green-deep);}
+.btn.secondary{background:var(--green); color:#fff;}
+.btn.ghost{background:transparent; border:1.5px solid var(--green); color:var(--green);}
+.btn.danger{background:#fff; border:1.5px solid var(--danger); color:var(--danger);}
+.btn.small{padding:7px 14px; font-size:.8rem;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+.btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+.pill{display:inline-block; background:var(--sand); border-radius:999px; padding:3px 10px; font-size:.72rem; font-weight:700; color:var(--green);}
+.pill.gold{background:var(--gold); color:var(--green-deep);}
+.pill.locked{background:var(--green-deep); color:var(--gold);}
+.statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:8px;}
+.stat{background:var(--sand); border-radius:10px; padding:12px; text-align:center;}
+.stat b{display:block; font-size:1.5rem; color:var(--green-deep);}
+.stat span{font-size:.75rem; color:var(--muted);}
+.bar{background:var(--sand-deep); border-radius:999px; height:14px; overflow:hidden; margin-top:6px;}
+.bar i{display:block; height:100%; background:linear-gradient(90deg,var(--green),var(--green-soft)); border-radius:999px; transition:width .4s;}
+.bar.done i{background:linear-gradient(90deg,var(--gold-deep),var(--gold));}
+.tline{display:flex; justify-content:space-between; font-size:.8rem; margin-top:10px;}
+.entry{border:1px solid #e3ddcc; border-left:5px solid var(--green); border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff;}
+.entry.enc{border-left-color:var(--gold-deep);}
+.entry.walk{border-left-color:var(--green-soft);}
+.entry .head{display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:center;}
+.entry .head b{color:var(--green-deep);}
+.entry .meta{font-size:.82rem; color:var(--muted); margin-top:4px; line-height:1.5;}
+.entry img.sig{height:38px; background:#fff; border:1px solid #ddd; border-radius:6px; margin-top:6px;}
+.filterrow{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+.filterrow button{border:1.5px solid var(--green); background:#fff; color:var(--green); border-radius:999px; padding:6px 14px; font-size:.8rem; cursor:pointer;}
+.filterrow button.active{background:var(--green); color:#fff;}
+.modal{position:fixed; inset:0; background:rgba(8,14,9,.75); display:none; align-items:center; justify-content:center; z-index:100; padding:14px;}
+.modal.open{display:flex;}
+.modal .box{background:#fff; border-radius:14px; padding:18px; width:100%; max-width:460px;}
+canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border-radius:10px; touch-action:none; background:#fffdf7;}
+.gpsline{font-size:.78rem; color:var(--muted); margin-top:4px;}
+.toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--green-deep); color:#fff; padding:10px 20px; border-radius:999px; font-size:.85rem; opacity:0; transition:opacity .3s; z-index:200; pointer-events:none;}
+.toast.show{opacity:1;}
+.catgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px;}
+#printArea{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  #printArea{display:block; position:absolute; left:0; top:0; width:100%; background:#fff; color:#000; font-size:11pt;}
+  .pr-page{page-break-after:always; padding:14mm;}
+  .pr-page:last-child{page-break-after:auto;}
+  .pr-h{ text-align:center; margin-bottom:8mm;}
+  .pr-h h1{font-size:17pt; color:#1e3a2a;}
+  .pr-h .sub{font-size:10pt; letter-spacing:1px;}
+  table.pr{width:100%; border-collapse:collapse; font-size:9pt; margin-top:4mm;}
+  table.pr th, table.pr td{border:1px solid #777; padding:4pt 5pt; text-align:left; vertical-align:top;}
+  table.pr th{background:#e9e4d4;}
+  .sigblock{margin-top:12mm;}
+  .sigline{display:inline-block; width:46%; margin-right:3%; margin-top:10mm; border-top:1px solid #000; font-size:9pt; padding-top:2pt;}
+  .decl{font-size:10pt; line-height:1.6; margin-top:6mm;}
+  img.prsig{height:28pt;}
+}
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/lweclogo.png" alt="LWEC logo" onerror="this.style.display='none'">
+  <div class="t"><b>LWEC Field Logbook</b><span>Limpopo Wildlife Eco College — Practical Record &amp; Portfolio of Evidence</span></div>
+</header>
+<nav id="nav">
+  <button data-tab="dash" class="active">🏠 Dashboard</button>
+  <button data-tab="new">➕ New Entry</button>
+  <button data-tab="list">📒 My Entries</button>
+  <button data-tab="student">🧑 Student &amp; Targets</button>
+  <button data-tab="export">🖨️ Export / PoE</button>
+</nav>
+<main>
+
+<!-- DASHBOARD -->
+<section id="tab-dash">
+  <div class="card">
+    <h2 id="dashHello">Welcome to your Field Logbook 🐾</h2>
+    <p class="note">Every field day, trail walk and dangerous-game encounter you log here builds your verified practical record. Signed entries are locked and form part of your <b>Portfolio of Evidence</b> on your student file at Limpopo Wildlife Eco College.</p>
+    <p class="note" id="profileSummary" style="margin-top:8px;"></p>
+  </div>
+  <div class="card">
+    <h2>📊 Field days</h2>
+    <div class="statgrid" id="statDays"></div>
+    <div id="progDays"></div>
+  </div>
+  <div class="card">
+    <h2>🥾 Trail hours on foot</h2>
+    <div class="statgrid" id="statWalk"></div>
+    <div id="progWalk"></div>
+  </div>
+  <div class="card">
+    <h2>🐘 Dangerous-game encounters</h2>
+    <div class="statgrid" id="statEnc"></div>
+    <div id="progEnc"></div>
+  </div>
+</section>
+
+<!-- NEW ENTRY -->
+<section id="tab-new" hidden>
+  <div class="card">
+    <h2>What are you logging?</h2>
+    <div class="filterrow" id="kindPick">
+      <button data-kind="day" class="active">🌅 Field day</button>
+      <button data-kind="walk">🥾 Trail walk</button>
+      <button data-kind="enc">🐘 Encounter</button>
+    </div>
+
+    <form id="formDay">
+      <div class="row">
+        <div><label>Date</label><input type="date" id="day_date" required></div>
+        <div><label>Hours in the field</label><input type="number" id="day_hours" min="0" max="24" step="0.5" placeholder="e.g. 8"></div>
+      </div>
+      <label>Type of day</label>
+      <select id="day_type">
+        <option>Guest-facing guiding</option>
+        <option>Tracking &amp; field work</option>
+        <option>Workplace duty (lodge / outfitter)</option>
+        <option>Range &amp; weapons training</option>
+        <option>Conservation / anti-poaching support</option>
+        <option>Other practical training</option>
+      </select>
+      <label>Reserve / location</label><input id="day_loc" placeholder="e.g. LWEC campus reserve, Bandelierkop">
+      <label>What you did (activities, duties, species worked with)</label><textarea id="day_notes"></textarea>
+      <label>Mentor / supervisor on the day</label><input id="day_mentor" placeholder="Name">
+      <div class="btnrow">
+        <button type="button" class="btn ghost small" onclick="grabGPS('day')">📍 Capture GPS</button>
+        <span class="gpsline" id="day_gps"></span>
+      </div>
+      <div class="btnrow"><button type="submit" class="btn">Save field day</button></div>
+    </form>
+
+    <form id="formWalk" hidden>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="walk_date" required></div>
+        <div><label>Hours on foot</label><input type="number" id="walk_hours" min="0" max="24" step="0.25" placeholder="e.g. 3.5" required></div>
+      </div>
+      <label>Your role on the walk</label>
+      <select id="walk_role">
+        <option>Observer</option>
+        <option>Back-up under mentorship</option>
+        <option>Lead under mentorship</option>
+        <option>Workplace lead (with guests)</option>
+      </select>
+      <label>Area walked</label><input id="walk_area" placeholder="e.g. riverine section, northern boundary">
+      <label>Notes (terrain, purpose, lessons)</label><textarea id="walk_notes"></textarea>
+      <label>Mentor / lead guide</label><input id="walk_mentor" placeholder="Name">
+      <div class="btnrow">
+        <button type="button" class="btn ghost small" onclick="grabGPS('walk')">📍 Capture GPS</button>
+        <span class="gpsline" id="walk_gps"></span>
+      </div>
+      <div class="btnrow"><button type="submit" class="btn">Save trail walk</button></div>
+    </form>
+
+    <form id="formEnc" hidden>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="enc_date" required></div>
+        <div><label>Time</label><input type="time" id="enc_time"></div>
+      </div>
+      <label>Animal category</label>
+      <select id="enc_cat">
+        <option>Elephant</option><option>Rhino</option><option>Lion</option>
+        <option>Leopard</option><option>Buffalo</option><option>Hippo</option>
+        <option>Other dangerous game</option>
+      </select>
+      <div class="row">
+        <div><label>Species / detail</label><input id="enc_species" placeholder="e.g. breeding herd, lone bull"></div>
+        <div><label>Approx. distance (m)</label><input type="number" id="enc_dist" min="0" placeholder="e.g. 60"></div>
+      </div>
+      <label>On foot or vehicle?</label>
+      <select id="enc_mode"><option>On foot</option><option>Vehicle</option></select>
+      <label>Animal behaviour observed</label><input id="enc_beh" placeholder="e.g. feeding, relaxed; mock charge">
+      <label>Your / the team's response</label><input id="enc_act" placeholder="e.g. held position downwind, withdrew quietly">
+      <label>Notes</label><textarea id="enc_notes"></textarea>
+      <label>Mentor / lead guide present</label><input id="enc_mentor" placeholder="Name">
+      <div class="btnrow">
+        <button type="button" class="btn ghost small" onclick="grabGPS('enc')">📍 Capture GPS</button>
+        <span class="gpsline" id="enc_gps"></span>
+      </div>
+      <div class="btnrow"><button type="submit" class="btn">Save encounter</button></div>
+    </form>
+  </div>
+</section>
+
+<!-- ENTRIES -->
+<section id="tab-list" hidden>
+  <div class="card">
+    <h2>📒 My entries</h2>
+    <p class="note">An entry becomes part of your Portfolio of Evidence once your mentor signs it — signed entries lock and can no longer be edited or deleted.</p>
+    <div class="filterrow" id="listFilter" style="margin-top:10px;">
+      <button data-f="all" class="active">All</button>
+      <button data-f="day">Field days</button>
+      <button data-f="walk">Trail walks</button>
+      <button data-f="enc">Encounters</button>
+      <button data-f="unsigned">Awaiting signature</button>
+    </div>
+    <div id="entryList"></div>
+  </div>
+</section>
+
+<!-- STUDENT & TARGETS -->
+<section id="tab-student" hidden>
+  <div class="card">
+    <h2>🧑 Student details</h2>
+    <p class="note">These details print on the cover of your Portfolio of Evidence pack.</p>
+    <div class="row">
+      <div><label>Full name</label><input id="p_name"></div>
+      <div><label>Student number</label><input id="p_sno"></div>
+    </div>
+    <div class="row">
+      <div><label>ID number</label><input id="p_idno"></div>
+      <div><label>Default mentor</label><input id="p_mentor"></div>
+    </div>
+    <label>Programme</label>
+    <select id="p_prog">
+      <option value="">— choose programme —</option>
+      <option data-saqa="58930">FETC: Professional Hunting (SAQA 58930, NQF 4)</option>
+      <option data-saqa="71549">FETC: Tourist Guiding (SAQA 71549, NQF 4)</option>
+      <option data-saqa="14110">National Certificate: Accommodation Services (SAQA 14110, NQF 2)</option>
+      <option data-saqa="">Tracker Skills Programme</option>
+      <option data-saqa="">12 Day Professional Hunting Course</option>
+      <option data-saqa="">Other</option>
+    </select>
+    <label>Programme detail / SAQA ID (auto-filled where known)</label><input id="p_saqa">
+    <div class="btnrow"><button class="btn" onclick="saveProfile()">Save details</button></div>
+  </div>
+  <div class="card">
+    <h2>🎯 Programme targets</h2>
+    <p class="note"><b>Enter the official requirements issued by the college for your programme.</b> Targets left at 0 simply show your running totals without a progress bar. Your mentor or the college office will confirm the correct numbers.</p>
+    <div class="row">
+      <div><label>Field days (total)</label><input type="number" id="t_days" min="0"></div>
+      <div><label>Guest-facing days</label><input type="number" id="t_gdays" min="0"></div>
+      <div><label>Trail hours on foot</label><input type="number" id="t_walk" min="0"></div>
+      <div><label>Encounters (total)</label><input type="number" id="t_enc" min="0"></div>
+    </div>
+    <h3>Minimum encounters per category</h3>
+    <div class="catgrid" id="t_cats"></div>
+    <div class="btnrow"><button class="btn" onclick="saveTargets()">Save targets</button></div>
+  </div>
+</section>
+
+<!-- EXPORT -->
+<section id="tab-export" hidden>
+  <div class="card">
+    <h2>🖨️ Portfolio of Evidence pack</h2>
+    <p class="note">Prints a cover page with your details and declaration, a summary of totals, and every entry in chronological order with its signature status. Hand the printed pack to your assessor for your student file — or print to PDF.</p>
+    <div class="btnrow"><button class="btn" onclick="printPoE()">Print / Save PoE pack</button></div>
+  </div>
+  <div class="card">
+    <h2>📄 Data exports</h2>
+    <div class="btnrow">
+      <button class="btn secondary" onclick="exportCSV()">Download CSV</button>
+      <button class="btn ghost" onclick="backupJSON()">Backup file</button>
+      <button class="btn ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup</button>
+      <input type="file" id="restoreFile" accept=".json" hidden onchange="restoreJSON(this)">
+    </div>
+    <p class="note" style="margin-top:10px;">Your logbook lives on this device. Make a backup file regularly — and after restoring on a new device, check your totals before continuing.</p>
+  </div>
+  <div class="card">
+    <h2>⚠️ Start over</h2>
+    <div class="btnrow"><button class="btn danger" onclick="wipeAll()">Erase all logbook data on this device</button></div>
+  </div>
+</section>
+</main>
+
+<!-- SIGN MODAL -->
+<div class="modal" id="signModal">
+  <div class="box">
+    <h2 style="color:var(--green-deep); margin-bottom:6px;">Mentor sign-off</h2>
+    <p class="note">Mentor: check the entry, then sign below. Signing locks the entry permanently.</p>
+    <label>Mentor name</label><input id="sig_name">
+    <label style="margin-top:10px;">Signature</label>
+    <canvas id="sigpad"></canvas>
+    <div class="btnrow">
+      <button class="btn small ghost" onclick="clearSig()">Clear</button>
+      <button class="btn small" onclick="saveSig()">Sign &amp; lock entry</button>
+      <button class="btn small danger" onclick="closeSign()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+const CATS = ["Elephant","Rhino","Lion","Leopard","Buffalo","Hippo","Other dangerous game"];
+const KEY = "lwec_logbook_v1";
+let state = load();
+let signTarget = null;
+
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && s.entries) return s; }catch(e){}
+  return { profile:{}, targets:{cats:{}}, entries:[] };
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* ---------- tabs ---------- */
+document.getElementById('nav').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x===b));
+  ['dash','new','list','student','export'].forEach(t=>{
+    document.getElementById('tab-'+t).hidden = (t!==b.dataset.tab);
+  });
+  if(b.dataset.tab==='dash') renderDash();
+  if(b.dataset.tab==='list') renderList(curFilter);
+});
+
+/* ---------- new entry kind picker ---------- */
+document.getElementById('kindPick').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#kindPick button').forEach(x=>x.classList.toggle('active',x===b));
+  document.getElementById('formDay').hidden = b.dataset.kind!=='day';
+  document.getElementById('formWalk').hidden = b.dataset.kind!=='walk';
+  document.getElementById('formEnc').hidden = b.dataset.kind!=='enc';
+});
+
+/* ---------- GPS ---------- */
+const gpsTemp = {};
+function grabGPS(which){
+  if(!navigator.geolocation){ toast('GPS not available on this device'); return; }
+  document.getElementById(which+'_gps').textContent = 'Getting location…';
+  navigator.geolocation.getCurrentPosition(p=>{
+    gpsTemp[which] = {lat:+p.coords.latitude.toFixed(5), lng:+p.coords.longitude.toFixed(5)};
+    document.getElementById(which+'_gps').textContent = '📍 '+gpsTemp[which].lat+', '+gpsTemp[which].lng;
+  }, ()=>{ document.getElementById(which+'_gps').textContent='Could not get GPS (allow location, or try outdoors)'; }, {enableHighAccuracy:true, timeout:12000});
+}
+
+/* ---------- forms ---------- */
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+['day_date','walk_date','enc_date'].forEach(id=>{ document.getElementById(id).value = todayISO(); });
+
+document.getElementById('formDay').addEventListener('submit', e=>{
+  e.preventDefault();
+  state.entries.push({ id:uid(), kind:'day',
+    date:val('day_date'), hours:+val('day_hours')||0, type:val('day_type'),
+    loc:val('day_loc'), notes:val('day_notes'), mentor:val('day_mentor')||state.profile.mentor||'',
+    gps:gpsTemp.day||null, signed:null });
+  delete gpsTemp.day; afterSave('formDay','day_gps','Field day saved ✔');
+});
+document.getElementById('formWalk').addEventListener('submit', e=>{
+  e.preventDefault();
+  state.entries.push({ id:uid(), kind:'walk',
+    date:val('walk_date'), hours:+val('walk_hours')||0, role:val('walk_role'),
+    area:val('walk_area'), notes:val('walk_notes'), mentor:val('walk_mentor')||state.profile.mentor||'',
+    gps:gpsTemp.walk||null, signed:null });
+  delete gpsTemp.walk; afterSave('formWalk','walk_gps','Trail walk saved ✔');
+});
+document.getElementById('formEnc').addEventListener('submit', e=>{
+  e.preventDefault();
+  state.entries.push({ id:uid(), kind:'enc',
+    date:val('enc_date'), time:val('enc_time'), cat:val('enc_cat'), species:val('enc_species'),
+    dist:val('enc_dist'), mode:val('enc_mode'), beh:val('enc_beh'), act:val('enc_act'),
+    notes:val('enc_notes'), mentor:val('enc_mentor')||state.profile.mentor||'',
+    gps:gpsTemp.enc||null, signed:null });
+  delete gpsTemp.enc; afterSave('formEnc','enc_gps','Encounter saved ✔');
+});
+function val(id){ return document.getElementById(id).value.trim(); }
+function afterSave(formId,gpsId,msg){
+  save(); document.getElementById(formId).reset();
+  ['day_date','walk_date','enc_date'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=todayISO(); });
+  document.getElementById(gpsId).textContent='';
+  toast(msg); renderDash();
+}
+
+/* ---------- entries list ---------- */
+let curFilter='all';
+document.getElementById('listFilter').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#listFilter button').forEach(x=>x.classList.toggle('active',x===b));
+  curFilter=b.dataset.f; renderList(curFilter);
+});
+function renderList(f){
+  const box=document.getElementById('entryList');
+  let list=[...state.entries].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  if(f==='day'||f==='walk'||f==='enc') list=list.filter(x=>x.kind===f);
+  if(f==='unsigned') list=list.filter(x=>!x.signed);
+  if(!list.length){ box.innerHTML='<p class="note" style="margin-top:10px;">Nothing here yet — log your first entry under ➕ New Entry.</p>'; return; }
+  box.innerHTML=list.map(en=>{
+    const title = en.kind==='day' ? '🌅 '+esc(en.type) : en.kind==='walk' ? '🥾 Trail walk — '+esc(en.role) : '🐘 '+esc(en.cat)+(en.mode==='On foot'?' (on foot)':'');
+    const meta=[];
+    if(en.kind==='day'){ if(en.hours) meta.push(en.hours+' h'); if(en.loc) meta.push(esc(en.loc)); }
+    if(en.kind==='walk'){ meta.push(en.hours+' h on foot'); if(en.area) meta.push(esc(en.area)); }
+    if(en.kind==='enc'){ if(en.species) meta.push(esc(en.species)); if(en.dist) meta.push('~'+esc(en.dist)+' m'); if(en.beh) meta.push(esc(en.beh)); }
+    if(en.mentor) meta.push('Mentor: '+esc(en.mentor));
+    if(en.gps) meta.push('📍 '+en.gps.lat+', '+en.gps.lng);
+    if(en.notes) meta.push(esc(en.notes));
+    const lock = en.signed
+      ? '<span class="pill locked">✔ Signed — '+esc(en.signed.name)+'</span>'
+      : '<span class="pill">awaiting signature</span>';
+    const btns = en.signed
+      ? (en.signed.png ? '<img class="sig" src="'+en.signed.png+'" alt="signature">' : '')
+      : '<div class="btnrow"><button class="btn small" onclick="openSign(\''+en.id+'\')">✍️ Mentor sign</button><button class="btn small danger" onclick="delEntry(\''+en.id+'\')">Delete</button></div>';
+    return '<div class="entry '+en.kind+'"><div class="head"><b>'+esc(en.date)+(en.time?' '+esc(en.time):'')+' · '+title+'</b>'+lock+'</div><div class="meta">'+meta.join(' · ')+'</div>'+btns+'</div>';
+  }).join('');
+}
+function delEntry(id){
+  const en=state.entries.find(x=>x.id===id);
+  if(!en||en.signed) return;
+  if(confirm('Delete this unsigned entry?')){ state.entries=state.entries.filter(x=>x.id!==id); save(); renderList(curFilter); renderDash(); }
+}
+
+/* ---------- signature pad ---------- */
+const pad=document.getElementById('sigpad'); const pctx=pad.getContext('2d');
+let drawing=false, hasInk=false;
+function sizePad(){ const r=pad.getBoundingClientRect(); pad.width=r.width*2; pad.height=r.height*2; pctx.scale(2,2); pctx.lineWidth=2; pctx.lineCap='round'; pctx.strokeStyle='#1e3a2a'; }
+function posOf(ev){ const r=pad.getBoundingClientRect(); const t=ev.touches?ev.touches[0]:ev; return {x:t.clientX-r.left, y:t.clientY-r.top}; }
+function startD(ev){ ev.preventDefault(); drawing=true; const p=posOf(ev); pctx.beginPath(); pctx.moveTo(p.x,p.y); }
+function moveD(ev){ if(!drawing) return; ev.preventDefault(); const p=posOf(ev); pctx.lineTo(p.x,p.y); pctx.stroke(); hasInk=true; }
+function endD(){ drawing=false; }
+pad.addEventListener('mousedown',startD); pad.addEventListener('mousemove',moveD); window.addEventListener('mouseup',endD);
+pad.addEventListener('touchstart',startD,{passive:false}); pad.addEventListener('touchmove',moveD,{passive:false}); pad.addEventListener('touchend',endD);
+
+function openSign(id){
+  signTarget=id;
+  const en=state.entries.find(x=>x.id===id);
+  document.getElementById('sig_name').value = en&&en.mentor ? en.mentor : (state.profile.mentor||'');
+  document.getElementById('signModal').classList.add('open');
+  setTimeout(()=>{ sizePad(); clearSig(); },60);
+}
+function clearSig(){ pctx.setTransform(1,0,0,1,0,0); pctx.clearRect(0,0,pad.width,pad.height); pctx.scale(2,2); hasInk=false; }
+function closeSign(){ document.getElementById('signModal').classList.remove('open'); signTarget=null; }
+function saveSig(){
+  const name=document.getElementById('sig_name').value.trim();
+  if(!name){ toast('Enter the mentor’s name'); return; }
+  if(!hasInk){ toast('Please sign in the box'); return; }
+  const en=state.entries.find(x=>x.id===signTarget); if(!en) return;
+  en.signed={ name:name, png:pad.toDataURL('image/png'), at:new Date().toISOString() };
+  save(); closeSign(); toast('Entry signed and locked ✔'); renderList(curFilter); renderDash();
+}
+
+/* ---------- profile & targets ---------- */
+const progSel=document.getElementById('p_prog');
+progSel.addEventListener('change', ()=>{
+  const opt=progSel.selectedOptions[0];
+  if(opt && opt.dataset.saqa) document.getElementById('p_saqa').value='SAQA ID '+opt.dataset.saqa;
+});
+function fillProfileForm(){
+  const p=state.profile||{};
+  document.getElementById('p_name').value=p.name||'';
+  document.getElementById('p_sno').value=p.sno||'';
+  document.getElementById('p_idno').value=p.idno||'';
+  document.getElementById('p_mentor').value=p.mentor||'';
+  progSel.value=p.prog||'';
+  document.getElementById('p_saqa').value=p.saqa||'';
+  const t=state.targets||{cats:{}};
+  document.getElementById('t_days').value=t.days||'';
+  document.getElementById('t_gdays').value=t.gdays||'';
+  document.getElementById('t_walk').value=t.walk||'';
+  document.getElementById('t_enc').value=t.enc||'';
+  const grid=document.getElementById('t_cats');
+  grid.innerHTML=CATS.map(c=>'<div><label>'+c+'</label><input type="number" min="0" data-cat="'+c+'" value="'+(t.cats&&t.cats[c]||'')+'"></div>').join('');
+}
+function saveProfile(){
+  state.profile={ name:val('p_name'), sno:val('p_sno'), idno:val('p_idno'),
+    mentor:val('p_mentor'), prog:progSel.value, saqa:val('p_saqa') };
+  save(); toast('Student details saved ✔'); renderDash();
+}
+function saveTargets(){
+  const cats={};
+  document.querySelectorAll('#t_cats input').forEach(i=>{ if(+i.value>0) cats[i.dataset.cat]=+i.value; });
+  state.targets={ days:+val('t_days')||0, gdays:+val('t_gdays')||0, walk:+val('t_walk')||0, enc:+val('t_enc')||0, cats:cats };
+  save(); toast('Targets saved ✔'); renderDash();
+}
+
+/* ---------- dashboard ---------- */
+function totals(){
+  const t={ days:0, gdays:0, dayHours:0, walkH:0, roles:{}, enc:0, cats:{}, encFoot:0 };
+  state.entries.forEach(e=>{
+    if(e.kind==='day'){ t.days++; t.dayHours+=(+e.hours||0); if(e.type==='Guest-facing guiding') t.gdays++; }
+    if(e.kind==='walk'){ t.walkH+=(+e.hours||0); t.roles[e.role]=(t.roles[e.role]||0)+(+e.hours||0); }
+    if(e.kind==='enc'){ t.enc++; t.cats[e.cat]=(t.cats[e.cat]||0)+1; if(e.mode==='On foot') t.encFoot++; }
+  });
+  return t;
+}
+function bar(label,have,want){
+  if(!want) return '<div class="tline"><span>'+esc(label)+'</span><span><b>'+have+'</b> logged · target not set</span></div>';
+  const pct=Math.min(100, Math.round(have/want*100));
+  return '<div class="tline"><span>'+esc(label)+'</span><span><b>'+have+'</b> / '+want+'</span></div><div class="bar'+(pct>=100?' done':'')+'"><i style="width:'+pct+'%"></i></div>';
+}
+function renderDash(){
+  const p=state.profile||{}, tg=state.targets||{cats:{}}, t=totals();
+  document.getElementById('dashHello').textContent = p.name ? 'Welcome back, '+p.name.split(' ')[0]+'! 🐾' : 'Welcome to your Field Logbook 🐾';
+  document.getElementById('profileSummary').innerHTML = p.prog
+    ? '<b>'+esc(p.prog)+'</b>'+(p.saqa?' · '+esc(p.saqa):'')+(p.sno?' · Student no '+esc(p.sno):'')
+    : 'Set your programme under 🧑 Student &amp; Targets so your PoE pack prints with the right details.';
+  const signedCount=state.entries.filter(e=>e.signed).length;
+  document.getElementById('statDays').innerHTML =
+    '<div class="stat"><b>'+t.days+'</b><span>field days</span></div>'+
+    '<div class="stat"><b>'+t.gdays+'</b><span>guest-facing</span></div>'+
+    '<div class="stat"><b>'+t.dayHours.toFixed(1)+'</b><span>hours logged</span></div>'+
+    '<div class="stat"><b>'+signedCount+'</b><span>entries signed</span></div>';
+  document.getElementById('progDays').innerHTML = bar('Field days', t.days, tg.days) + bar('Guest-facing days', t.gdays, tg.gdays);
+  const roleBits = Object.keys(t.roles).map(r=>'<div class="stat"><b>'+t.roles[r].toFixed(1)+'</b><span>'+esc(r)+'</span></div>').join('');
+  document.getElementById('statWalk').innerHTML = '<div class="stat"><b>'+t.walkH.toFixed(1)+'</b><span>total hours</span></div>'+roleBits;
+  document.getElementById('progWalk').innerHTML = bar('Trail hours on foot', +t.walkH.toFixed(1), tg.walk);
+  const catBits = CATS.filter(c=>t.cats[c]).map(c=>'<div class="stat"><b>'+t.cats[c]+'</b><span>'+esc(c)+'</span></div>').join('');
+  document.getElementById('statEnc').innerHTML = '<div class="stat"><b>'+t.enc+'</b><span>total encounters</span></div><div class="stat"><b>'+t.encFoot+'</b><span>on foot</span></div>'+catBits;
+  let encBars = bar('Encounters (total)', t.enc, tg.enc);
+  Object.keys(tg.cats||{}).forEach(c=>{ encBars += bar(c, t.cats[c]||0, tg.cats[c]); });
+  document.getElementById('progEnc').innerHTML = encBars;
+}
+
+/* ---------- exports ---------- */
+function exportCSV(){
+  const rows=[['kind','date','time','type_or_role_or_category','hours','detail','distance_m','mode','behaviour','response','location_area','notes','mentor','gps_lat','gps_lng','signed_by','signed_at']];
+  state.entries.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(e=>{
+    rows.push([e.kind, e.date||'', e.time||'',
+      e.kind==='day'?e.type: e.kind==='walk'?e.role: e.cat,
+      e.hours||'', e.species||'', e.dist||'', e.mode||'', e.beh||'', e.act||'',
+      e.loc||e.area||'', (e.notes||'').replace(/\n/g,' '), e.mentor||'',
+      e.gps?e.gps.lat:'', e.gps?e.gps.lng:'',
+      e.signed?e.signed.name:'', e.signed?e.signed.at:'' ]);
+  });
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  download(new Blob([csv],{type:'text/csv'}), 'LWEC-logbook.csv');
+}
+function backupJSON(){ download(new Blob([JSON.stringify(state,null,1)],{type:'application/json'}), 'LWEC-logbook-backup.json'); }
+function restoreJSON(inp){
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const s=JSON.parse(r.result);
+      if(!s.entries) throw 0;
+      if(confirm('Replace the logbook on this device with the backup ('+s.entries.length+' entries)?')){ state=s; save(); fillProfileForm(); renderDash(); renderList(curFilter); toast('Backup restored ✔'); }
+    }catch(e){ toast('That file is not a valid logbook backup'); } inp.value=''; };
+  r.readAsText(f);
+}
+function download(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+function wipeAll(){
+  if(confirm('This permanently erases ALL logbook data on this device. Are you sure?') && confirm('Really sure? Signed PoE entries will be lost unless you have a backup or printed pack.')){
+    state={profile:{},targets:{cats:{}},entries:[]}; save(); fillProfileForm(); renderDash(); renderList(curFilter); toast('Logbook erased');
+  }
+}
+
+/* ---------- PoE print pack ---------- */
+function printPoE(){
+  const p=state.profile||{}, t=totals(), tg=state.targets||{cats:{}};
+  const list=state.entries.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const dates=list.map(e=>e.date).filter(Boolean);
+  const range=dates.length? dates[0]+' to '+dates[dates.length-1] : '—';
+  const rowsDay=list.filter(e=>e.kind==='day').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.loc||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+(e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—')+'</td></tr>').join('');
+  const rowsWalk=list.filter(e=>e.kind==='walk').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.role)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.area||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+(e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—')+'</td></tr>').join('');
+  const rowsEnc=list.filter(e=>e.kind==='enc').map(e=>'<tr><td>'+esc(e.date)+(e.time?' '+esc(e.time):'')+'</td><td>'+esc(e.cat)+'</td><td>'+esc(e.species||'')+'</td><td>'+esc(e.mode||'')+'</td><td>'+esc(e.dist||'')+'</td><td>'+esc(e.beh||'')+' / '+esc(e.act||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+(e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—')+'</td></tr>').join('');
+  const catSum = CATS.map(c=>'<tr><td>'+c+'</td><td>'+(t.cats[c]||0)+'</td><td>'+(tg.cats&&tg.cats[c]||'—')+'</td></tr>').join('');
+  document.getElementById('printArea').innerHTML =
+  '<div class="pr-page"><div class="pr-h"><h1>Limpopo Wildlife Eco College</h1><div class="sub">CONSERVATION · EDUCATION · LEADERSHIP</div><h1 style="margin-top:10mm;">Practical Field Logbook</h1><div class="sub">PORTFOLIO OF EVIDENCE — PRACTICAL RECORD</div></div>'+
+  '<table class="pr"><tr><th style="width:38%">Student name</th><td>'+esc(p.name||'')+'</td></tr>'+
+  '<tr><th>Student number</th><td>'+esc(p.sno||'')+'</td></tr>'+
+  '<tr><th>ID number</th><td>'+esc(p.idno||'')+'</td></tr>'+
+  '<tr><th>Programme</th><td>'+esc(p.prog||'')+(p.saqa?' ('+esc(p.saqa)+')':'')+'</td></tr>'+
+  '<tr><th>Record period</th><td>'+range+'</td></tr>'+
+  '<tr><th>Entries in this pack</th><td>'+list.length+' ('+list.filter(e=>e.signed).length+' signed)</td></tr></table>'+
+  '<h3 style="margin-top:8mm;">Summary of totals</h3>'+
+  '<table class="pr"><tr><th>Measure</th><th>Logged</th><th>Target</th></tr>'+
+  '<tr><td>Field days (total)</td><td>'+t.days+'</td><td>'+(tg.days||'—')+'</td></tr>'+
+  '<tr><td>Guest-facing guiding days</td><td>'+t.gdays+'</td><td>'+(tg.gdays||'—')+'</td></tr>'+
+  '<tr><td>Trail hours on foot</td><td>'+t.walkH.toFixed(1)+'</td><td>'+(tg.walk||'—')+'</td></tr>'+
+  '<tr><td>Dangerous-game encounters (total)</td><td>'+t.enc+'</td><td>'+(tg.enc||'—')+'</td></tr>'+catSum+'</table>'+
+  '<div class="decl"><b>Student declaration:</b> I declare that the entries in this logbook are a true and accurate record of my own practical field experience, completed under the supervision recorded against each entry.</div>'+
+  '<div class="sigblock"><span class="sigline">Student signature &nbsp;·&nbsp; date</span><span class="sigline">Mentor / supervisor &nbsp;·&nbsp; date</span><span class="sigline">Assessor &nbsp;·&nbsp; date</span><span class="sigline">Moderator &nbsp;·&nbsp; date</span></div></div>'+
+  (rowsDay?'<div class="pr-page"><h3>Field days</h3><table class="pr"><tr><th>Date</th><th>Type</th><th>Hours</th><th>Location</th><th>Activities / notes</th><th>Mentor</th><th>Verification</th></tr>'+rowsDay+'</table></div>':'')+
+  (rowsWalk?'<div class="pr-page"><h3>Trail walks on foot</h3><table class="pr"><tr><th>Date</th><th>Role</th><th>Hours</th><th>Area</th><th>Notes</th><th>Mentor</th><th>Verification</th></tr>'+rowsWalk+'</table></div>':'')+
+  (rowsEnc?'<div class="pr-page"><h3>Dangerous-game encounters</h3><table class="pr"><tr><th>Date</th><th>Category</th><th>Detail</th><th>Mode</th><th>Dist (m)</th><th>Behaviour / response</th><th>Mentor</th><th>Verification</th></tr>'+rowsEnc+'</table></div>':'');
+  window.print();
+}
+
+/* ---------- boot ---------- */
+fillProfileForm(); renderDash(); renderList('all');
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
