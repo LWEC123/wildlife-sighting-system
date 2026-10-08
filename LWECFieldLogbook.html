@@ -33,6 +33,7 @@ main{max-width:860px; margin:0 auto; padding:16px 12px 90px;}
 .card h2{color:var(--green-deep); font-size:1.15rem; margin-bottom:10px;}
 .card h3{color:var(--green); font-size:.98rem; margin:12px 0 6px;}
 .note{font-size:.82rem; color:var(--muted); line-height:1.5;}
+.callout{background:#fdf6e3; border:1.5px solid var(--gold-deep); border-radius:10px; padding:10px 12px; font-size:.84rem; color:var(--ink); line-height:1.55; margin:10px 0;}
 label{display:block; font-size:.82rem; font-weight:600; color:var(--green-deep); margin:10px 0 4px;}
 input,select,textarea{width:100%; padding:10px; border:1px solid #cfd8cc; border-radius:8px; font-size:.95rem; background:#fff; color:var(--ink);}
 input[readonly]{background:var(--sand); color:var(--muted);}
@@ -229,7 +230,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <section id="tab-new" hidden>
   <div class="card">
     <h2>What are you logging?</h2>
-    <p class="note" style="margin-bottom:10px;">No signal? Log anyway — entries and GPS pins are kept on your phone and upload themselves the moment you're back in range.</p>
+    <div class="callout">📍 <b>Log it where it happens — at the sighting, not later from camp.</b> The GPS pin stamps where your phone is the moment you tap the button, and that is exactly what makes your record credible to your assessor. No signal needed: entries and pins are kept on your phone and upload themselves the moment you're back in range.</div>
     <div class="filterrow" id="kindPick">
       <button data-kind="day" class="active">🌅 Field day</button>
       <button data-kind="walk">🥾 Trail walk</button>
@@ -702,9 +703,14 @@ function entryHTML(en, opts){
   if(en.pending) pills += ' <span class="pill sync">⏳ syncing</span>';
   let btns='';
   if(en.signed && en.signed.png) btns='<img class="sig" src="'+en.signed.png+'" alt="signature">';
+  if(en.signed && opts.mentorTools){
+    btns+='<div class="btnrow"><button class="btn small ghost" onclick="mentorUnlock(\''+en.id+'\')">🔓 Remove signature (unlock)</button>'
+         +'<button class="btn small danger" onclick="mentorDelete(\''+en.id+'\')">Delete entry</button></div>';
+  }
   if(!en.signed && opts.canSign){
     btns='<div class="btnrow"><button class="btn small" onclick="openSign(\''+en.id+'\')">✍️ Mentor sign</button>'
         +(opts.canDelete?'<button class="btn small danger" onclick="delEntry(\''+en.id+'\')">Delete</button>':'')
+        +(opts.mentorTools?'<button class="btn small danger" onclick="mentorDelete(\''+en.id+'\')">Delete entry</button>':'')
         +'</div>';
   }
   return '<div class="entry '+en.kind+'"><div class="head"><b>'+esc(en.date)+(en.time?' '+esc(en.time):'')+' · '+title+'</b><span>'+pills+'</span></div><div class="meta">'+meta.join(' · ')+'</div>'+btns+'</div>';
@@ -728,6 +734,22 @@ window.delEntry = id=>{
   const en=state.entries.find(x=>x.id===id) || allEntries.find(x=>x.id===id);
   if(!en||en.signed) return;
   if(confirm('Delete this unsigned entry?')) deleteDoc(doc(db,'entries',id)).catch(e=>toast('Could not delete: '+e.code));
+};
+/* mentor-only corrections — rules allow these solely for accounts in the mentors collection */
+window.mentorUnlock = id=>{
+  if(!isMentor) return;
+  if(!confirm('Remove the signature from this entry?\n\nIt unlocks and goes back to "awaiting signature" — the student can edit or delete it again. Use this to correct an entry signed by mistake.')) return;
+  updateDoc(doc(db,'entries',id), {signed:null})
+    .then(()=>toast('Signature removed — entry unlocked'))
+    .catch(e=>toast('Could not unlock: '+e.code));
+};
+window.mentorDelete = id=>{
+  if(!isMentor) return;
+  if(!confirm('Permanently DELETE this entry from the student’s record?')) return;
+  if(!confirm('Really sure? This cannot be undone.')) return;
+  deleteDoc(doc(db,'entries',id))
+    .then(()=>toast('Entry deleted'))
+    .catch(e=>toast('Could not delete: '+e.code));
 };
 
 /* ================= signature pad ================= */
@@ -870,9 +892,10 @@ function refreshMap(){
       .bindPopup('<b>'+kindTitle+'</b><br>'+esc(en.date||'')+(en.time?' '+esc(en.time):'')+who+(en.notes?'<br>'+esc(en.notes):''))
       .addTo(markerLayer);
   });
+  const pinWord = pts.length===1? '1 pin' : pts.length+' pins';
   $('mapIntro').textContent = isMentor
-    ? 'Every GPS-pinned entry across all students ('+pts.length+' pins).'
-    : (pts.length? pts.length+' of your entries have GPS pins.' : 'Every entry you capture with a GPS pin appears here — use 📍 Capture GPS when logging.');
+    ? 'Every GPS-pinned entry across all students ('+pinWord+').'
+    : (pts.length? pinWord+' from your entries on the map.' : 'Every entry you capture with a GPS pin appears here — use 📍 Capture GPS when logging.');
   if(pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:13});
 }
 
@@ -924,7 +947,8 @@ window.openStudent = async (uid, keepScroll)=>{
     +'</div><div class="btnrow"><button class="btn" onclick="saveStudentTargets(\''+uid+'\')">Save targets</button></div></div>';
 
   html+='<div class="card"><h2>📒 Entries</h2>'
-    +(ens.length? ens.map(en=>entryHTML(en,{canSign:true,canDelete:false})).join('') : '<p class="note">No entries yet.</p>')
+    +'<p class="note">Mentor corrections: 🔓 removes a signature placed by mistake (the entry unlocks for the student again); Delete removes an entry — e.g. a test — permanently.</p>'
+    +(ens.length? ens.map(en=>entryHTML(en,{canSign:true,canDelete:false,mentorTools:true})).join('') : '<p class="note">No entries yet.</p>')
     +'</div>';
   $('studentDetail').innerHTML=html;
   if(!keepScroll) $('studentDetail').scrollIntoView({behavior:'smooth'});
