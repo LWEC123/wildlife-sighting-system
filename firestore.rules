@@ -7,6 +7,13 @@ service cloud.firestore {
       return signedIn()
         && exists(/databases/$(database)/documents/mentors/$(request.auth.uid));
     }
+    // A mentors doc without a 'level' field is a full mentor; level 'signer'
+    // may sign entries but not delete them or remove signatures.
+    function isFullMentor() {
+      return isMentor()
+        && get(/databases/$(database)/documents/mentors/$(request.auth.uid))
+             .data.get('level', 'full') == 'full';
+    }
 
     // Staff list. Only editable in the Firebase console — never from the app.
     match /mentors/{uid} {
@@ -43,11 +50,13 @@ service cloud.firestore {
         && (isMentor() || resource.data.uid == request.auth.uid);
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid;
-      allow update: if isMentor()
+      allow update: if isFullMentor()
+        || (isMentor() && resource.data.signed == null
+            && request.resource.data.uid == resource.data.uid)
         || (signedIn() && resource.data.uid == request.auth.uid
             && resource.data.signed == null
             && request.resource.data.uid == request.auth.uid);
-      allow delete: if isMentor()
+      allow delete: if isFullMentor()
         || (signedIn() && resource.data.uid == request.auth.uid
             && resource.data.signed == null);
     }

@@ -466,6 +466,7 @@ function todayISO(){ return new Date().toISOString().slice(0,10); }
 let me = null;                                  // firebase user
 let state = { profile:{}, targets:{cats:{}}, entries:[] };
 let isMentor = false;
+let mentorLevel = null;                          // 'full' | 'signer' | null
 let allStudents = [];                            // mentor: users with role student
 let allEntries = [];                             // mentor: every entry
 let curStudent = null;                           // mentor: open student uid
@@ -587,7 +588,8 @@ async function checkMentor(uid){
   try{
     const m = await getDoc(doc(db,'mentors',uid));
     isMentor = m.exists();
-  }catch(e){ isMentor=false; }
+    mentorLevel = m.exists()? (m.data().level||'full') : null;
+  }catch(e){ isMentor=false; mentorLevel=null; }
   $('navStudents').hidden = !isMentor;
   if(isMentor){
     unsubs.push(onSnapshot(query(collection(db,'users'), where('role','==','student')), snap=>{
@@ -604,7 +606,7 @@ async function checkMentor(uid){
 
 function updateWho(){
   const n = state.profile.name || (me && me.email) || '';
-  $('whoName').textContent = n + (isMentor?' · mentor':'');
+  $('whoName').textContent = n + (isMentor? (mentorLevel==='full'?' · mentor':' · mentor (signing)') : '');
 }
 function updateSync(){
   const pending = state.entries.filter(e=>e.pending).length;
@@ -737,14 +739,14 @@ window.delEntry = id=>{
 };
 /* mentor-only corrections — rules allow these solely for accounts in the mentors collection */
 window.mentorUnlock = id=>{
-  if(!isMentor) return;
+  if(!isMentor || mentorLevel!=='full') return;
   if(!confirm('Remove the signature from this entry?\n\nIt unlocks and goes back to "awaiting signature" — the student can edit or delete it again. Use this to correct an entry signed by mistake.')) return;
   updateDoc(doc(db,'entries',id), {signed:null})
     .then(()=>toast('Signature removed — entry unlocked'))
     .catch(e=>toast('Could not unlock: '+e.code));
 };
 window.mentorDelete = id=>{
-  if(!isMentor) return;
+  if(!isMentor || mentorLevel!=='full') return;
   if(!confirm('Permanently DELETE this entry from the student’s record?')) return;
   if(!confirm('Really sure? This cannot be undone.')) return;
   deleteDoc(doc(db,'entries',id))
@@ -946,9 +948,12 @@ window.openStudent = async (uid, keepScroll)=>{
     +CATS.map(c=>'<div><label>'+c+'</label><input type="number" min="0" data-mcat="'+c+'" value="'+(tg.cats&&tg.cats[c]||'')+'"></div>').join('')
     +'</div><div class="btnrow"><button class="btn" onclick="saveStudentTargets(\''+uid+'\')">Save targets</button></div></div>';
 
+  const fullTools = mentorLevel==='full';
   html+='<div class="card"><h2>📒 Entries</h2>'
-    +'<p class="note">Mentor corrections: 🔓 removes a signature placed by mistake (the entry unlocks for the student again); Delete removes an entry — e.g. a test — permanently.</p>'
-    +(ens.length? ens.map(en=>entryHTML(en,{canSign:true,canDelete:false,mentorTools:true})).join('') : '<p class="note">No entries yet.</p>')
+    +(fullTools
+      ? '<p class="note">Mentor corrections: 🔓 removes a signature placed by mistake (the entry unlocks for the student again); Delete removes an entry — e.g. a test — permanently.</p>'
+      : '<p class="note">You can review and ✍️ sign entries. Corrections (unlocking or deleting) are reserved for full mentors.</p>')
+    +(ens.length? ens.map(en=>entryHTML(en,{canSign:true,canDelete:false,mentorTools:fullTools})).join('') : '<p class="note">No entries yet.</p>')
     +'</div>';
   $('studentDetail').innerHTML=html;
   if(!keepScroll) $('studentDetail').scrollIntoView({behavior:'smooth'});
