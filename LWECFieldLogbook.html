@@ -592,6 +592,10 @@ async function checkMentor(uid){
   }catch(e){ isMentor=false; mentorLevel=null; }
   $('navStudents').hidden = !isMentor;
   if(isMentor){
+    // crowned accounts register as 'student'; relabel so they leave the student roll
+    updateDoc(doc(db,'users',uid), {role:'mentor'}).catch(()=>{});
+  }
+  if(isMentor){
     unsubs.push(onSnapshot(query(collection(db,'users'), where('role','==','student')), snap=>{
       allStudents = snap.docs.map(d=>Object.assign({uid:d.id}, d.data()));
       allStudents.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -882,14 +886,15 @@ function refreshMap(){
   if(!map || !markerLayer) return;
   markerLayer.clearLayers();
   const src = isMentor && allEntries.length ? allEntries : state.entries;
-  const nameOf = uid=>{ const s=allStudents.find(x=>x.uid===uid); return s? s.name||s.email : ''; };
+  const nameOf = uid=>{ const s=allStudents.find(x=>x.uid===uid); return s? (s.name||s.email) : ''; };
   const colors={day:'#2d5741', walk:'#3e7257', enc:'#c4a054'};
   const pts=[];
   src.forEach(en=>{
     if(!en.gps) return;
     pts.push([en.gps.lat, en.gps.lng]);
     const kindTitle = en.kind==='day'?'Field day': en.kind==='walk'?'Trail walk': 'Encounter — '+esc(en.cat||'');
-    const who = isMentor && en.uid && en.uid!==(me&&me.uid) ? '<br>Student: '+esc(nameOf(en.uid)) : '';
+    const nm = nameOf(en.uid);
+    const who = isMentor && nm && en.uid!==(me&&me.uid) ? '<br>Student: '+esc(nm) : '';
     L.circleMarker([en.gps.lat,en.gps.lng],{radius:8,color:colors[en.kind]||'#2d5741',fillColor:colors[en.kind]||'#2d5741',fillOpacity:.85,weight:2})
       .bindPopup('<b>'+kindTitle+'</b><br>'+esc(en.date||'')+(en.time?' '+esc(en.time):'')+who+(en.notes?'<br>'+esc(en.notes):''))
       .addTo(markerLayer);
