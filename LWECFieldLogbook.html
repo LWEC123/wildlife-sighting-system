@@ -402,6 +402,11 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <p class="note">Every registered student, with their logged totals. Open a student to check entries, sign them off, set their official programme targets, or print their PoE pack.</p>
     <div id="studentList" style="margin-top:10px;"></div>
   </div>
+  <div class="card">
+    <h2>🧑‍🏫 College staff</h2>
+    <p class="note">Everyone holding mentor keys. Full mentors can also correct records (unlock signatures, delete entries); signing mentors review and sign. Staff appear here after their first sign-in since being appointed.</p>
+    <div id="staffList" style="margin-top:10px;"></div>
+  </div>
   <div id="studentDetail"></div>
 </section>
 </main>
@@ -468,6 +473,7 @@ let state = { profile:{}, targets:{cats:{}}, entries:[] };
 let isMentor = false;
 let mentorLevel = null;                          // 'full' | 'signer' | null
 let allStudents = [];                            // mentor: users with role student
+let allStaff = [];                               // mentor: users with role mentor
 let allEntries = [];                             // mentor: every entry
 let curStudent = null;                           // mentor: open student uid
 let curStudentTargets = {cats:{}};
@@ -534,8 +540,9 @@ onAuthStateChanged(auth, async user=>{
   me = user;
   if(!user){
     stopListeners();
-    isMentor=false; curStudent=null;
+    isMentor=false; mentorLevel=null; curStudent=null;
     state={profile:{},targets:{cats:{}},entries:[]};
+    allStudents=[]; allStaff=[]; allEntries=[];
     $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
     $('navStudents').hidden=true;
     authMode('login');
@@ -592,8 +599,9 @@ async function checkMentor(uid){
   }catch(e){ isMentor=false; mentorLevel=null; }
   $('navStudents').hidden = !isMentor;
   if(isMentor){
-    // crowned accounts register as 'student'; relabel so they leave the student roll
-    updateDoc(doc(db,'users',uid), {role:'mentor'}).catch(()=>{});
+    // crowned accounts register as 'student'; relabel so they leave the student
+    // roll, and mirror the tier so the staff list can show it
+    updateDoc(doc(db,'users',uid), {role:'mentor', mlevel:mentorLevel}).catch(()=>{});
   }
   if(isMentor){
     unsubs.push(onSnapshot(query(collection(db,'users'), where('role','==','student')), snap=>{
@@ -601,6 +609,11 @@ async function checkMentor(uid){
       allStudents.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
       renderStudentList(); refreshMap();
     }, err=>console.warn('students listener', err)));
+    unsubs.push(onSnapshot(query(collection(db,'users'), where('role','==','mentor')), snap=>{
+      allStaff = snap.docs.map(d=>Object.assign({uid:d.id}, d.data()));
+      allStaff.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      renderStaffList();
+    }, err=>console.warn('staff listener', err)));
     unsubs.push(onSnapshot(collection(db,'entries'), snap=>{
       allEntries = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
       renderStudentList(); if(curStudent) openStudent(curStudent, true); refreshMap();
@@ -918,6 +931,18 @@ function renderStudentList(){
     return '<div class="stuRow"><div><b>'+esc(s.name||s.email)+'</b><div class="sub">'+esc(s.prog||'no programme set')+(s.sno?' · '+esc(s.sno):'')+'</div>'
       +'<div class="sub">'+t.days+' days · '+t.walkH.toFixed(1)+' h on foot · '+t.enc+' encounters'+(unsigned?' · <b>'+unsigned+' awaiting signature</b>':'')+'</div></div>'
       +'<button class="btn small secondary" onclick="openStudent(\''+s.uid+'\')">Open</button></div>';
+  }).join('');
+}
+
+function renderStaffList(){
+  if(!isMentor) return;
+  const box=$('staffList'); if(!box) return;
+  if(!allStaff.length){ box.innerHTML='<p class="note">No staff have signed in since being appointed.</p>'; return; }
+  box.innerHTML = allStaff.map(s=>{
+    const tier = s.mlevel==='signer'
+      ? '<span class="pill">✍️ signing mentor</span>'
+      : '<span class="pill gold">👑 full mentor</span>';
+    return '<div class="stuRow"><div><b>'+esc(s.name||s.email)+'</b><div class="sub">'+esc(s.email||'')+'</div></div>'+tier+'</div>';
   }).join('');
 }
 
