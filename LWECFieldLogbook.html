@@ -742,10 +742,13 @@ function endD(){ drawing=false; }
 pad.addEventListener('mousedown',startD); pad.addEventListener('mousemove',moveD); window.addEventListener('mouseup',endD);
 pad.addEventListener('touchstart',startD,{passive:false}); pad.addEventListener('touchmove',moveD,{passive:false}); pad.addEventListener('touchend',endD);
 
+function savedSignName(){ try{ return localStorage.getItem('lwec_signname')||''; }catch(e){ return ''; } }
 window.openSign = id=>{
   signTarget=id;
   const en=state.entries.find(x=>x.id===id) || allEntries.find(x=>x.id===id);
-  $('sig_name').value = en&&en.mentor ? en.mentor : (isMentor? (state.profile.name||'') : (state.profile.mentor||''));
+  $('sig_name').value = isMentor
+    ? (savedSignName() || state.profile.name || '')
+    : (savedSignName() || (en&&en.mentor) || state.profile.mentor || '');
   $('signModal').classList.add('open');
   setTimeout(()=>{ sizePad(); clearSig(); },60);
 };
@@ -756,6 +759,7 @@ window.saveSig = ()=>{
   if(!name){ toast('Enter the mentor’s name'); return; }
   if(!hasInk){ toast('Please sign in the box'); return; }
   if(!signTarget) return;
+  try{ localStorage.setItem('lwec_signname', name); }catch(e){}
   updateDoc(doc(db,'entries',signTarget), { signed:{ name:name, png:pad.toDataURL('image/png'), at:new Date().toISOString() } })
     .catch(e=>toast('Could not sign: '+e.code));
   closeSign(); toast('Entry signed and locked ✔');
