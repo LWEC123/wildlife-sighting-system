@@ -691,6 +691,7 @@ window.grabGPS = which=>{
 function addEntry(data, formId, gpsId, msg){
   if(!me) return;
   addDoc(collection(db,'entries'), Object.assign({uid:me.uid, createdAt:serverTimestamp()}, data))
+    .then(()=>scheduleSignNudge())
     .catch(e=>toast('Could not save: '+e.code));
   $(formId).reset();
   ['day_date','walk_date','enc_date'].forEach(id=>{ const el=$(id); if(el) el.value=todayISO(); });
@@ -1189,6 +1190,37 @@ window.migrateLocal = ()=>{
   $('migrateCard').hidden=true;
   toast(s.entries.length+' old entries moved into your account ✔');
 };
+
+/* ===== 'awaiting signature' email nudge — EmailJS, at most one per student per day ===== */
+const EMAILJS = { service:'service_38i089d', template:'template_s8j8qfs', key:'8AXjKG9HAG8Cz28wW' };
+function scheduleSignNudge(){
+  if(!me || isMentor) return; // mentors' own entries never nudge
+  setTimeout(()=>{ try{ sendSignNudge(); }catch(e){ console.warn('nudge', e); } }, 2500);
+}
+function sendSignNudge(){
+  const today = todayISO();
+  const key = 'lwec_nudge_'+me.uid;
+  try{ if(localStorage.getItem(key)===today) return; }catch(e){}
+  const unsigned = state.entries.filter(e=>!e.signed);
+  if(!unsigned.length) return;
+  const latest = unsigned[0];
+  const what = latest.kind==='enc' ? (latest.species||latest.cat||'encounter')
+             : latest.kind==='walk' ? 'trail walk'
+             : (latest.type||'field day');
+  fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      service_id: EMAILJS.service, template_id: EMAILJS.template, user_id: EMAILJS.key,
+      template_params: {
+        student: state.profile.name || (me.email||'Student'),
+        mentor: state.profile.mentor || 'not set',
+        count: String(unsigned.length),
+        latest: (latest.date||'') + ' — ' + what
+      }
+    })
+  }).then(r=>{ if(r.ok){ try{ localStorage.setItem(key, today); }catch(e){} } })
+    .catch(()=>{ /* no signal or service down: the entry is saved regardless */ });
+}
 
 /* tap anywhere on a date/time field to open its picker (not just the tiny icon) */
 document.addEventListener('click', e=>{
