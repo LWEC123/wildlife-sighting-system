@@ -1184,6 +1184,14 @@ window.migrateLocal = ()=>{
   toast(s.entries.length+' old entries moved into your account ✔');
 };
 
+/* tap anywhere on a date/time field to open its picker (not just the tiny icon) */
+document.addEventListener('click', e=>{
+  const t=e.target;
+  if(t && t.matches && t.matches('input[type="date"], input[type="time"]') && typeof t.showPicker==='function'){
+    try{ t.showPicker(); }catch(_){}
+  }
+});
+
 /* ================= boot ================= */
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>

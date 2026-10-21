@@ -1119,6 +1119,11 @@ const animalTracksData = {
     }
 };
           $(document).ready(function() {
+
+            // Tap anywhere on a date or time field to open its picker (not just the tiny icon)
+            $(document).on('click', 'input[type="date"], input[type="time"]', function(){
+                if (typeof this.showPicker === 'function') { try { this.showPicker(); } catch(e){} }
+            });
             // Handle group selection
             $('#taxonomicGroup').change(function() {
                 const selectedGroup = $(this).val();
