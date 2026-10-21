@@ -18,12 +18,19 @@
 *{box-sizing:border-box; margin:0; padding:0;}
 [hidden]{display:none !important;}
 body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); min-height:100vh;}
-header{background:var(--green-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px;}
+header{background:var(--green-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
 header img{height:46px; width:auto;}
 header .t{flex:1; min-width:0;}
 header .t b{display:block; font-size:1.05rem; letter-spacing:.3px;}
 header .t span{font-size:.75rem; color:var(--gold);}
-.who{display:flex; align-items:center; gap:8px; font-size:.78rem; color:#dfe9e0; flex:0 0 auto;}
+.who{display:flex; align-items:center; gap:8px; font-size:.78rem; color:#dfe9e0; flex:0 0 auto; max-width:100%;}
+#whoName{max-width:42vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+@media (max-width:560px){
+  header{gap:8px; padding:10px 12px;}
+  header img{height:36px;}
+  header .t span{display:none;}
+  #whoName{max-width:32vw;}
+}
 .who .dot{width:10px; height:10px; border-radius:50%; background:#7ec98f; flex:0 0 auto;}
 .who .dot.off{background:#d9a13c;}
 .who button{background:none; border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:999px; padding:4px 12px; font-size:.72rem; cursor:pointer;}
