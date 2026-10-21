@@ -1046,7 +1046,7 @@ const animalTracksData = {
                 characteristics: "Medium size, five toes, no claw marks, M-shaped rear edge on heel pad."
             }
         ],
-        "Orycteropodidae": 
+        "Orycteropodidae": [
             { 
                 name: "Aardvark", 
                 scientific: "Orycteropus afer", 
@@ -1055,8 +1055,8 @@ const animalTracksData = {
                 characteristics: "Four toes on front, five on hind, large claw marks, asymmetrical appearance."
             }
         ],
-        "Reptiles": [
-          {  
+        },
+        "Reptiles": {
         "Crocodylidae": [
             { 
                 name: "Nile Crocodile", 
@@ -1119,11 +1119,6 @@ const animalTracksData = {
     }
 };
           $(document).ready(function() {
-            // Populate taxonomic group dropdown
-            for (const group in wildlifeData) {
-                $('#taxonomicGroup').append(`<option value="${group}">${group}</option>`);
-            }
-
             // Handle group selection
             $('#taxonomicGroup').change(function() {
                 const selectedGroup = $(this).val();
@@ -1132,7 +1127,7 @@ const animalTracksData = {
                 
                 if (selectedGroup) {
                     $('#taxonomicFamily').prop('disabled', false);
-                    for (const family in wildlifeData[selectedGroup]) {
+                    for (const family in taxonomicData[selectedGroup]) {
                         $('#taxonomicFamily').append(`<option value="${family}">${family}</option>`);
                     }
                 } else {
@@ -1606,19 +1601,6 @@ const animalTracksData = {
                 $('#speciesImageContainer').hide();
                 $('#speciesInfoContainer').hide();
             }
-
-            // Register service worker for PWA functionality
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('sw.js')
-                        .then(registration => {
-                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        })
-                        .catch(err => {
-                            console.log('ServiceWorker registration failed: ', err);
-                        });
-                });
-            
         // Photo storage array
 let sightingPhotos = [];
 const MAX_PHOTOS = 5;
@@ -1882,30 +1864,9 @@ function reduceImageQuality(dataUrl, quality) {
         img.src = dataUrl;
     });
 }
-                $(document).ready(function() {
-    // Populate families when group is selected
-    $('#taxonomicGroup').change(function() {
-        const selectedGroup = $(this).val();
-        const familySelect = $('#taxonomicFamily');
-        const speciesSelect = $('#species');
-        
-        // Clear existing options
-        familySelect.empty().append('<option value="">Select Family</option>');
-        speciesSelect.empty().append('<option value="">Select Species</option>');
-        
-        if (selectedGroup && taxonomicData[selectedGroup]) {
-            familySelect.prop('disabled', false);
-            Object.keys(taxonomicData[selectedGroup]).forEach(family => {
-                familySelect.append('<option value="' + family + '">' + family + '</option>');
-            });
-        } else {
-            familySelect.prop('disabled', true);
-            speciesSelect.prop('disabled', true);
-        }
-    });
+});
+</script>
 
-    // Populate species when family is selected
-      
 <!-- Camera Capture Modal -->
     <div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
