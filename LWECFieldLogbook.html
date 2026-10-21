@@ -224,10 +224,20 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <div class="statgrid" id="statEnc"></div>
     <div id="progEnc"></div>
   </div>
+  <div class="card">
+    <h2>🏆 This Week — the Friday Awards</h2>
+    <p class="note" id="weekMine"></p>
+    <p class="note">👑 <b>The Weekly Crown</b> — most mentor-signed entries this week. &nbsp;🦅 <b>The Eagle Eye</b> — the week's best single entry, chosen by the mentors. &nbsp;🐾 <b>The Sleeping Aardvark</b> — fewest entries this week… and it <i>must</i> move on the moment you start logging. Winners announced at Friday sign-off.</p>
+  </div>
 </section>
 
 <!-- NEW ENTRY -->
 <section id="tab-new" hidden>
+  <div class="card" id="importCard" hidden>
+    <h2>📥 Import from your Field Notebook</h2>
+    <p class="note">Sightings you recorded in the <b>Wildlife Sighting System</b> on this phone can be pulled straight into an encounter entry — species, date, time, GPS pin and notes come across, no retyping. Pick one, check everything, choose the dangerous-game category if it applies, and save. Your mentor still reviews and signs as usual.</p>
+    <div id="importList"></div>
+  </div>
   <div class="card">
     <h2>What are you logging?</h2>
     <div class="callout">📍 <b>Log it where it happens — at the sighting, not later from camp.</b> The GPS pin stamps where your phone is the moment you tap the button, and that is exactly what makes your record credible to your assessor. No signal needed: entries and pins are kept on your phone and upload themselves the moment you're back in range.</div>
@@ -383,8 +393,8 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
   </div>
   <div class="card">
     <h2>🖨️ Portfolio of Evidence pack</h2>
-    <p class="note">Prints a cover page with your details and declaration, a summary of totals, and every entry in chronological order with its signature status. Hand the printed pack to your assessor for your student file — or print to PDF.</p>
-    <div class="btnrow"><button class="btn" onclick="printMyPoE()">Print / Save PoE pack</button></div>
+    <p class="note">Builds your complete PoE in seconds: a cover page with your details and declaration, a summary of totals, and every entry in chronological order with its recorded mentor signatures. <b>No binder needed:</b> choose “Save as PDF” in the print screen — the electronic PoE (PDF with recorded mentor sign-offs) is accepted by our assessor. Generate it fresh whenever it's needed; it is always complete and up to date.</p>
+    <div class="btnrow"><button class="btn" onclick="printMyPoE()">Generate PoE pack (print or save as PDF)</button></div>
   </div>
   <div class="card">
     <h2>📄 Data export</h2>
@@ -397,6 +407,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 
 <!-- MENTOR: STUDENTS -->
 <section id="tab-students" hidden>
+  <div id="weeklyBoard"></div>
   <div class="card">
     <h2>🧑‍🏫 Students</h2>
     <p class="note">Every registered student, with their logged totals. Open a student to check entries, sign them off, set their official programme targets, or print their PoE pack.</p>
@@ -646,6 +657,7 @@ $('nav').addEventListener('click', e=>{
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x===b));
   TABS.forEach(t=>{ $('tab-'+t).hidden = (t!==b.dataset.tab); });
   if(b.dataset.tab==='dash') renderDash();
+  if(b.dataset.tab==='new') renderImportCard();
   if(b.dataset.tab==='list') renderList(curFilter);
   if(b.dataset.tab==='map') initMap();
   if(b.dataset.tab==='students') renderStudentList();
@@ -881,6 +893,13 @@ function renderDash(){
   let encBars = bar('Encounters (total)', t.enc, tg.enc);
   Object.keys(tg.cats||{}).forEach(c=>{ encBars += bar(c, t.cats[c]||0, tg.cats[c]); });
   $('progEnc').innerHTML = encBars;
+  const wm=$('weekMine');
+  if(wm){
+    const w=weekBounds();
+    const mineWk=state.entries.filter(e=>inWeek(e,w));
+    wm.innerHTML='Your week so far ('+w.from+' → '+w.to+'): <b>'+mineWk.length+'</b> logged · <b>'
+      +mineWk.filter(e=>e.signed).length+'</b> signed. Every signed entry is a step toward the 👑.';
+  }
 }
 
 /* ================= map ================= */
@@ -922,6 +941,7 @@ function refreshMap(){
 /* ================= mentor: students ================= */
 function renderStudentList(){
   if(!isMentor) return;
+  const wb=$('weeklyBoard'); if(wb) wb.innerHTML=weeklyBoardHTML();
   const box=$('studentList'); if(!box) return;
   if(!allStudents.length){ box.innerHTML='<p class="note">No students have registered yet. Send them the app link — they create their own accounts.</p>'; return; }
   box.innerHTML = allStudents.map(s=>{
@@ -1051,6 +1071,90 @@ window.printStudentPoE = uid=>{
   const s=allStudents.find(x=>x.uid===uid)||{};
   printPack(s, curStudentTargets||{cats:{}}, allEntries.filter(e=>e.uid===uid));
 };
+
+/* ===== the bridge: import sightings from the Wildlife Sighting System (same phone) ===== */
+function notebookSightings(){
+  try{ const a=JSON.parse(localStorage.getItem('wildlifeSightings')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+}
+function importedIds(){ try{ const a=JSON.parse(localStorage.getItem('lwec_importedSightings')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function renderImportCard(){
+  const card=$('importCard'); if(!card) return;
+  const list=notebookSightings();
+  if(!list.length){ card.hidden=true; return; }
+  card.hidden=false;
+  const done=importedIds();
+  $('importList').innerHTML = list.slice().reverse().map((s,i)=>{
+    const id=s.sightingId||('row'+(list.length-1-i));
+    const sp=(s.taxonomy&&s.taxonomy.species)||'Sighting';
+    const dt=(((s.temporal&&s.temporal.date)||'')+' '+((s.temporal&&s.temporal.time)||'')).trim();
+    const used=done.indexOf(id)>=0;
+    return '<div class="stuRow"><div><b>'+esc(sp)+'</b><div class="sub">'+esc(dt)
+      +(s.spatial&&s.spatial.habitatZone?' · '+esc(s.spatial.habitatZone):'')
+      +(used?' · <span class="pill">✔ imported</span>':'')+'</div></div>'
+      +'<button class="btn small'+(used?' ghost':'')+'" onclick="importSighting(\''+esc(id)+'\')">'+(used?'Use again':'Use')+'</button></div>';
+  }).join('');
+}
+window.importSighting = id=>{
+  const list=notebookSightings();
+  const s=list.find((x,i)=>(x.sightingId||('row'+i))===id); if(!s){ toast('Could not find that sighting'); return; }
+  document.querySelectorAll('#kindPick button').forEach(x=>x.classList.toggle('active', x.dataset.kind==='enc'));
+  $('formDay').hidden=true; $('formWalk').hidden=true; $('formEnc').hidden=false;
+  const tax=s.taxonomy||{}, tem=s.temporal||{}, spa=s.spatial||{}, ctx=s.contextual||{};
+  $('enc_date').value = tem.date||todayISO();
+  $('enc_time').value = tem.time||'';
+  $('enc_species').value = (tax.species||'') + (ctx.groupSize>1?(' — group of '+ctx.groupSize):'');
+  if(spa.distanceObserved!=null && spa.distanceObserved!=='') $('enc_dist').value = spa.distanceObserved;
+  $('enc_beh').value = (ctx.behaviors||[]).join(', ');
+  const bits=[];
+  if(tax.scientificName) bits.push(tax.scientificName);
+  if(spa.habitatZone) bits.push('Habitat: '+spa.habitatZone);
+  if(ctx.weatherConditions) bits.push('Weather: '+ctx.weatherConditions+((ctx.temperature!=null&&ctx.temperature!=='')?(', '+ctx.temperature+'°C'):''));
+  if(spa.locationNotes) bits.push(spa.locationNotes);
+  if(ctx.notes) bits.push(ctx.notes);
+  bits.push('Imported from Field Notebook'+(s.sightingId?(' '+s.sightingId):''));
+  $('enc_notes').value = bits.join('. ');
+  const c=spa.coordinates||{};
+  if(typeof c.latitude==='number' && isFinite(c.latitude) && typeof c.longitude==='number' && isFinite(c.longitude)){
+    gpsTemp.enc = {lat:+c.latitude.toFixed(5), lng:+c.longitude.toFixed(5)};
+    $('enc_gps').textContent='📍 '+gpsTemp.enc.lat+', '+gpsTemp.enc.lng+' (from the notebook — pinned at the sighting)';
+  }
+  try{ const d=importedIds(); if(d.indexOf(id)<0){ d.push(id); localStorage.setItem('lwec_importedSightings', JSON.stringify(d)); } }catch(e){}
+  renderImportCard();
+  toast('Sighting loaded — choose the category, check everything, then save');
+  $('formEnc').scrollIntoView({behavior:'smooth'});
+};
+renderImportCard();
+
+/* ===== weekly awards (Monday to Sunday, announced Fridays) ===== */
+function weekBounds(){
+  const now=new Date(); const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const dow=(d.getDay()+6)%7;
+  const mon=new Date(d); mon.setDate(d.getDate()-dow);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const iso=x=>{ const z=new Date(x.getTime()-x.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+  return {from:iso(mon), to:iso(sun)};
+}
+function inWeek(e,w){ return e.date && e.date>=w.from && e.date<=w.to; }
+function weeklyBoardHTML(){
+  if(!allStudents.length) return '';
+  const w=weekBounds();
+  const rows=allStudents.map(s=>{
+    const ens=allEntries.filter(e=>e.uid===s.uid && inWeek(e,w));
+    return {name:s.name||s.email, logged:ens.length, signed:ens.filter(e=>e.signed).length};
+  });
+  const maxS=Math.max.apply(null, rows.map(r=>r.signed));
+  const minL=Math.min.apply(null, rows.map(r=>r.logged));
+  const anyActivity=rows.some(r=>r.logged>0);
+  const lines=rows.slice().sort((a,b)=>(b.signed-a.signed)||(b.logged-a.logged)).map(r=>{
+    let badge='';
+    if(anyActivity && maxS>0 && r.signed===maxS) badge+=' 👑';
+    if(anyActivity && rows.length>1 && r.logged===minL) badge+=' 🐾';
+    return '<div class="tline"><span>'+esc(r.name)+badge+'</span><span><b>'+r.signed+'</b> signed · '+r.logged+' logged</span></div>';
+  }).join('');
+  return '<div class="card"><h2>🏆 This Week ('+w.from+' → '+w.to+')</h2>'
+    +'<p class="note">👑 = most signed entries this week · 🐾 = the Sleeping Aardvark (fewest logged — escapable by logging!). The 🦅 Eagle Eye — best single entry — is the mentors’ pick: choose it together at Friday sign-off.</p>'
+    +lines+'</div>';
+}
 
 /* ================= migration from v1 (device-local) ================= */
 function oldData(){
