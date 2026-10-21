@@ -222,7 +222,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <div id="progWalk"></div>
   </div>
   <div class="card">
-    <h2>🐘 Dangerous-game encounters</h2>
+    <h2>🐘 Encounters & sightings</h2>
     <div class="statgrid" id="statEnc"></div>
     <div id="progEnc"></div>
   </div>
@@ -302,6 +302,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
       </div>
       <label>Animal category</label>
       <select id="enc_cat">
+        <option>General sighting / other wildlife</option>
         <option>Elephant</option><option>Rhino</option><option>Lion</option>
         <option>Leopard</option><option>Buffalo</option><option>Hippo</option>
         <option>Other dangerous game</option>
@@ -722,7 +723,8 @@ $('formEnc').addEventListener('submit', e=>{
 /* ================= entry rendering (shared) ================= */
 function entryHTML(en, opts){
   opts = opts||{};
-  const title = en.kind==='day' ? '🌅 '+esc(en.type) : en.kind==='walk' ? '🥾 Trail walk — '+esc(en.role) : '🐘 '+esc(en.cat)+(en.mode==='On foot'?' (on foot)':'');
+  const isGen = en.kind==='enc' && (en.cat||'').indexOf('General')===0;
+  const title = en.kind==='day' ? '🌅 '+esc(en.type) : en.kind==='walk' ? '🥾 Trail walk — '+esc(en.role) : (isGen ? '🔭 '+esc(en.species||'General sighting') : '🐘 '+esc(en.cat)+(en.mode==='On foot'?' (on foot)':''));
   const meta=[];
   if(en.kind==='day'){ if(en.hours) meta.push(en.hours+' h'); if(en.loc) meta.push(esc(en.loc)); }
   if(en.kind==='walk'){ meta.push(en.hours+' h on foot'); if(en.area) meta.push(esc(en.area)); }
@@ -865,7 +867,7 @@ function totalsOf(entries){
   entries.forEach(e=>{
     if(e.kind==='day'){ t.days++; t.dayHours+=(+e.hours||0); if(e.type==='Guest-facing guiding') t.gdays++; }
     if(e.kind==='walk'){ t.walkH+=(+e.hours||0); t.roles[e.role]=(t.roles[e.role]||0)+(+e.hours||0); }
-    if(e.kind==='enc'){ t.enc++; t.cats[e.cat]=(t.cats[e.cat]||0)+1; if(e.mode==='On foot') t.encFoot++; }
+    if(e.kind==='enc'){ if((e.cat||'').indexOf('General')===0){ t.gen=(t.gen||0)+1; } else { t.enc++; t.cats[e.cat]=(t.cats[e.cat]||0)+1; if(e.mode==='On foot') t.encFoot++; } }
   });
   return t;
 }
@@ -891,7 +893,7 @@ function renderDash(){
   $('statWalk').innerHTML = '<div class="stat"><b>'+t.walkH.toFixed(1)+'</b><span>total hours</span></div>'+roleBits;
   $('progWalk').innerHTML = bar('Trail hours on foot', +t.walkH.toFixed(1), tg.walk);
   const catBits = CATS.filter(c=>t.cats[c]).map(c=>'<div class="stat"><b>'+t.cats[c]+'</b><span>'+esc(c)+'</span></div>').join('');
-  $('statEnc').innerHTML = '<div class="stat"><b>'+t.enc+'</b><span>total encounters</span></div><div class="stat"><b>'+t.encFoot+'</b><span>on foot</span></div>'+catBits;
+  $('statEnc').innerHTML = '<div class="stat"><b>'+t.enc+'</b><span>dangerous-game encounters</span></div><div class="stat"><b>'+t.encFoot+'</b><span>on foot</span></div><div class="stat"><b>'+(t.gen||0)+'</b><span>general sightings</span></div>'+catBits;
   let encBars = bar('Encounters (total)', t.enc, tg.enc);
   Object.keys(tg.cats||{}).forEach(c=>{ encBars += bar(c, t.cats[c]||0, tg.cats[c]); });
   $('progEnc').innerHTML = encBars;
@@ -1045,7 +1047,9 @@ function printPack(p, tg, entries){
   const sigCell=e=> e.signed?('Signed: '+esc(e.signed.name)+(e.signed.png?'<br><img class="prsig" src="'+e.signed.png+'">':'')):'—';
   const rowsDay=list.filter(e=>e.kind==='day').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.type)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.loc||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
   const rowsWalk=list.filter(e=>e.kind==='walk').map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.role)+'</td><td>'+(e.hours||'')+'</td><td>'+esc(e.area||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
-  const rowsEnc=list.filter(e=>e.kind==='enc').map(e=>'<tr><td>'+esc(e.date)+(e.time?' '+esc(e.time):'')+'</td><td>'+esc(e.cat)+'</td><td>'+esc(e.species||'')+'</td><td>'+esc(e.mode||'')+'</td><td>'+esc(e.dist||'')+'</td><td>'+esc(e.beh||'')+' / '+esc(e.act||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
+  const isGenE=e=>(e.cat||'').indexOf('General')===0;
+  const rowsGen=list.filter(e=>e.kind==='enc' && isGenE(e)).map(e=>'<tr><td>'+esc(e.date)+(e.time?' '+esc(e.time):'')+'</td><td>'+esc(e.species||'')+'</td><td>'+esc(e.dist||'')+'</td><td>'+esc(e.beh||'')+'</td><td>'+esc(e.notes||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
+  const rowsEnc=list.filter(e=>e.kind==='enc' && !isGenE(e)).map(e=>'<tr><td>'+esc(e.date)+(e.time?' '+esc(e.time):'')+'</td><td>'+esc(e.cat)+'</td><td>'+esc(e.species||'')+'</td><td>'+esc(e.mode||'')+'</td><td>'+esc(e.dist||'')+'</td><td>'+esc(e.beh||'')+' / '+esc(e.act||'')+'</td><td>'+esc(e.mentor||'')+'</td><td>'+sigCell(e)+'</td></tr>').join('');
   const catSum = CATS.map(c=>'<tr><td>'+c+'</td><td>'+(t.cats[c]||0)+'</td><td>'+(tg.cats&&tg.cats[c]||'—')+'</td></tr>').join('');
   $('printArea').innerHTML =
   '<div class="pr-page"><div class="pr-h"><h1>Limpopo Wildlife Eco College</h1><div class="sub">CONSERVATION · EDUCATION · LEADERSHIP</div><h1 style="margin-top:10mm;">Practical Field Logbook</h1><div class="sub">PORTFOLIO OF EVIDENCE — PRACTICAL RECORD</div></div>'+
@@ -1065,7 +1069,8 @@ function printPack(p, tg, entries){
   '<div class="sigblock"><span class="sigline">Student signature &nbsp;·&nbsp; date</span><span class="sigline">Mentor / supervisor &nbsp;·&nbsp; date</span><span class="sigline">Assessor &nbsp;·&nbsp; date</span><span class="sigline">Moderator &nbsp;·&nbsp; date</span></div></div>'+
   (rowsDay?'<div class="pr-page"><h3>Field days</h3><table class="pr"><tr><th>Date</th><th>Type</th><th>Hours</th><th>Location</th><th>Activities / notes</th><th>Mentor</th><th>Verification</th></tr>'+rowsDay+'</table></div>':'')+
   (rowsWalk?'<div class="pr-page"><h3>Trail walks on foot</h3><table class="pr"><tr><th>Date</th><th>Role</th><th>Hours</th><th>Area</th><th>Notes</th><th>Mentor</th><th>Verification</th></tr>'+rowsWalk+'</table></div>':'')+
-  (rowsEnc?'<div class="pr-page"><h3>Dangerous-game encounters</h3><table class="pr"><tr><th>Date</th><th>Category</th><th>Detail</th><th>Mode</th><th>Dist (m)</th><th>Behaviour / response</th><th>Mentor</th><th>Verification</th></tr>'+rowsEnc+'</table></div>':'');
+  (rowsEnc?'<div class="pr-page"><h3>Dangerous-game encounters</h3><table class="pr"><tr><th>Date</th><th>Category</th><th>Detail</th><th>Mode</th><th>Dist (m)</th><th>Behaviour / response</th><th>Mentor</th><th>Verification</th></tr>'+rowsEnc+'</table></div>':'')+
+  (rowsGen?'<div class="pr-page"><h3>General wildlife sightings</h3><table class="pr"><tr><th>Date</th><th>Species / detail</th><th>Dist (m)</th><th>Behaviour</th><th>Notes</th><th>Mentor</th><th>Verification</th></tr>'+rowsGen+'</table></div>':'');
   window.print();
 }
 window.printMyPoE = ()=> printPack(state.profile||{}, state.targets||{cats:{}}, state.entries);
@@ -1102,6 +1107,7 @@ window.importSighting = id=>{
   document.querySelectorAll('#kindPick button').forEach(x=>x.classList.toggle('active', x.dataset.kind==='enc'));
   $('formDay').hidden=true; $('formWalk').hidden=true; $('formEnc').hidden=false;
   const tax=s.taxonomy||{}, tem=s.temporal||{}, spa=s.spatial||{}, ctx=s.contextual||{};
+  $('enc_cat').value = 'General sighting / other wildlife';
   $('enc_date').value = tem.date||todayISO();
   $('enc_time').value = tem.time||'';
   $('enc_species').value = (tax.species||'') + (ctx.groupSize>1?(' — group of '+ctx.groupSize):'');
