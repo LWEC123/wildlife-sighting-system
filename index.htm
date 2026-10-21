@@ -184,7 +184,20 @@
             </div>
             
             <div id="sightingIdAlert" class="alert alert-success" role="alert">
-                <strong>Success!</strong> Your sighting has been recorded with ID: <span id="sightingIdValue"></span>
+                <strong>✔ Sighting saved on this phone!</strong> ID: <span id="sightingIdValue"></span>
+                <div class="mt-2" style="font-size:.92em;">
+                    <b>What happens next:</b>
+                    <ul class="mb-1" style="padding-left:1.2em;">
+                        <li>Your sighting is stored on <b>this phone</b> — see it under “My sightings” below.</li>
+                        <li>After your field day, export your sightings as CSV for your mentor.</li>
+                        <li>Worth an official entry? Open your <a href="LWECFieldLogbook.html"><b>Field Logbook</b></a> → ➕ New Entry → 📥 Import from your Field Notebook.</li>
+                    </ul>
+                    You can record the next sighting right away.
+                </div>
+            </div>
+            <div class="mb-3">
+                <button type="button" class="btn btn-outline-success btn-sm" id="mySightingsBtn">📒 My sightings on this phone (<span id="mySightingsCount">0</span>)</button>
+                <div id="mySightingsList" style="display:none; margin-top:10px;"></div>
             </div>
 
             <form id="wildlifeSightingForm">
@@ -1120,6 +1133,33 @@ const animalTracksData = {
 };
           $(document).ready(function() {
 
+            // My sightings on this phone: review and delete (to redo an entry)
+            function renderMySightings() {
+                const list = JSON.parse(localStorage.getItem('wildlifeSightings') || '[]');
+                $('#mySightingsCount').text(list.length);
+                const box = $('#mySightingsList');
+                if (!list.length) { box.html('<p class="text-muted mb-0">No sightings saved on this phone yet.</p>'); return; }
+                box.html(list.slice().reverse().map(function(sg, idx) {
+                    const i = list.length - 1 - idx;
+                    const sp = (sg.taxonomy && sg.taxonomy.species) || 'Sighting';
+                    const dt = ((sg.temporal && sg.temporal.date) || '') + ' ' + ((sg.temporal && sg.temporal.time) || '');
+                    return '<div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">'
+                        + '<div><b>' + sp + '</b><br><small class="text-muted">' + dt.trim() + (sg.sightingId ? ' · ' + sg.sightingId : '') + '</small></div>'
+                        + '<button type="button" class="btn btn-outline-danger btn-sm" data-delidx="' + i + '">Delete</button></div>';
+                }).join(''));
+            }
+            $('#mySightingsBtn').on('click', function() { renderMySightings(); $('#mySightingsList').toggle(); });
+            $('#mySightingsList').on('click', 'button[data-delidx]', function() {
+                const i = +$(this).attr('data-delidx');
+                const list = JSON.parse(localStorage.getItem('wildlifeSightings') || '[]');
+                const sp = (list[i] && list[i].taxonomy && list[i].taxonomy.species) || 'this sighting';
+                if (!confirm('Delete ' + sp + ' from this phone? If it was wrong, delete it and record it again.')) return;
+                list.splice(i, 1);
+                localStorage.setItem('wildlifeSightings', JSON.stringify(list));
+                renderMySightings();
+            });
+            renderMySightings();
+
             // Tap anywhere on a date or time field to open its picker (not just the tiny icon)
             $(document).on('click', 'input[type="date"], input[type="time"]', function(){
                 if (typeof this.showPicker === 'function') { try { this.showPicker(); } catch(e){} }
@@ -1369,9 +1409,11 @@ const animalTracksData = {
                 savedSightings.push(formData);
                 localStorage.setItem('wildlifeSightings', JSON.stringify(savedSightings));
                 
-                // Show success message with ID
+                // Show success message with ID and bring it into view
                 $('#sightingIdValue').text(sightingId);
                 $('#sightingIdAlert').fadeIn();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                renderMySightings();
                 
                 // Reset form
                 resetForm();
@@ -1379,7 +1421,7 @@ const animalTracksData = {
                 // Hide success message after a delay
                 setTimeout(function() {
                     $('#sightingIdAlert').fadeOut();
-                }, 5000);
+                }, 15000);
             });
 
             // Helper Functions
