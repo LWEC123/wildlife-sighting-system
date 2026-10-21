@@ -126,9 +126,25 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
   .decl{font-size:10pt; line-height:1.6; margin-top:6mm;}
   img.prsig{height:28pt;}
 }
+
+/* Field Journal icon family */
+.fi{width:1.2em;height:1.2em;vertical-align:-0.24em;}
+:root{--fi-paper:#ffffff;--fi-gold:#b8862d;}
+nav{--fi-paper:var(--green);--fi-gold:#d9a93c;}
+nav button .fi{width:1.3em;height:1.3em;margin-right:7px;vertical-align:-0.3em;}
+.filterrow button{--fi-paper:#ffffff;}
+.filterrow button.active{--fi-paper:var(--green);--fi-gold:#d9a93c;}
+.filterrow button .fi{margin-right:5px;}
+.btn{--fi-paper:var(--gold);}
+.btn.secondary{--fi-paper:var(--green);--fi-gold:#d9a93c;}
+.btn.ghost{--fi-paper:#ffffff;}
+.callout{--fi-paper:#fdf6e3;}
+h2 .fi{width:1.25em;height:1.25em;margin-right:5px;}
 </style>
 </head>
 <body>
+<svg id="lwecIcons" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><symbol id="i-home" viewBox="0 0 96 96"><path fill="currentColor" d="M48 10 L84 46 C72 50 24 50 12 46 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M48 15 L22 45 M48 15 L35 46.5 M48 15 L48 47.5 M48 15 L61 46.5 M48 15 L74 45"/> <path fill="currentColor" d="M8 45.5 C25 51.5 71 51.5 88 45.5 L86 49.5 C70 55 26 55 10 49.5 Z"/> <path fill="currentColor" d="M20 52 C20 50.5 76 50.5 76 52 L74 82 C73 86 60 88.5 48 88.5 C36 88.5 23 86 22 82 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M27 56 L26.4 79 M69 56 L69.6 79" stroke-width="1.6" opacity="0.65"/> <path fill="var(--fi-paper,#fff)" d="M42 88 L42 60 C42 56.5 54 56.5 54 60 L54 88 C50 88.6 46 88.6 42 88 Z"/> <path fill="var(--fi-gold,#b8862d)" d="M54 58.5 L66 54 L66 84 L54 88 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M63 68 L63 72" stroke-width="1.8"/></symbol><symbol id="i-gps" viewBox="0 0 96 96"><path fill="currentColor" d="M48 91 C30 71.5 21 57 21 43.5 C21 27.5 33 15.5 48 15.5 C63 15.5 75 27.5 75 43.5 C75 57 66 71.5 48 91 Z"/> <circle fill="var(--fi-paper,#fff)" cx="35.5" cy="36.5" r="5.2"/> <circle fill="var(--fi-paper,#fff)" cx="48" cy="32.5" r="5.6"/> <circle fill="var(--fi-paper,#fff)" cx="60.5" cy="36.5" r="5.2"/> <path fill="var(--fi-gold,#b8862d)" d="M48 44 C56.5 44 62 49.5 62 56 C62 61.5 56.5 65.5 48 65.5 C39.5 65.5 34 61.5 34 56 C34 49.5 39.5 44 48 44 Z"/></symbol><symbol id="i-hat" viewBox="0 0 96 96"><path fill="currentColor" d="M26 56 C25 40 28.5 26 35 21.5 C37 20.1 39.5 20.6 42 22.5 L48 27 L54 22.5 C56.5 20.6 59 20.1 61 21.5 C67.5 26 71 40 70 56 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M33 29.5 C37 27.5 40 27.8 43 30.5 L48 35 L53 30.5 C56 27.8 59 27.5 63 29.5" stroke-width="2.8"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M35.5 36 L34.5 47 M35 41.5 L38.5 41.5" stroke-width="2.4"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M60.5 36 L61.5 47 M61 41.5 L57.5 41.5" stroke-width="2.4"/> <path fill="var(--fi-gold,#b8862d)" d="M25.6 51 C33 53.6 63 53.6 70.4 51 L70.8 60 C62 62.8 34 62.8 25.2 60 Z"/> <path fill="currentColor" d="M13 62.5 C22 59 34 57.2 48 57.2 C62 57.2 74 59 83 62.5 C88.5 64.7 88.8 69.2 83.6 72.1 C74 77.5 61.5 80.3 48 80.3 C34.5 80.3 22 77.5 12.4 72.1 C7.2 69.2 7.5 64.7 13 62.5 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M15.5 67.5 C25 72 36 74.2 48 74.2 C60 74.2 71 72 80.5 67.5" stroke-width="2.4"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M20 73.5 C29 76.8 38 78.3 48 78.3 C58 78.3 67 76.8 76 73.5" stroke-width="1.8"/></symbol><symbol id="i-poe" viewBox="0 0 96 96"><path fill="var(--fi-paper,#fff)" d="M26 26 L62 18 L82 26 L46 34 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M30 26.5 L62 19.5 L78 25.8 M34 28 L64 21.4 L74 25.4" stroke-width="1.4"/> <path fill="currentColor" d="M26 26 L62 18 L82 26 L46 34 Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/> <path fill="currentColor" d="M26 26 L46 34 L46 86 L26 78 Z"/> <path fill="var(--fi-paper,#fff)" d="M30.5 36 L41.5 40.4 L41.5 56.4 L30.5 52 Z" opacity="0.92"/> <path fill="currentColor" d="M32.5 38.8 L39.5 41.6 L39.5 53.6 L32.5 50.8 Z"/> <path fill="currentColor" d="M46 34 L82 26 L82 78 L46 86 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M52 42 L74 37 M52 48 L74 43 M52 54 L68 50.4" stroke-width="2"/> <path fill="var(--fi-gold,#b8862d)" d="M74 54.5 L77.5 56.5 L81.5 55.8 L82.8 59.5 L86 61.8 L84.2 65.3 L84.8 69.3 L81 70.5 L78.8 73.9 L75 72.5 L71.2 73.9 L69 70.5 L65.2 69.3 L65.8 65.3 L64 61.8 L67.2 59.5 L68.5 55.8 L72.5 56.5 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M70.5 64.2 L74 67.2 L80 59.8" stroke-width="2.6" stroke="#1e3a2a"/> <path fill="var(--fi-gold,#b8862d)" d="M72 73.5 L71 81.5 L75.5 78 L79.5 80.5 L78.5 73.2 Z"/></symbol><symbol id="i-binocs" viewBox="0 0 96 96"><path fill="currentColor" d="M20 14 C20 11 22.5 9 26 9 L38 9 C41.5 9 44 11 44 14 L44 32 L20 32 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M26 17 L38 17" stroke-width="2.6"/> <path fill="currentColor" d="M52 14 C52 11 54.5 9 58 9 L70 9 C73.5 9 76 11 76 14 L76 32 L52 32 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M58 17 L70 17" stroke-width="2.6"/> <path fill="currentColor" d="M41 36 C41 30.5 44 27.5 48 27.5 C52 27.5 55 30.5 55 36 L55 46 L41 46 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M46 32 L46 43 M50 32 L50 43" stroke-width="2.2"/> <path fill="var(--fi-paper,#fff)" d="M43 46.5 L48 45 L53 46.5 L53 54 L43 54 Z"/> <path fill="currentColor" d="M19 33 L45 33 L45 62 L13 62 C13.8 51.5 15.5 42 19 33 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M20.5 37 L18 56" stroke-width="2.2"/> <path fill="currentColor" d="M51 33 L77 33 C80.5 42 82.2 51.5 83 62 L51 62 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M75.5 37 L78 56" stroke-width="2.2"/> <circle fill="currentColor" cx="27" cy="68" r="20"/><circle fill="var(--fi-paper,#fff)" cx="27" cy="68" r="15.2"/><circle fill="currentColor" cx="27" cy="68" r="12"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M18.5 64.5 A10.5 10.5 0 0 1 29 58.8" stroke-width="2.6"/> <circle fill="currentColor" cx="69" cy="68" r="20"/><circle fill="var(--fi-paper,#fff)" cx="69" cy="68" r="15.2"/><circle fill="currentColor" cx="69" cy="68" r="12"/> <path fill="var(--fi-gold,#b8862d)" d="M60.5 65 A11.5 11.5 0 0 1 71 58.2 L72 63.2 A6.6 6.6 0 0 0 65.3 67.2 Z"/></symbol><symbol id="i-new" viewBox="0 0 96 96"><path fill="currentColor" d="M26 10 h40 c4.4 0 8 3.6 8 8 v52 c0 4.4 -3.6 8 -8 8 H30 c-4.4 0 -8 -3.6 -8 -8 V14 c0 -2.2 1.8 -4 4 -4 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M32 26 h28 M32 36 h28 M32 46 h18" stroke-width="3.2"/> <circle fill="var(--fi-gold,#b8862d)" cx="64" cy="64" r="16"/> <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M64 56.5 v15 M56.5 64 h15" stroke-width="4"/></symbol><symbol id="i-entries" viewBox="0 0 96 96"><path fill="currentColor" d="M30 10 h36 c4.4 0 8 3.6 8 8 v60 c0 4.4 -3.6 8 -8 8 H30 c-3.3 0 -6 -2.7 -6 -6 V16 c0 -3.3 2.7 -6 6 -6 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M33 10 v76" stroke-width="2.6"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M28 20 h9 M28 32 h9 M28 44 h9 M28 56 h9 M28 68 h9" stroke-width="2.4"/> <path fill="var(--fi-gold,#b8862d)" d="M52 10 h14 v24 l-7 -5.6 L52 34 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M42 52 h22 M42 62 h22 M42 72 h14" stroke-width="2.8"/></symbol><symbol id="i-map" viewBox="0 0 96 96"><path fill="currentColor" d="M10 24 L36 15 L60 24 L86 15 L86 70 L60 79 L36 70 L10 79 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M36 17.5 V67.5 M60 26.5 V76.5" stroke-width="2.6"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M18 66 C28 56 30 42 44 39 C56 36.5 60 30 70 26" stroke-width="3" stroke-dasharray="0.5 8.5"/> <circle fill="var(--fi-gold,#b8862d)" cx="73" cy="25" r="3"/> <circle fill="var(--fi-gold,#b8862d)" cx="68.2" cy="29.8" r="2.4"/> <circle fill="var(--fi-gold,#b8862d)" cx="77.3" cy="29.6" r="2.4"/> <ellipse fill="var(--fi-gold,#b8862d)" cx="72.8" cy="33.8" rx="4.6" ry="3.4"/></symbol><symbol id="i-students" viewBox="0 0 96 96"><g transform="translate(2 6) scale(0.72)"> <path fill="currentColor" d="M26 56 C25 40 28.5 26 35 21.5 C37 20.1 39.5 20.6 42 22.5 L48 27 L54 22.5 C56.5 20.6 59 20.1 61 21.5 C67.5 26 71 40 70 56 Z"/> <path fill="var(--fi-gold,#b8862d)" d="M25.6 51 C33 53.6 63 53.6 70.4 51 L70.8 60 C62 62.8 34 62.8 25.2 60 Z"/> <path fill="currentColor" d="M13 62.5 C22 59 34 57.2 48 57.2 C62 57.2 74 59 83 62.5 C88.5 64.7 88.8 69.2 83.6 72.1 C74 77.5 61.5 80.3 48 80.3 C34.5 80.3 22 77.5 12.4 72.1 C7.2 69.2 7.5 64.7 13 62.5 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M15.5 67.5 C25 72 36 74.2 48 74.2 C60 74.2 71 72 80.5 67.5" stroke-width="2.4"/> </g> <g transform="translate(37 34) scale(0.6)"> <path fill="currentColor" d="M26 56 C25 40 28.5 26 35 21.5 C37 20.1 39.5 20.6 42 22.5 L48 27 L54 22.5 C56.5 20.6 59 20.1 61 21.5 C67.5 26 71 40 70 56 Z"/> <path fill="var(--fi-paper,#fff)" d="M25.6 51 C33 53.6 63 53.6 70.4 51 L70.8 60 C62 62.8 34 62.8 25.2 60 Z"/> <path fill="currentColor" d="M13 62.5 C22 59 34 57.2 48 57.2 C62 57.2 74 59 83 62.5 C88.5 64.7 88.8 69.2 83.6 72.1 C74 77.5 61.5 80.3 48 80.3 C34.5 80.3 22 77.5 12.4 72.1 C7.2 69.2 7.5 64.7 13 62.5 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M15.5 67.5 C25 72 36 74.2 48 74.2 C60 74.2 71 72 80.5 67.5" stroke-width="2.4"/> </g></symbol><symbol id="i-quill" viewBox="0 0 96 96"><path fill="currentColor" d="M52 58 C48 38 58 18 80 8 C74 24 72 42 60 58 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M56 54 C57 40 63 26 74 14" stroke-width="2.4"/> <path fill="var(--fi-gold,#b8862d)" d="M50 60 L58 56 L61 66 L53 70 Z"/> <path fill="currentColor" d="M28 62 h40 l-4.5 22 c-0.6 3.2 -30.4 3.2 -31 0 Z"/> <path fill="currentColor" d="M24 56 h48 c2.2 0 4 1.8 4 4 s-1.8 4 -4 4 H24 c-2.2 0 -4 -1.8 -4 -4 s1.8 -4 4 -4 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M33 70 c0.5 4 1 7 2 10" stroke-width="2.4"/></symbol><symbol id="i-sun" viewBox="0 0 96 96"><path fill="var(--fi-gold,#b8862d)" d="M29 58 a19 19 0 0 1 38 0 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M37 56 a11 11 0 0 1 22 0" stroke-width="2.4"/> <path fill="currentColor" d="M43.5 12 h9 v13 h-9 Z"/> <path fill="currentColor" d="M17 26 l6.4 -6.4 9.2 9.2 -6.4 6.4 Z"/> <path fill="currentColor" d="M79 26 l-6.4 -6.4 -9.2 9.2 6.4 6.4 Z"/> <path fill="currentColor" d="M8 48 h14 v9 H8 Z M74 48 h14 v9 H74 Z"/> <rect fill="currentColor" x="10" y="62" width="76" height="8" rx="4"/> <rect fill="currentColor" x="20" y="75" width="56" height="7" rx="3.5"/></symbol><symbol id="i-boot" viewBox="0 0 96 96"><path fill="currentColor" d="M37 6 c14 -4 24.5 1.5 25.5 13 c0.8 9.5 -3 17 -4.2 26 l-23 2.6 c-4.2 -8.4 -8.3 -15.7 -7.6 -25 C28.5 12.5 32 7.5 37 6 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M39 17 l17 -2 M39.6 26 l17.5 -2 M40.2 35 l18 -2" stroke-width="3.4"/> <path fill="var(--fi-gold,#b8862d)" d="M40.5 43.5 l18.5 -2 1.8 7.4 -20 2.2 Z"/> <path fill="currentColor" d="M38 55.5 l22 -2.5 c3.2 7.4 3 13.8 -1.2 18.5 c-4.8 5.4 -12.8 6.3 -17.5 1.5 c-3.8 -4 -4.1 -10.6 -3.3 -17.5 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M41 64 l15 -1.6" stroke-width="3"/></symbol><symbol id="i-track" viewBox="0 0 96 96"><path fill="currentColor" d="M17 57 C17 42 30 32 48 32 C66 32 79 42 79 57 C79 72 66 82 48 82 C30 82 17 72 17 57 Z"/> <ellipse fill="var(--fi-gold,#b8862d)" cx="30" cy="28.5" rx="7.2" ry="9.8" transform="rotate(-16 30 28.5)"/> <ellipse fill="var(--fi-gold,#b8862d)" cx="48" cy="24.5" rx="7.6" ry="10.2"/> <ellipse fill="var(--fi-gold,#b8862d)" cx="66" cy="28.5" rx="7.2" ry="9.8" transform="rotate(16 66 28.5)"/></symbol><symbol id="i-import" viewBox="0 0 96 96"><path fill="var(--fi-gold,#b8862d)" d="M42 6 h12 v20 h12 L48 46 L30 26 h12 Z"/> <path fill="currentColor" d="M10 52 C23 46.5 37 46.5 48 53 L48 88 C37 81.5 23 81.5 10 87 Z"/> <path fill="currentColor" d="M86 52 C73 46.5 59 46.5 48 53 L48 88 C59 81.5 73 81.5 86 87 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M17 56.5 C25 54 34 54 42 57.5 M17 65 C25 62.5 34 62.5 42 66 M54 57.5 C62 54 71 54 79 56.5 M54 66 C62 62.5 71 62.5 79 65" stroke-width="2.4"/></symbol><symbol id="i-crown" viewBox="0 0 96 96"><path fill="var(--fi-gold,#b8862d)" d="M19 28 L34 41 L48 20 L62 41 L77 28 L72.5 62 H23.5 Z"/> <circle fill="var(--fi-gold,#b8862d)" cx="18" cy="25" r="3.6"/><circle fill="var(--fi-gold,#b8862d)" cx="48" cy="16" r="3.8"/><circle fill="var(--fi-gold,#b8862d)" cx="78" cy="25" r="3.6"/> <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M31 53 h34" stroke-width="3"/> <circle fill="var(--fi-paper,#fff)" cx="48" cy="45" r="4.4"/> <path fill="currentColor" d="M22 66 h52 v5 c0 3.9 -3.1 7 -7 7 H29 c-3.9 0 -7 -3.1 -7 -7 Z"/></symbol><symbol id="i-eagle" viewBox="0 0 96 96"><path fill="currentColor" d="M48 30 C64 30 77 37 86 50 C77 63 64 70 48 70 C32 70 19 63 10 50 C19 37 32 30 48 30 Z"/> <circle fill="var(--fi-paper,#fff)" cx="48" cy="50" r="15.5"/> <circle fill="var(--fi-gold,#b8862d)" cx="48" cy="50" r="11.2"/> <circle fill="currentColor" cx="48" cy="50" r="5.2"/> <circle fill="var(--fi-paper,#fff)" cx="52.5" cy="45.5" r="2.4"/> <path fill="currentColor" d="M19 24 C32 15 54 13 69 19 L66 26 C53 21.5 36 23 25 29 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M31 22.5 L29.5 27 M42 19.5 L41.4 24.4 M53.5 19 L53.5 24" stroke-width="2.2"/></symbol><symbol id="i-vark" viewBox="0 0 96 96"><path fill="currentColor" d="M13 59 C13 42 27 32 45 32 C61 32 74.5 40 75.5 52.5 C82.5 54.5 85 62.5 80 67.8 C76.2 71.6 70 72 65 69.8 L31 73 C20 74 13 68.5 13 59 Z"/> <path fill="currentColor" d="M55 33 L59 13 L70 29.5 Z"/> <path fill="currentColor" d="M45.5 32 L48.5 17 L57 27.5 Z"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M60.5 19.5 L63 27" stroke-width="2"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M61 48 q5.5 4.5 11 0" stroke-width="2.8"/> <circle fill="var(--fi-paper,#fff)" cx="78.6" cy="63.5" r="1.9"/> <path fill="var(--fi-gold,#b8862d)" d="M20 12 h13 l-8.4 8.4 H33 v5.6 H20 l8.4 -8.4 H20 Z"/> <path fill="var(--fi-gold,#b8862d)" d="M38 4 h9.6 l-6 6 h6 v4.4 H38 l6 -6 h-6 Z"/></symbol><symbol id="i-camera" viewBox="0 0 96 96"><path fill="currentColor" d="M33 21 l5.6 -8.4 c0.7 -1 1.9 -1.6 3.2 -1.6 h12.4 c1.3 0 2.5 0.6 3.2 1.6 L63 21 h13 c4.4 0 8 3.6 8 8 v36 c0 4.4 -3.6 8 -8 8 H20 c-4.4 0 -8 -3.6 -8 -8 V29 c0 -4.4 3.6 -8 8 -8 Z"/> <circle fill="var(--fi-paper,#fff)" cx="48" cy="47" r="17.5"/> <circle fill="currentColor" cx="48" cy="47" r="13.2"/> <path fill="var(--fi-gold,#b8862d)" d="M38.2 42 a13.5 13.5 0 0 1 8.6 -7 l1.6 6 a7.4 7.4 0 0 0 -4.9 4 Z"/> <circle fill="var(--fi-gold,#b8862d)" cx="75" cy="30" r="3.6"/> <path fill="none" stroke="var(--fi-paper,#fff)" stroke-linecap="round" stroke-linejoin="round" d="M19 29 h9" stroke-width="2.8"/></symbol></svg>
+
 <div id="boot"><div class="spin"></div><div>Opening your Field Logbook…</div></div>
 
 <header>
@@ -200,13 +216,13 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 
 <!-- ================= APP ================= -->
 <nav id="nav" hidden>
-  <button data-tab="dash" class="active">🏠 Dashboard</button>
-  <button data-tab="new">➕ New Entry</button>
-  <button data-tab="list">📒 My Entries</button>
-  <button data-tab="map">🗺️ Map</button>
-  <button data-tab="student">🧑 My Details</button>
-  <button data-tab="export">🖨️ Export / PoE</button>
-  <button data-tab="students" id="navStudents" hidden>🧑‍🏫 Students</button>
+  <button data-tab="dash" class="active"><svg class="fi" aria-hidden="true"><use href="#i-home"/></svg> Dashboard</button>
+  <button data-tab="new"><svg class="fi" aria-hidden="true"><use href="#i-new"/></svg> New Entry</button>
+  <button data-tab="list"><svg class="fi" aria-hidden="true"><use href="#i-entries"/></svg> My Entries</button>
+  <button data-tab="map"><svg class="fi" aria-hidden="true"><use href="#i-map"/></svg> Map</button>
+  <button data-tab="student"><svg class="fi" aria-hidden="true"><use href="#i-hat"/></svg> My Details</button>
+  <button data-tab="export"><svg class="fi" aria-hidden="true"><use href="#i-poe"/></svg> Export / PoE</button>
+  <button data-tab="students" id="navStudents" hidden><svg class="fi" aria-hidden="true"><use href="#i-students"/></svg> Students</button>
 </nav>
 <main id="appMain" hidden>
 
@@ -219,22 +235,22 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <p class="note" id="syncNote" style="margin-top:8px;"></p>
   </div>
   <div class="card">
-    <h2>📊 Field days</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-sun"/></svg> Field days</h2>
     <div class="statgrid" id="statDays"></div>
     <div id="progDays"></div>
   </div>
   <div class="card">
-    <h2>🥾 Trail hours on foot</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-boot"/></svg> Trail hours on foot</h2>
     <div class="statgrid" id="statWalk"></div>
     <div id="progWalk"></div>
   </div>
   <div class="card">
-    <h2>🐘 Encounters & sightings</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-track"/></svg> Encounters &amp; sightings</h2>
     <div class="statgrid" id="statEnc"></div>
     <div id="progEnc"></div>
   </div>
   <div class="card">
-    <h2>🏆 This Week — the Friday Awards</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-crown"/></svg> This Week — the Friday Awards</h2>
     <p class="note" id="weekMine"></p>
     <p class="note">👑 <b>The Weekly Crown</b> — most mentor-signed entries this week. &nbsp;🦅 <b>The Eagle Eye</b> — the week's best single entry, chosen by the mentors. &nbsp;🐾 <b>The Sleeping Aardvark</b> — fewest entries this week… and it <i>must</i> move on the moment you start logging. Winners announced at Friday sign-off.</p>
   </div>
@@ -243,7 +259,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <!-- NEW ENTRY -->
 <section id="tab-new" hidden>
   <div class="card" id="importCard" hidden>
-    <h2>📥 Import from your Field Notebook</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-import"/></svg> Import from your Field Notebook</h2>
     <p class="note">Sightings you recorded in the <b>Wildlife Sighting System</b> on this phone can be pulled straight into an encounter entry — species, date, time, GPS pin and notes come across, no retyping. Pick one, check everything, choose the dangerous-game category if it applies, and save. Your mentor still reviews and signs as usual.</p>
     <div id="importList"></div>
   </div>
@@ -251,9 +267,9 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <h2>What are you logging?</h2>
     <div class="callout">📍 <b>Log it where it happens — at the sighting, not later from camp.</b> The GPS pin stamps where your phone is the moment you tap the button, and that is exactly what makes your record credible to your assessor. No signal needed: entries and pins are kept on your phone and upload themselves the moment you're back in range.</div>
     <div class="filterrow" id="kindPick">
-      <button data-kind="day" class="active">🌅 Field day</button>
-      <button data-kind="walk">🥾 Trail walk</button>
-      <button data-kind="enc">🐘 Encounter</button>
+      <button data-kind="day" class="active"><svg class="fi" aria-hidden="true"><use href="#i-sun"/></svg> Field day</button>
+      <button data-kind="walk"><svg class="fi" aria-hidden="true"><use href="#i-boot"/></svg> Trail walk</button>
+      <button data-kind="enc"><svg class="fi" aria-hidden="true"><use href="#i-track"/></svg> Encounter</button>
     </div>
 
     <form id="formDay">
@@ -274,7 +290,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
       <label>What you did (activities, duties, species worked with)</label><textarea id="day_notes"></textarea>
       <label>Mentor / supervisor on the day</label><input id="day_mentor" placeholder="Name">
       <div class="btnrow">
-        <button type="button" class="btn ghost small" onclick="grabGPS('day')">📍 Capture GPS</button>
+        <button type="button" class="btn ghost small" onclick="grabGPS('day')"><svg class="fi" aria-hidden="true"><use href="#i-gps"/></svg> Capture GPS</button>
         <span class="gpsline" id="day_gps"></span>
       </div>
       <div class="btnrow"><button type="submit" class="btn">Save field day</button></div>
@@ -296,7 +312,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
       <label>Notes (terrain, purpose, lessons)</label><textarea id="walk_notes"></textarea>
       <label>Mentor / lead guide</label><input id="walk_mentor" placeholder="Name">
       <div class="btnrow">
-        <button type="button" class="btn ghost small" onclick="grabGPS('walk')">📍 Capture GPS</button>
+        <button type="button" class="btn ghost small" onclick="grabGPS('walk')"><svg class="fi" aria-hidden="true"><use href="#i-gps"/></svg> Capture GPS</button>
         <span class="gpsline" id="walk_gps"></span>
       </div>
       <div class="btnrow"><button type="submit" class="btn">Save trail walk</button></div>
@@ -325,7 +341,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
       <label>Notes</label><textarea id="enc_notes"></textarea>
       <label>Mentor / lead guide present</label><input id="enc_mentor" placeholder="Name">
       <div class="btnrow">
-        <button type="button" class="btn ghost small" onclick="grabGPS('enc')">📍 Capture GPS</button>
+        <button type="button" class="btn ghost small" onclick="grabGPS('enc')"><svg class="fi" aria-hidden="true"><use href="#i-gps"/></svg> Capture GPS</button>
         <span class="gpsline" id="enc_gps"></span>
       </div>
       <div class="btnrow"><button type="submit" class="btn">Save encounter</button></div>
@@ -336,7 +352,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <!-- ENTRIES -->
 <section id="tab-list" hidden>
   <div class="card">
-    <h2>📒 My entries</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-entries"/></svg> My entries</h2>
     <p class="note">An entry becomes part of your Portfolio of Evidence once your mentor signs it — signed entries lock and can no longer be edited or deleted.</p>
     <div class="filterrow" id="listFilter" style="margin-top:10px;">
       <button data-f="all" class="active">All</button>
@@ -352,7 +368,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <!-- MAP -->
 <section id="tab-map" hidden>
   <div class="card">
-    <h2>🗺️ Where you've been</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-map"/></svg> Where you've been</h2>
     <p class="note" id="mapIntro">Every entry you capture with a GPS pin appears here.</p>
     <div id="map" style="margin-top:12px;"></div>
     <div class="maplegend">Pins:<i style="background:#2d5741;"></i>field days <i style="background:#3e7257;"></i>trail walks <i style="background:#c4a054;"></i>encounters</div>
@@ -363,7 +379,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <!-- MY DETAILS -->
 <section id="tab-student" hidden>
   <div class="card">
-    <h2>🧑 My details</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-hat"/></svg> My details</h2>
     <p class="note">These details print on the cover of your Portfolio of Evidence pack.</p>
     <label>Account email</label><input id="p_email" readonly>
     <div class="row">
@@ -402,7 +418,7 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
     <div class="btnrow"><button class="btn" onclick="migrateLocal()" id="migrateBtn">Move them into my account</button></div>
   </div>
   <div class="card">
-    <h2>🖨️ Portfolio of Evidence pack</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-poe"/></svg> Portfolio of Evidence pack</h2>
     <p class="note">Builds your complete PoE in seconds: a cover page with your details and declaration, a summary of totals, and every entry in chronological order with its recorded mentor signatures. <b>No binder needed:</b> choose “Save as PDF” in the print screen — the electronic PoE (PDF with recorded mentor sign-offs) is accepted by our assessor. Generate it fresh whenever it's needed; it is always complete and up to date.</p>
     <div class="btnrow"><button class="btn" onclick="printMyPoE()">Generate PoE pack (print or save as PDF)</button></div>
   </div>
@@ -419,12 +435,12 @@ canvas#sigpad{width:100%; height:160px; border:1.5px dashed var(--green); border
 <section id="tab-students" hidden>
   <div id="weeklyBoard"></div>
   <div class="card">
-    <h2>🧑‍🏫 Students</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-students"/></svg> Students</h2>
     <p class="note">Every registered student, with their logged totals. Open a student to check entries, sign them off, set their official programme targets, or print their PoE pack.</p>
     <div id="studentList" style="margin-top:10px;"></div>
   </div>
   <div class="card">
-    <h2>🧑‍🏫 College staff</h2>
+    <h2><svg class="fi" aria-hidden="true"><use href="#i-students"/></svg> College staff</h2>
     <p class="note">Everyone holding mentor keys. Full mentors can also correct records (unlock signatures, delete entries); signing mentors review and sign. Staff appear here after their first sign-in since being appointed.</p>
     <div id="staffList" style="margin-top:10px;"></div>
   </div>
@@ -751,7 +767,7 @@ function entryHTML(en, opts){
          +'<button class="btn small danger" onclick="mentorDelete(\''+en.id+'\')">Delete entry</button></div>';
   }
   if(!en.signed && opts.canSign){
-    btns='<div class="btnrow"><button class="btn small" onclick="openSign(\''+en.id+'\')">✍️ Mentor sign</button>'
+    btns='<div class="btnrow"><button class="btn small" onclick="openSign(\''+en.id+'\')"><svg class="fi" aria-hidden="true"><use href="#i-quill"/></svg> Mentor sign</button>'
         +(opts.canDelete?'<button class="btn small danger" onclick="delEntry(\''+en.id+'\')">Delete</button>':'')
         +(opts.mentorTools?'<button class="btn small danger" onclick="mentorDelete(\''+en.id+'\')">Delete entry</button>':'')
         +'</div>';
