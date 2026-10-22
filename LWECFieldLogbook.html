@@ -162,6 +162,7 @@ h2 .fi{width:1.25em;height:1.25em;margin-right:5px;}
   <div class="authbox">
 
     <div class="card" id="authLogin">
+      <img src="icons/rondavel.png" alt="" style="display:block;margin:0 auto 8px;width:104px;border-radius:14px;">
       <h2>Sign in 🐾</h2>
       <p class="sub">Your logbook follows your account — sign in on any phone or computer.</p>
       <form onsubmit="doLogin(event)">
@@ -229,6 +230,7 @@ h2 .fi{width:1.25em;height:1.25em;margin-right:5px;}
 <!-- DASHBOARD -->
 <section id="tab-dash">
   <div class="card">
+    <img src="icons/paw-badge.png" alt="" style="float:right;width:58px;border-radius:10px;margin:0 0 6px 10px;">
     <h2 id="dashHello">Welcome to your Field Logbook 🐾</h2>
     <p class="note">Every field day, trail walk and dangerous-game encounter you log here builds your verified practical record. Signed entries are locked and form part of your <b>Portfolio of Evidence</b> on your student file at Limpopo Wildlife Eco College.</p>
     <p class="note" id="profileSummary" style="margin-top:8px;"></p>
@@ -251,8 +253,18 @@ h2 .fi{width:1.25em;height:1.25em;margin-right:5px;}
   </div>
   <div class="card">
     <h2><svg class="fi" aria-hidden="true"><use href="#i-crown"/></svg> This Week — the Friday Awards</h2>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:10px 0 6px;">
+      <figure style="margin:0;text-align:center;">
+        <img src="icons/king-lion.png" alt="King of the Bush — the crowned lion" style="height:128px;width:auto;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.18);">
+        <figcaption class="note" style="margin-top:4px;">🦁 King of the Bush</figcaption>
+      </figure>
+      <figure style="margin:0;text-align:center;">
+        <img src="icons/ostrich-sand.png" alt="The Ostrich — head in the sand" style="height:128px;width:auto;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.18);">
+        <figcaption class="note" style="margin-top:4px;">🪶 The Ostrich</figcaption>
+      </figure>
+    </div>
     <p class="note" id="weekMine"></p>
-    <p class="note">👑 <b>The Weekly Crown</b> — most mentor-signed entries this week. &nbsp;🦅 <b>The Eagle Eye</b> — the week's best single entry, chosen by the mentors. &nbsp;🐾 <b>The Sleeping Aardvark</b> — fewest entries this week… and it <i>must</i> move on the moment you start logging. Winners announced at Friday sign-off.</p>
+    <p class="note">🦁 <b>King of the Bush</b> — the student who did the best this week: most mentor-signed entries wins the crown. &nbsp;🦅 <b>The Eagle Eye</b> — the week's best single entry, chosen by the mentors. &nbsp;🪶 <b>The Ostrich</b> — head in the sand: fewest entries this week… and it <i>must</i> lift its head the moment you start logging. Winners announced at Friday sign-off.</p>
   </div>
 </section>
 
@@ -379,6 +391,7 @@ h2 .fi{width:1.25em;height:1.25em;margin-right:5px;}
 <!-- MY DETAILS -->
 <section id="tab-student" hidden>
   <div class="card">
+    <img src="icons/bush-hat.png" alt="" style="float:right;width:94px;border-radius:14px;margin:0 0 8px 10px;">
     <h2><svg class="fi" aria-hidden="true"><use href="#i-hat"/></svg> My details</h2>
     <p class="note">These details print on the cover of your Portfolio of Evidence pack.</p>
     <label>Account email</label><input id="p_email" readonly>
@@ -418,6 +431,7 @@ h2 .fi{width:1.25em;height:1.25em;margin-right:5px;}
     <div class="btnrow"><button class="btn" onclick="migrateLocal()" id="migrateBtn">Move them into my account</button></div>
   </div>
   <div class="card">
+    <img src="icons/journal-seal.png" alt="" style="float:right;width:84px;border-radius:14px;margin:0 0 8px 10px;">
     <h2><svg class="fi" aria-hidden="true"><use href="#i-poe"/></svg> Portfolio of Evidence pack</h2>
     <p class="note">Builds your complete PoE in seconds: a cover page with your details and declaration, a summary of totals, and every entry in chronological order with its recorded mentor signatures. <b>No binder needed:</b> choose “Save as PDF” in the print screen — the electronic PoE (PDF with recorded mentor sign-offs) is accepted by our assessor. Generate it fresh whenever it's needed; it is always complete and up to date.</p>
     <div class="btnrow"><button class="btn" onclick="printMyPoE()">Generate PoE pack (print or save as PDF)</button></div>
@@ -926,7 +940,7 @@ function renderDash(){
     const w=weekBounds();
     const mineWk=state.entries.filter(e=>inWeek(e,w));
     wm.innerHTML='Your week so far ('+w.from+' → '+w.to+'): <b>'+mineWk.length+'</b> logged · <b>'
-      +mineWk.filter(e=>e.signed).length+'</b> signed. Every signed entry is a step toward the 👑.';
+      +mineWk.filter(e=>e.signed).length+'</b> signed. Every signed entry is a step toward being crowned 🦁 King of the Bush.';
   }
 }
 
@@ -1179,12 +1193,12 @@ function weeklyBoardHTML(){
   const anyActivity=rows.some(r=>r.logged>0);
   const lines=rows.slice().sort((a,b)=>(b.signed-a.signed)||(b.logged-a.logged)).map(r=>{
     let badge='';
-    if(anyActivity && maxS>0 && r.signed===maxS) badge+=' 👑';
-    if(anyActivity && rows.length>1 && r.logged===minL) badge+=' 🐾';
+    if(anyActivity && maxS>0 && r.signed===maxS) badge+=' 🦁';
+    if(anyActivity && rows.length>1 && r.logged===minL) badge+=' 🪶';
     return '<div class="tline"><span>'+esc(r.name)+badge+'</span><span><b>'+r.signed+'</b> signed · '+r.logged+' logged</span></div>';
   }).join('');
   return '<div class="card"><h2>🏆 This Week ('+w.from+' → '+w.to+')</h2>'
-    +'<p class="note">👑 = most signed entries this week · 🐾 = the Sleeping Aardvark (fewest logged — escapable by logging!). The 🦅 Eagle Eye — best single entry — is the mentors’ pick: choose it together at Friday sign-off.</p>'
+    +'<p class="note">🦁 = King of the Bush (most signed entries this week) · 🪶 = the Ostrich, head in the sand (fewest logged — it lifts its head the moment they log!). The 🦅 Eagle Eye — best single entry — is the mentors’ pick: choose it together at Friday sign-off.</p>'
     +lines+'</div>';
 }
 
