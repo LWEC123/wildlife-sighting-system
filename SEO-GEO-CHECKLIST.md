@@ -20,7 +20,8 @@ These steps link the college's legal name (as listed by SAQA) to its trading nam
 | LEDET Nature Conservation permit: Elfrieda Wessels, Professional Hunting School Director, valid 20 Aug 2024 to 20 Aug 2027 | footers, `about.html`, schema `employee` and `hasCredential` |
 | Full accreditation scope page: 3 qualifications, 3 skills programmes, 87 unit standards | `accreditation.html` |
 | SAQA record details for 58930 (133 credits, last enrolment 30 June 2028, last achievement 30 June 2031) and 71549 (134 credits) | `saqa-58930-professional-hunting.html`, `about.html`, FAQ schema |
-| Address (Zyvergat, Bandelierkop 0800) and phone (072 929 7167) | `contact.html`, `about.html`, schema |
+| QCTO SDP accreditation (26 Oct 2022 to 25 Oct 2027): Eco Ranger SP-191213 and New Venture SP-211001; Organisation Unique ID 2017/427468/07; spelling "Africa Expectation Safaris" | `accreditation.html`, `about.html`, schema |
+| Address (Ranch Zyvergat 474LS, Bandelierkop 0800) and phone (072 929 7167) | `contact.html`, `about.html`, schema |
 | The organisation's schema identity (`@id`, `url`) points at the main domain, https://limpopowildlifeecocollege.com/ | all pages |
 
 ## Main website: limpopowildlifeecocollege.com
@@ -37,7 +38,7 @@ Also add a link from the main site's menu or courses page to the SAQA 58930 and 
 
 1. **Opening hours**, for Google Business Profile.
 2. **Accreditation renewals.** The CATHSSETA accreditation ends 29 March 2027 and the LEDET school director permit ends 20 August 2027. When they are renewed, update the dates on `about.html`, `accreditation.html`, `saqa-58930-professional-hunting.html`, the schema (`expires`) and `main-site-kit/schema-organization.html`.
-3. **QCTO scope.** If the QCTO accreditation letter lists programmes beyond the CATHSSETA scope, send it and they can be added to `accreditation.html`.
+3. **Renewal dates.** The QCTO accreditation ends 25 October 2027. Renew it alongside CATHSSETA (29 March 2027) and LEDET (20 August 2027).
 
 ## Off-site actions (cannot be done from code)
 
@@ -49,7 +50,8 @@ Also add a link from the main site's menu or courses page to the SAQA 58930 and 
 ### 2. Accreditation database listings (backlinks)
 - **CATHSSETA:** ask the ETQA department to show the provider record as "Africa Expectation Safari's t/a Limpopo Wildlife Eco College" with the website https://limpopowildlifeecocollege.com/. Quote 613/P/00392/2022. The letter's contact is Neo Lesaoane, ETQA Manager, 011 217 0600.
 - **LEDET:** ask for the same trading name and website on any public list of accredited or registered institutions.
-- **QCTO:** ask for the same trading name and website on the Skills Development Provider record. Quote 09-QCTO/SDP261022055054.
+- **QCTO:** the accreditation letter already reads "Africa Expectation Safaris t/a Limpopo Wildlife Eco College" (Organisation Unique ID 2017/427468/07). Ask QCTO to add the website https://limpopowildlifeecocollege.com/ to the SDP record and, if possible, the apostrophe spelling "Africa Expectation Safari's" used by SAQA and CATHSSETA. Quote 09-QCTO/SDP261022055054.
+- **Name spelling:** SAQA and CATHSSETA write "Africa Expectation Safari's"; QCTO writes "Africa Expectation Safaris". Both spellings are now on the site and in the schema `alternateName`. Ideally CIPC, SAQA, CATHSSETA and QCTO would all use one spelling.
 - **SAQA:** the provider name on SAQA comes from the quality council's record. Once CATHSSETA or QCTO updates it, the "t/a" name should follow.
 
 ### 3. Partner backlinks
@@ -65,6 +67,6 @@ Link to `saqa-58930-professional-hunting.html` for hunting partners and to `abou
 - **First line of the description:** "Limpopo Wildlife Eco College – Accredited Professional Hunting & Conservation Academy. Africa Expectation Safari's t/a Limpopo Wildlife Eco College; CATHSSETA 613/P/00392/2022; QCTO 09-QCTO/SDP261022055054; accredited provider for SAQA Qualification 58930."
 - **Category:** "Educational institution" or "Vocational school", with "Hunting and fishing training" or similar as secondary if offered.
 - **Website:** https://limpopowildlifeecocollege.com/
-- **Address:** Zyvergat, Bandelierkop 0800, Limpopo Province.
+- **Address:** Ranch Zyvergat 474LS, Bandelierkop 0800, Limpopo Province (as on the QCTO accreditation).
 - **Phone:** 072 929 7167 (+27 72 929 7167). Use exactly the same address, phone number and email as the website.
 - Once the profile is live, add its URL to the schema `sameAs` list along with any official Facebook or Instagram pages.
