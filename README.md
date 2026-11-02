@@ -110,3 +110,12 @@ For the PWA functionality to work properly, create an "icons" folder and add the
 - icon-384x384.png
 - icon-512x512.png
 - lwec-logo.png (for the header)
+
+## College identity and accreditation pages
+
+Africa Expectation Safari's t/a Limpopo Wildlife Eco College · CATHSSETA Accreditation Number: 613/P/00392/2022 · QCTO Accreditation Number: 09-QCTO/SDP261022055054
+
+- `about.html`: About Us, legal and trading name, accreditation
+- `saqa-58930-professional-hunting.html`: accredited provider for SAQA Qualification 58930
+- `rpl-professional-hunting.html`: RPL for the FETC: Professional Hunting
+- `SEO-GEO-CHECKLIST.md`: structured data summary and the off-site steps (CATHSSETA/QCTO listings, backlinks, Google Business Profile)

@@ -1,0 +1,49 @@
+# SEO / GEO checklist: Africa Expectation Safari's t/a Limpopo Wildlife Eco College
+
+These steps link the college's legal name (as listed by SAQA) to its trading name. That way, search engines and AI answer engines treat both names as one accredited provider.
+
+## Done on this site
+
+| Item | Where |
+|---|---|
+| Legal and trading names linked in the footer of every page: "Africa Expectation Safari's t/a Limpopo Wildlife Eco College" | `index.html`, `index.htm`, `LWECFieldLogbook.html`, `WildlifePhotoTutorLWEC.html`, new pages |
+| Accreditation identifiers in that footer: CATHSSETA 613/P/00392/2022, QCTO 09-QCTO/SDP261022055054 | same |
+| About Us page with the legal connection and accreditation table | `about.html` |
+| Page targeting "Accredited provider for SAQA Qualification 58930" | `saqa-58930-professional-hunting.html` |
+| Page targeting "RPL portfolio submission for Further Education and Training Certificate: Professional Hunting" and "How to convert a PH license to SAQA credits at Limpopo Wildlife Eco College" | `rpl-professional-hunting.html` |
+| `EducationalOrganization` schema (`legalName`, `alternateName`, `award`, accreditation `identifier` and `hasCredential`) | `index.html`, `about.html`; a compact copy on each new page |
+| `Course` schema for SAQA 58930; `HowTo` and `FAQPage` schema for RPL | the two new pages |
+| Sitemap | `sitemap.xml` |
+
+## Still needed from the college
+
+1. **Contact details.** Physical address, phone, email and opening hours. These go on a Contact page and into the schema (`address`, `telephone`, `email`). Google Business Profile also needs them, and they must match it exactly.
+2. **The main domain.** If the college has its own website (for example a `.co.za` domain), the footer, About text and schema should go there too. The schema `url` and canonical links should then point to that domain instead of `lwec123.github.io`.
+3. **Check the facts.** The qualification page states 133 credits, from the SAQA record for ID 58930. Confirm this against your own learner material before you publish widely.
+
+## Off-site actions (cannot be done from code)
+
+### 1. Submit to Google Search Console
+- Add the property `https://lwec123.github.io/wildlife-sighting-system/` (or the main domain).
+- Submit `sitemap.xml`, then request indexing for `about.html`, `saqa-58930-professional-hunting.html` and `rpl-professional-hunting.html`.
+- Check the schema with the Rich Results Test (https://search.google.com/test/rich-results) and the Schema Markup Validator (https://validator.schema.org/).
+
+### 2. Accreditation database listings (backlinks)
+- **CATHSSETA:** ask the Quality Assurance department to show the provider record as "Africa Expectation Safari's t/a Limpopo Wildlife Eco College" with the website URL. Quote 613/P/00392/2022.
+- **QCTO:** ask for the same trading name and website on the Skills Development Provider record. Quote 09-QCTO/SDP261022055054.
+- **SAQA:** the provider name on SAQA comes from the quality council's record. Once CATHSSETA or QCTO updates it, the "t/a" name should follow.
+
+### 3. Partner backlinks
+Email each conservation partner, reserve, outfitter or joint-programme host and ask them to link to the college using this anchor text:
+
+> Accredited Training via Limpopo Wildlife Eco College
+
+Link to `saqa-58930-professional-hunting.html` for hunting partners and to `about.html` for everyone else.
+
+### 4. Google Business Profile
+- Claim or verify the profile at https://www.google.com/business/.
+- **Business name:** use the real-world trading name only, "Limpopo Wildlife Eco College". Google's guidelines do not allow descriptive text in the name field and may suspend profiles that add it.
+- **First line of the description:** "Limpopo Wildlife Eco College – Accredited Professional Hunting & Conservation Academy. Africa Expectation Safari's t/a Limpopo Wildlife Eco College; CATHSSETA 613/P/00392/2022; QCTO 09-QCTO/SDP261022055054; accredited provider for SAQA Qualification 58930."
+- **Category:** "Educational institution" or "Vocational school", with "Hunting and fishing training" or similar as secondary if offered.
+- **Website:** the About page or home page above.
+- Once the profile is live, add its URL to the schema `sameAs` list along with any official Facebook or Instagram pages.
