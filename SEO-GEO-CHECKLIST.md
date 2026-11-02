@@ -17,7 +17,10 @@ These steps link the college's legal name (as listed by SAQA) to its trading nam
 
 | Contact page (phone, email, main website) and `ContactPoint` schema | `contact.html` |
 | Accredited scope from the CATHSSETA letter (25 April 2025): 3 full qualifications, 3 skills programmes, hunting unit standards 246412 to 246422, accreditation period 30 March 2022 to 29 March 2027 | `about.html`, `saqa-58930-professional-hunting.html`, schema `hasOfferCatalog` |
-| LEDET Nature Conservation accreditation | footers, `about.html`, schema `hasCredential` |
+| LEDET Nature Conservation permit: Elfrieda Wessels, Professional Hunting School Director, valid 20 Aug 2024 to 20 Aug 2027 | footers, `about.html`, schema `employee` and `hasCredential` |
+| Full accreditation scope page: 3 qualifications, 3 skills programmes, 87 unit standards | `accreditation.html` |
+| SAQA record details for 58930 (133 credits, last enrolment 30 June 2028, last achievement 30 June 2031) and 71549 (134 credits) | `saqa-58930-professional-hunting.html`, `about.html`, FAQ schema |
+| Address (Zyvergat, Bandelierkop 0800) and phone (072 929 7167) | `contact.html`, `about.html`, schema |
 | The organisation's schema identity (`@id`, `url`) points at the main domain, https://limpopowildlifeecocollege.com/ | all pages |
 
 ## Main website: limpopowildlifeecocollege.com
@@ -32,11 +35,9 @@ Also add a link from the main site's menu or courses page to the SAQA 58930 and 
 
 ## Still needed from the college
 
-1. **Physical address.** The street address on Google Business Profile should also go into the schema `address` (only the province, Limpopo, is set today). Add opening hours too.
-2. **LEDET registration number** and its exact wording (for example "registered professional hunting school"), to add as the LEDET credential's `identifier`.
-3. **Check the credits.** The qualification page states 133 credits, from the SAQA record for ID 58930. The CATHSSETA letter does not give a credit count, so confirm this against your learner material.
-4. **Phone number.** The site uses 027 729 2971 from the CATHSSETA letter. Confirm it is still the number to publish.
-5. **Accreditation renewal.** The CATHSSETA accreditation runs until 29 March 2027. When it is renewed, update the dates on `about.html` and `saqa-58930-professional-hunting.html` and in the schema (`expires`).
+1. **Opening hours**, for Google Business Profile.
+2. **Accreditation renewals.** The CATHSSETA accreditation ends 29 March 2027 and the LEDET school director permit ends 20 August 2027. When they are renewed, update the dates on `about.html`, `accreditation.html`, `saqa-58930-professional-hunting.html`, the schema (`expires`) and `main-site-kit/schema-organization.html`.
+3. **QCTO scope.** If the QCTO accreditation letter lists programmes beyond the CATHSSETA scope, send it and they can be added to `accreditation.html`.
 
 ## Off-site actions (cannot be done from code)
 
@@ -64,5 +65,6 @@ Link to `saqa-58930-professional-hunting.html` for hunting partners and to `abou
 - **First line of the description:** "Limpopo Wildlife Eco College – Accredited Professional Hunting & Conservation Academy. Africa Expectation Safari's t/a Limpopo Wildlife Eco College; CATHSSETA 613/P/00392/2022; QCTO 09-QCTO/SDP261022055054; accredited provider for SAQA Qualification 58930."
 - **Category:** "Educational institution" or "Vocational school", with "Hunting and fishing training" or similar as secondary if offered.
 - **Website:** https://limpopowildlifeecocollege.com/
-- **Phone:** 027 729 2971. Use exactly the same phone number and email as the website.
+- **Address:** Zyvergat, Bandelierkop 0800, Limpopo Province.
+- **Phone:** 072 929 7167 (+27 72 929 7167). Use exactly the same address, phone number and email as the website.
 - Once the profile is live, add its URL to the schema `sameAs` list along with any official Facebook or Instagram pages.

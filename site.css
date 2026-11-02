@@ -34,3 +34,9 @@ details p{margin-top:8px;}
 .lwec-identity strong{color:#fff;}
 .lwec-identity a{color:var(--gold);}
 @media (max-width:520px){ th{width:auto; display:block; border-bottom:none; padding-bottom:0;} td{display:block;} }
+.scroll{overflow-x:auto;}
+table.scope th{width:auto; color:var(--green-deep); background:#f7f3ea;}
+table.scope td:first-child{white-space:nowrap; font-variant-numeric:tabular-nums;}
+table.scope td:last-child{white-space:nowrap;}
+table.scope td:nth-child(2){width:100%;}
+@media (max-width:520px){ table.scope th,table.scope td{display:table-cell; padding:7px 6px; font-size:.85rem;} table.scope td:first-child{white-space:normal;} }
