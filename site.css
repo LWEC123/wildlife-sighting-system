@@ -17,7 +17,7 @@ main{max-width:820px; margin:0 auto; padding:28px 16px 12px;}
 section{background:var(--card); border-radius:14px; padding:22px 20px; margin-bottom:20px; box-shadow:0 2px 10px rgba(30,58,42,.08);}
 h2{color:var(--green-deep); font-size:1.25rem; margin-bottom:10px;}
 h3{color:var(--green-deep); font-size:1.05rem; margin:16px 0 6px;}
-p+p{margin-top:10px;}
+p+p,ul+p,ol+p{margin-top:10px;}
 ul,ol{padding-left:22px; margin-top:8px;}
 li+li{margin-top:6px;}
 .identity{border-left:5px solid var(--gold-deep); background:#fbf8f1;}

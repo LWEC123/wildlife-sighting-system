@@ -21,37 +21,175 @@
   "@graph": [
     {
       "@type": "EducationalOrganization",
-      "@id": "https://lwec123.github.io/wildlife-sighting-system/#organization",
+      "@id": "https://limpopowildlifeecocollege.com/#organization",
       "name": "Limpopo Wildlife Eco College",
       "legalName": "Africa Expectation Safari's",
-      "alternateName": ["Limpopo Wildlife Eco College", "LWEC", "Africa Expectation Safari's t/a Limpopo Wildlife Eco College"],
-      "url": "https://lwec123.github.io/wildlife-sighting-system/",
+      "alternateName": [
+        "Limpopo Wildlife Eco College",
+        "LWEC",
+        "Africa Expectation Safari's t/a Limpopo Wildlife Eco College",
+        "limpopowildlifeecocollege.com"
+      ],
+      "url": "https://limpopowildlifeecocollege.com/",
       "logo": "https://lwec123.github.io/wildlife-sighting-system/icons/lwec-512.png",
-      "description": "Africa Expectation Safari's t/a Limpopo Wildlife Eco College is a CATHSSETA- and QCTO-accredited skills development provider in Limpopo, South Africa, and an accredited provider for SAQA Qualification 58930, the Further Education and Training Certificate: Professional Hunting (NQF Level 4), including RPL assessment for practising professional hunters.",
+      "description": "Africa Expectation Safari's t/a Limpopo Wildlife Eco College is a CATHSSETA-, QCTO- and LEDET-accredited training provider in Limpopo, South Africa, and an accredited provider for SAQA Qualification 58930, the Further Education and Training Certificate: Professional Hunting (NQF Level 4), including RPL assessment for practising professional hunters.",
       "award": "Accredited Provider for SAQA ID 58930",
-      "address": { "@type": "PostalAddress", "addressRegion": "Limpopo", "addressCountry": "ZA" },
-      "areaServed": { "@type": "Country", "name": "South Africa" },
-      "knowsAbout": ["Professional hunting", "Further Education and Training Certificate: Professional Hunting", "SAQA Qualification 58930", "Recognition of Prior Learning (RPL)", "Wildlife conservation", "Tracking", "Field guiding"],
+      "address": {
+        "@type": "PostalAddress",
+        "addressRegion": "Limpopo",
+        "addressCountry": "ZA"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "South Africa"
+      },
+      "knowsAbout": [
+        "Professional hunting",
+        "Further Education and Training Certificate: Professional Hunting",
+        "SAQA Qualification 58930",
+        "Recognition of Prior Learning (RPL)",
+        "Wildlife conservation",
+        "Tracking",
+        "Field guiding"
+      ],
       "identifier": [
-        { "@type": "PropertyValue", "propertyID": "CATHSSETA Accreditation Number", "value": "613/P/00392/2022" },
-        { "@type": "PropertyValue", "propertyID": "QCTO Accreditation Number", "value": "09-QCTO/SDP261022055054" }
+        {
+          "@type": "PropertyValue",
+          "propertyID": "CATHSSETA Accreditation Number",
+          "value": "613/P/00392/2022"
+        },
+        {
+          "@type": "PropertyValue",
+          "propertyID": "QCTO Accreditation Number",
+          "value": "09-QCTO/SDP261022055054"
+        }
       ],
       "hasCredential": [
         {
           "@type": "EducationalOccupationalCredential",
-          "name": "CATHSSETA Accreditation",
+          "name": "CATHSSETA Provider Accreditation",
           "credentialCategory": "Skills development provider accreditation",
           "identifier": "613/P/00392/2022",
-          "recognizedBy": { "@type": "GovernmentOrganization", "name": "Culture, Arts, Tourism, Hospitality and Sport Sector Education and Training Authority", "alternateName": "CATHSSETA", "url": "https://www.cathsseta.org.za/" }
+          "dateCreated": "2022-03-30",
+          "expires": "2027-03-29",
+          "description": "Provider accreditation awarded to Africa Expectation Safari's under ETQA Regulation R1127 of the SAQA Act 58 of 1995, valid 30 March 2022 to 29 March 2027.",
+          "recognizedBy": {
+            "@type": "GovernmentOrganization",
+            "name": "Culture, Arts, Tourism, Hospitality and Sport Sector Education and Training Authority",
+            "alternateName": "CATHSSETA",
+            "url": "https://www.cathsseta.org.za/"
+          }
         },
         {
           "@type": "EducationalOccupationalCredential",
           "name": "QCTO Accreditation",
           "credentialCategory": "Skills development provider accreditation",
           "identifier": "09-QCTO/SDP261022055054",
-          "recognizedBy": { "@type": "GovernmentOrganization", "name": "Quality Council for Trades and Occupations", "alternateName": "QCTO", "url": "https://www.qcto.org.za/" }
+          "recognizedBy": {
+            "@type": "GovernmentOrganization",
+            "name": "Quality Council for Trades and Occupations",
+            "alternateName": "QCTO",
+            "url": "https://www.qcto.org.za/"
+          }
+        },
+        {
+          "@type": "EducationalOccupationalCredential",
+          "name": "LEDET Nature Conservation accreditation",
+          "credentialCategory": "Nature conservation accreditation",
+          "recognizedBy": {
+            "@type": "GovernmentOrganization",
+            "name": "Limpopo Department of Economic Development, Environment and Tourism",
+            "alternateName": "LEDET",
+            "url": "https://www.ledet.gov.za/"
+          }
         }
-      ]
+      ],
+      "email": "limpopowt@gmail.com",
+      "telephone": "+27 27 729 2971",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "CATHSSETA-accredited programmes",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Further Education and Training Certificate: Professional Hunting",
+              "courseCode": "SAQA 58930",
+              "educationalLevel": "NQF Level 4",
+              "description": "Full qualification accredited by CATHSSETA (613/P/00392/2022)",
+              "provider": {
+                "@id": "https://limpopowildlifeecocollege.com/#organization"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Further Education and Training Certificate: Tourist Guiding",
+              "courseCode": "SAQA 71549",
+              "educationalLevel": "NQF Level 4",
+              "description": "Full qualification accredited by CATHSSETA (613/P/00392/2022)",
+              "provider": {
+                "@id": "https://limpopowildlifeecocollege.com/#organization"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "National Certificate: Accommodation Services",
+              "courseCode": "SAQA 14110",
+              "educationalLevel": "NQF Level 2",
+              "description": "Full qualification accredited by CATHSSETA (613/P/00392/2022)",
+              "provider": {
+                "@id": "https://limpopowildlifeecocollege.com/#organization"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Professional Hunter Dangerous Game",
+              "courseCode": "HUNT/PROFHUNTDANG/4/0060",
+              "educationalLevel": "NQF Level 4",
+              "description": "Skills programme accredited by CATHSSETA (613/P/00392/2022)",
+              "provider": {
+                "@id": "https://limpopowildlifeecocollege.com/#organization"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Dangerous Game Site Guide L4",
+              "courseCode": "TG/DANGAMSITEGD/4/0044",
+              "educationalLevel": "NQF Level 4",
+              "description": "Skills programme accredited by CATHSSETA (613/P/00392/2022)",
+              "provider": {
+                "@id": "https://limpopowildlifeecocollege.com/#organization"
+              }
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Dangerous Game Site Guide L2",
+              "courseCode": "TG/DANGAMSITEGD/2/0043",
+              "educationalLevel": "NQF Level 2",
+              "description": "Skills programme accredited by CATHSSETA (613/P/00392/2022)",
+              "provider": {
+                "@id": "https://limpopowildlifeecocollege.com/#organization"
+              }
+            }
+          }
+        ]
+      }
     },
     {
       "@type": "WebSite",
@@ -59,7 +197,9 @@
       "url": "https://lwec123.github.io/wildlife-sighting-system/",
       "name": "Limpopo Wildlife Eco College",
       "alternateName": "Africa Expectation Safari's t/a Limpopo Wildlife Eco College",
-      "publisher": { "@id": "https://lwec123.github.io/wildlife-sighting-system/#organization" },
+      "publisher": {
+        "@id": "https://limpopowildlifeecocollege.com/#organization"
+      },
       "inLanguage": "en-ZA"
     }
   ]
@@ -133,8 +273,8 @@
   <footer>Tip: use your browser's “Add to Home Screen” to install these like apps.</footer>
   <footer class="lwec-identity">
     <strong>Africa Expectation Safari's t/a Limpopo Wildlife Eco College</strong><br>
-    CATHSSETA Accreditation Number: 613/P/00392/2022 · QCTO Accreditation Number: 09-QCTO/SDP261022055054<br>
-    <a href="about.html">About Us</a> · <a href="saqa-58930-professional-hunting.html">Accredited provider for SAQA Qualification 58930</a> · <a href="rpl-professional-hunting.html">RPL for professional hunters</a>
+    CATHSSETA Accreditation Number: 613/P/00392/2022 · QCTO Accreditation Number: 09-QCTO/SDP261022055054 · LEDET Nature Conservation accredited<br>
+    <a href="https://limpopowildlifeecocollege.com/">limpopowildlifeecocollege.com</a> · <a href="about.html">About Us</a> · <a href="saqa-58930-professional-hunting.html">Accredited provider for SAQA Qualification 58930</a> · <a href="rpl-professional-hunting.html">RPL for professional hunters</a> · <a href="contact.html">Contact</a>
   </footer>
 </body>
 </html>

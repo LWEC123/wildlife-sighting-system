@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wildlife-sighting-v4';
+const CACHE_NAME = 'wildlife-sighting-v5';
 const urlsToCache = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const urlsToCache = [
   './about.html',
   './saqa-58930-professional-hunting.html',
   './rpl-professional-hunting.html',
+  './contact.html',
   './site.css',
   './manifest.json',
   './icons/lwec-logo.png',
