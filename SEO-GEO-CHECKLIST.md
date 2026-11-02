@@ -21,7 +21,7 @@ These steps link the college's legal name (as listed by SAQA) to its trading nam
 | Full accreditation scope page: 3 qualifications, 3 skills programmes, 87 unit standards | `accreditation.html` |
 | SAQA record details for 58930 (133 credits, last enrolment 30 June 2028, last achievement 30 June 2031) and 71549 (134 credits) | `saqa-58930-professional-hunting.html`, `about.html`, FAQ schema |
 | QCTO SDP accreditation (26 Oct 2022 to 25 Oct 2027): Eco Ranger SP-191213 and New Venture SP-211001; Organisation Unique ID 2017/427468/07; spelling "Africa Expectation Safaris" | `accreditation.html`, `about.html`, schema |
-| Address (Ranch Zyvergat 474LS, Bandelierkop 0800) and phone (072 929 7167) | `contact.html`, `about.html`, schema |
+| Address (Ranch Zyvergat 474LS, Bandelierkop 0800), phone (072 929 7167) and office hours (Mon–Fri 08:00–17:00) | `contact.html`, `about.html`, schema |
 | The organisation's schema identity (`@id`, `url`) points at the main domain, https://limpopowildlifeecocollege.com/ | all pages |
 
 ## Main website: limpopowildlifeecocollege.com
@@ -36,9 +36,8 @@ Also add a link from the main site's menu or courses page to the SAQA 58930 and 
 
 ## Still needed from the college
 
-1. **Opening hours**, for Google Business Profile.
-2. **Accreditation renewals.** The CATHSSETA accreditation ends 29 March 2027 and the LEDET school director permit ends 20 August 2027. When they are renewed, update the dates on `about.html`, `accreditation.html`, `saqa-58930-professional-hunting.html`, the schema (`expires`) and `main-site-kit/schema-organization.html`.
-3. **Renewal dates.** The QCTO accreditation ends 25 October 2027. Renew it alongside CATHSSETA (29 March 2027) and LEDET (20 August 2027).
+1. **Accreditation renewals.** The CATHSSETA accreditation ends 29 March 2027 and the LEDET school director permit ends 20 August 2027. When they are renewed, update the dates on `about.html`, `accreditation.html`, `saqa-58930-professional-hunting.html`, the schema (`expires`) and `main-site-kit/schema-organization.html`.
+2. **Renewal dates.** The QCTO accreditation ends 25 October 2027. Renew it alongside CATHSSETA (29 March 2027) and LEDET (20 August 2027).
 
 ## Off-site actions (cannot be done from code)
 
@@ -67,6 +66,7 @@ Link to `saqa-58930-professional-hunting.html` for hunting partners and to `abou
 - **First line of the description:** "Limpopo Wildlife Eco College – Accredited Professional Hunting & Conservation Academy. Africa Expectation Safari's t/a Limpopo Wildlife Eco College; CATHSSETA 613/P/00392/2022; QCTO 09-QCTO/SDP261022055054; accredited provider for SAQA Qualification 58930."
 - **Category:** "Educational institution" or "Vocational school", with "Hunting and fishing training" or similar as secondary if offered.
 - **Website:** https://limpopowildlifeecocollege.com/
+- **Hours:** Monday to Friday 08:00–17:00; Saturday and Sunday closed.
 - **Address:** Ranch Zyvergat 474LS, Bandelierkop 0800, Limpopo Province (as on the QCTO accreditation).
 - **Phone:** 072 929 7167 (+27 72 929 7167). Use exactly the same address, phone number and email as the website.
 - Once the profile is live, add its URL to the schema `sameAs` list along with any official Facebook or Instagram pages.
