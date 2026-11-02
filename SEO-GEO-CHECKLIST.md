@@ -49,8 +49,8 @@ Also add a link from the main site's menu or courses page to the SAQA 58930 and 
 ### 2. Accreditation database listings (backlinks)
 - **CATHSSETA:** ask the ETQA department to show the provider record as "Africa Expectation Safari's t/a Limpopo Wildlife Eco College" with the website https://limpopowildlifeecocollege.com/. Quote 613/P/00392/2022. The letter's contact is Neo Lesaoane, ETQA Manager, 011 217 0600.
 - **LEDET:** ask for the same trading name and website on any public list of accredited or registered institutions.
-- **QCTO:** the accreditation letter already reads "Africa Expectation Safaris t/a Limpopo Wildlife Eco College" (Organisation Unique ID 2017/427468/07). Ask QCTO to add the website https://limpopowildlifeecocollege.com/ to the SDP record and, if possible, the apostrophe spelling "Africa Expectation Safari's" used by SAQA and CATHSSETA. Quote 09-QCTO/SDP261022055054.
-- **Name spelling:** SAQA and CATHSSETA write "Africa Expectation Safari's"; QCTO writes "Africa Expectation Safaris". Both spellings are now on the site and in the schema `alternateName`. Ideally CIPC, SAQA, CATHSSETA and QCTO would all use one spelling.
+- **QCTO:** the accreditation letter already reads "Africa Expectation Safaris t/a Limpopo Wildlife Eco College" (Organisation Unique ID 2017/427468/07). Ask QCTO to add the website https://limpopowildlifeecocollege.com/ to the SDP record and to correct the name to "Africa Expectation Safari's", the spelling registered with CIPC. Quote 09-QCTO/SDP261022055054.
+- **Name spelling:** SAQA and CATHSSETA write "Africa Expectation Safari's"; QCTO writes "Africa Expectation Safaris". The CIPC registration confirms "Africa Expectation Safari's" is the correct spelling. Ask QCTO to correct its record; keep "Africa Expectation Safaris" in the schema `alternateName` so searches for either spelling match.
 - **SAQA:** the provider name on SAQA comes from the quality council's record. Once CATHSSETA or QCTO updates it, the "t/a" name should follow.
 
 ### 3. Partner backlinks
