@@ -1028,7 +1028,7 @@ window.bulkUpload = async inp=>{
   const plan=[], skipped=[];
   let guide=null;
   files.forEach(f=>{
-    const rel=f.webkitRelativePath||f.name, parts=rel.split('/'), top=parts[1]||'', name=f.name;
+    const rel=f.webkitRelativePath||f.name, parts=rel.split('/').slice(0,-1), top=parts.find(p=>/^0[1-5]\b/.test(p))||'', name=f.name;
     if(/assessor|conf|memo|memorand|facilitator/i.test(rel)){ skipped.push(name); return; }
     const hit=BULK_MAP.find(([re])=>re.test(top)); if(!hit) return;
     const k=hit[1];
@@ -1041,10 +1041,16 @@ window.bulkUpload = async inp=>{
     plan.push({f,m,k});
   });
   if(guide) plan.unshift({f:guide, m:'all', k:'guide'});
-  if(!plan.length){ toast("No course files found. Choose the folder that holds 01 Guides, 02 Slides, 03 Videos, 04 Tests and 05 Answers."); return; }
+  const note=$('bulkNote');
+  if(!plan.length){
+    note.innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ No course files found in that folder ('+files.length+' files looked at). Choose the folder that holds 01 Guides, 02 Slides, 03 Videos, 04 Tests and 05 Answers.</span>';
+    return;
+  }
+  const count=k=>plan.filter(x=>x.k===k).length;
+  note.textContent='Found '+plan.length+' files: '+count('guide')+' guide, '+count('slides')+' presentations, '+count('video')+' videos, '+count('test')+' tests, '+count('sheet')+' answer sheets.';
   const total=plan.reduce((a,x)=>a+x.f.size,0);
   if(!confirm('Upload '+plan.length+' files ('+fmtSize(total)+') for the 12 modules?'+(skipped.length?'\n\nSkipped (kept off the website): '+skipped.length+' assessor/memo files.':'')+'\n\nKeep this page open until it finishes.')) return;
-  let done=0;
+  let done=0, ok=0, failed=null;
   for(const x of plan){
     const path='course/'+CID+'/'+(x.m==='all'?'shared':x.m)+'/'+x.k+'_'+x.f.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
     try{
@@ -1052,10 +1058,14 @@ window.bulkUpload = async inp=>{
       await new Promise((res,rej)=>task.on('state_changed', t=>{ $('bulkNote').textContent='Uploading '+x.f.name+' ('+Math.round((done+t.bytesTransferred)/total*100)+'% of everything)'; }, rej, res));
       const url=await getDownloadURL(task.snapshot.ref);
       (x.m==='all'? MIDS : [x.m]).forEach(m=>{ const el=$('st-'+m+'-'+x.k); if(el) el.value=url; });
-      done+=x.f.size;
-    }catch(e){ console.warn(e); toast('Upload of '+x.f.name+' failed ('+(e.code||e.message)+'). Saving what uploaded.'); break; }
+      done+=x.f.size; ok++;
+    }catch(e){ console.warn(e); failed=x.f.name+': '+(e.code||e.message); break; }
   }
-  $('bulkNote').textContent='✔ Files uploaded. Saving the course…';
+  if(failed){
+    note.innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ Upload stopped at '+esc(failed)+'. '+ok+' of '+plan.length+' files uploaded. Nothing was saved yet: send a screenshot of this message to Claude, or click Save course to keep what uploaded.</span>';
+    return;
+  }
+  note.textContent='✔ '+ok+' files uploaded. Saving the course…';
   await saveSetup(true);
 };
 window.saveSetup = async (quiet)=>{
@@ -1070,8 +1080,8 @@ window.saveSetup = async (quiet)=>{
   if(untr.length && quiet!==true && !confirm('These links cannot be checked for real watching (students could skip them): '+untr.join(', ')+'.\n\nUse an .mp4 file link or a YouTube link to track them. Save anyway?')) return;
   b.set(doc(db,'courses',CID), {title:val('setTitle')||DEFAULT_TITLE, titles, updatedAt:serverTimestamp()});
   $('setSave').disabled=true;
-  try{ await b.commit(); $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.'); if(quiet===true) $('bulkNote').textContent='✔ All done: the course is set up and saved.'; }
-  catch(e){ toast('Could not save: '+e.code+' (only full mentors can change the course).'); }
+  try{ await b.commit(); $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.'); if(quiet===true) $('bulkNote').textContent='✔ All done: '+MIDS.filter(m=>ITEMS.every(it=>val('st-'+m+'-'+it.k))).length+' of 12 modules have all their files, and the course is saved.'; }
+  catch(e){ toast('Could not save: '+e.code+' (only full mentors can change the course).'); if(quiet===true) $('bulkNote').innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ Files uploaded but the course could not be saved ('+esc(e.code||'')+').</span>'; }
   $('setSave').disabled=false;
 };
 
