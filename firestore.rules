@@ -157,5 +157,22 @@ service cloud.firestore {
         && request.resource.data.sec <= resource.data.sec + 120;
       allow delete: if false;
     }
+
+    // Learner evidence file: a student's own uploads (photos, presentations) per unit
+    // standard. The student adds and, until it is reviewed, deletes their own; staff
+    // see everything and record the review.
+    match /evidence/{id} {
+      allow get: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && enrolledIn('us335815')
+        && !('review' in request.resource.data)
+        && request.resource.data.path.matches('evidence/' + request.auth.uid + '/.*');
+      allow update: if isMentor()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['review']);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid
+        && !('review' in resource.data);
+    }
   }
 }
