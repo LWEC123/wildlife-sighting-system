@@ -78,6 +78,12 @@ service cloud.firestore {
     function enrolledIn(cid) {
       return progActive() && progEnrol().data.get('paused', {}).get(cid, false) != true;
     }
+    // "Choose one" modules (e.g. module 5: choose your province): a student opens only
+    // the option they chose, kept in choice/<courseId>_<uid>.
+    function chose(cid, opt) {
+      return exists(/databases/$(database)/documents/choice/$(cid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/choice/$(cid + '_' + request.auth.uid)).data.opt == opt;
+    }
     function passedModule(cid, mid) {
       return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
         && get(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
@@ -94,7 +100,8 @@ service cloud.firestore {
         allow get: if isMentor()
           || (enrolledIn(cid)
               && get(/databases/$(database)/documents/courses/$(cid)).data.get('published', true) != false
-              && (resource.data.prev == '' || passedModule(cid, resource.data.prev)));
+              && (resource.data.prev == '' || passedModule(cid, resource.data.prev))
+              && (resource.data.get('opt', '') == '' || chose(cid, resource.data.opt)));
         allow list: if isMentor();
         allow write: if isFullMentor();
       }
@@ -166,6 +173,87 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'sec'])
         && request.resource.data.sec <= resource.data.sec + 120;
       allow delete: if false;
+    }
+
+    // A student's pick in a "choose one" module. The student makes it once; only staff
+    // can change it afterwards.
+    match /choice/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list: if isMentor();
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.opt is string && request.resource.data.opt.size() == 1
+        && enrolledIn(request.resource.data.cid);
+      allow create, update: if isMentor();
+      allow delete: if false;
+    }
+
+    // ---------- Online tests (module quizzes and final assessments) ----------
+    // tests/<cid>_<mid>_<ver>: the question paper, without answers. Version A opens with the
+    // module; another version only after an attempt was marked not yet competent.
+    function lastMark(cid, mid) {
+      return get(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+        .data.get('marks', {}).get(mid, {});
+    }
+    function hadNyc(cid, mid) {
+      return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+        && lastMark(cid, mid).get('outcome', '') == 'NYC';
+    }
+    match /tests/{id} {
+      allow get: if isMentor()
+        || (enrolledIn(resource.data.cid)
+            && (resource.data.prev == '' || passedModule(resource.data.cid, resource.data.prev))
+            && (resource.data.get('opt', '') == '' || chose(resource.data.cid, resource.data.opt))
+            && (resource.data.ver == 'A' || hadNyc(resource.data.cid, resource.data.mid)));
+      allow list: if isMentor();
+      allow write: if isFullMentor();
+    }
+    // Answers and memos: staff only, never sent to students.
+    match /testkeys/{id} {
+      allow read: if isMentor();
+      allow write: if isFullMentor();
+    }
+    // One sitting of a test: attempts/<cid>_<uid>_<mid>_<n>. Attempt 1 is version A; a new
+    // attempt only after the previous one was marked not yet competent. Handed in once.
+    match /attempts/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid + '_' + request.resource.data.mid + '_' + string(request.resource.data.att)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.startedAt == request.time
+        && !('submittedAt' in request.resource.data)
+        && enrolledIn(request.resource.data.cid)
+        && exists(/databases/$(database)/documents/tests/$(request.resource.data.cid + '_' + request.resource.data.mid + '_' + request.resource.data.ver))
+        && ((request.resource.data.att == 1 && request.resource.data.ver == 'A')
+            || (request.resource.data.att > 1
+                && hadNyc(request.resource.data.cid, request.resource.data.mid)
+                && lastMark(request.resource.data.cid, request.resource.data.mid).get('att', 0) == request.resource.data.att - 1));
+      allow update: if ownsKey(key)
+        && !('submittedAt' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submittedAt'])
+        && request.resource.data.submittedAt == request.time;
+      allow delete: if false;
+    }
+    // One answer per question: answers/<attempt key>_<question>. Saved once, never changed,
+    // only while the attempt is open and (if timed) within the time limit plus one minute.
+    function attemptOpen(d) {
+      let a = get(/databases/$(database)/documents/attempts/$(d.cid + '_' + request.auth.uid + '_' + d.mid + '_' + string(d.att))).data;
+      let t = get(/databases/$(database)/documents/tests/$(d.cid + '_' + d.mid + '_' + a.ver)).data;
+      return !('submittedAt' in a) && a.ver == d.ver
+        && (t.get('time', 0) == 0 || request.time < a.startedAt + duration.value(t.get('time', 0) * 60 + 60, 's'));
+    }
+    match /answers/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid + '_' + request.resource.data.mid + '_' + string(request.resource.data.att) + '_' + string(request.resource.data.n)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.a is string && request.resource.data.a.size() <= 6000
+        && attemptOpen(request.resource.data);
+      allow update, delete: if false;
     }
 
     // Learner agreement (copyright and conduct), accepted once before starting.
