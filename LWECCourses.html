@@ -271,6 +271,8 @@ table.t tr.click:hover td{background:#fbf8f0;}
     <h2>🛠️ Course setup</h2>
     <p class="note">Give each module a title and paste the link to each file. Students only ever receive the links of modules they've unlocked. <b>Never paste a link to an assessor memo here.</b></p>
     <div class="callout">For a video to be tracked (how much was watched), use a direct video link ending in .mp4, a Firebase Storage link, or a YouTube link. Other links (OneDrive, Google Drive) still work, but only show that the student opened them.</div>
+    <div class="callout"><b>Fastest way:</b> click <b>📂 Upload the whole course folder</b> and choose the folder <i>US 335815 - Conduct a guided biome experience</i> on your computer. The portal matches every guide, presentation, video, test and learner answer sheet to its module by the M01 to M12 file names, uploads them, and saves the course. Anything in an Assessor, CONF or memo folder, and the Facilitator and Assessor Guide, is skipped automatically.
+      <div class="btnrow"><label class="btn secondary" style="margin:0;cursor:pointer;">📂 Upload the whole course folder<input type="file" id="bulkDir" webkitdirectory directory multiple hidden onchange="bulkUpload(this)"></label><span class="sm" id="bulkNote"></span></div></div>
     <label>Course title</label><input id="setTitle">
     <div id="setMods" style="margin-top:12px;"></div>
     <div class="btnrow"><button class="btn" id="setSave" onclick="saveSetup()">Save course</button><span class="sm" id="setNote"></span></div>
@@ -310,6 +312,8 @@ const storage = getStorage(app);
 const CID = 'us335815';
 const DEFAULT_TITLE = 'US 335815: Conduct a guided biome experience';
 const NMODS = 12;
+const DEFAULT_MOD_TITLES = ['The Savanna Biome','The Desert Biome','The Forest Biome','The Fynbos Biome','The Grassland Biome','Indian Ocean Coastal Belt',
+  'The Nama Karoo Biome','Succulent Karoo Biome','Albany Thicket Biome','Cross-biome Guiding Skills','EEK and Cross-field Outcomes','Assessment'];
 const MIDS = Array.from({length:NMODS}, (_,i)=>'m'+String(i+1).padStart(2,'0'));
 const ITEMS = [
   {k:'guide',  label:'📖 Learner guide'},
@@ -320,7 +324,20 @@ const ITEMS = [
 ];
 // Evidence folders: unit standards of FETC: Tourist Guiding (SAQA 71549). Add more as courses go online.
 const QUAL = 'SAQA71549';
-const US_LIST = [ {id:'US335815', label:'US 335815: Conduct a guided biome experience'} ];
+const US_LIST = [
+  {id:'US335815', label:'US 335815: Conduct a guided biome experience'},
+  {id:'US335799', label:'US 335799: Conduct a tourist guided nature experience'},
+  {id:'US335801', label:'US 335801: Conduct a tourist guiding activity'},
+  {id:'US335802', label:'US 335802: Conduct a guided cultural experience'},
+  {id:'US335803', label:'US 335803: Research and plan a guided experience at a prominent tourist site'},
+  {id:'US335814', label:'US 335814: Conduct a guided birding experience'},
+  {id:'US335816', label:'US 335816: Conduct a guided adventure experience'},
+  {id:'US262246', label:'US 262246: Set up and operate a camping site'},
+  {id:'US262317', label:'US 262317: Lead participants through an adventure activity'},
+  {id:'US262320', label:'US 262320: Manage and organise groups'},
+  {id:'US246740', label:'US 246740: Care for customers'},
+  {id:'US255914', label:'US 255914: Minimise and manage safety'}
+];
 const EV_MAX = 100*1024*1024;
 const IDLE_MS = 10*60*1000, BEAT_S = 60, ONLINE_MS = 2*60*1000;
 
@@ -969,13 +986,65 @@ function renderSetup(){
   $('setTitle').value=course.title||DEFAULT_TITLE;
   $('setMods').innerHTML=MIDS.map((m,i)=>{
     const d=S.modules[m]||{};
-    return '<details class="modset"'+(i===0?' open':'')+'><summary>Module '+(i+1)+(d.title?': '+esc(d.title):'')+'</summary>'
-      +'<label>Module title</label><input id="st-'+m+'-title" value="'+esc(d.title||'')+'">'
-      +ITEMS.map(it=>'<label>'+it.label+' link</label><input id="st-'+m+'-'+it.k+'" placeholder="https://…" value="'+esc(d[it.k]||'')+'">').join('')
+    return '<details class="modset"'+(i===0?' open':'')+'><summary>Module '+(i+1)+': '+esc(d.title||DEFAULT_MOD_TITLES[i]||'')+(ITEMS.every(it=>d[it.k])?' ✔':'')+'</summary>'
+      +'<label>Module title</label><input id="st-'+m+'-title" value="'+esc(d.title||DEFAULT_MOD_TITLES[i]||'')+'">'
+      +ITEMS.map(it=>'<label>'+it.label+'</label><div style="display:flex;gap:8px;align-items:center;">'
+        +'<input id="st-'+m+'-'+it.k+'" placeholder="Paste a link, or upload the file →" value="'+esc(d[it.k]||'')+'">'
+        +'<label class="btn small ghost" style="margin:0;white-space:nowrap;cursor:pointer;">⬆️ Upload<input type="file" hidden onchange="uploadCourseFile(this,\''+m+'\',\''+it.k+'\')"></label></div>'
+        +'<div class="sm" id="up-'+m+'-'+it.k+'"></div>').join('')
       +'</details>';
   }).join('');
 }
-window.saveSetup = async ()=>{
+window.uploadCourseFile = async (inp,m,k)=>{
+  const f=inp.files[0]; inp.value=''; if(!f) return;
+  if(/memo|memorand/i.test(f.name)){ toast('This looks like an assessor memo. Memos must never go on the website.'); return; }
+  if(f.size>1024*1024*1024){ toast('That file is larger than 1 GB.'); return; }
+  const out=$('up-'+m+'-'+k);
+  const path='course/'+CID+'/'+m+'/'+k+'_'+Date.now()+'_'+f.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+  try{
+    const task=uploadBytesResumable(sref(storage,path), f, {contentType:typeOf(f)||'application/octet-stream'});
+    await new Promise((res,rej)=>task.on('state_changed', t=>{ out.textContent='Uploading '+f.name+': '+Math.round(t.bytesTransferred/t.totalBytes*100)+'%'; }, rej, res));
+    $('st-'+m+'-'+k).value=await getDownloadURL(task.snapshot.ref);
+    out.textContent='✔ '+f.name+' uploaded. Click Save course when you are done.';
+  }catch(e){ console.warn(e); out.textContent='Upload failed ('+(e.code||e.message)+').'; }
+};
+const BULK_MAP=[ [/^01/, 'guide'], [/^02/, 'slides'], [/^03/, 'video'], [/^04/, 'test'], [/^05/, 'sheet'] ];
+window.bulkUpload = async inp=>{
+  const files=[...inp.files]; inp.value='';
+  const plan=[], skipped=[];
+  let guide=null;
+  files.forEach(f=>{
+    const rel=f.webkitRelativePath||f.name, parts=rel.split('/'), top=parts[1]||'', name=f.name;
+    if(/assessor|conf|memo|memorand|facilitator/i.test(rel)){ skipped.push(name); return; }
+    const hit=BULK_MAP.find(([re])=>re.test(top)); if(!hit) return;
+    const k=hit[1];
+    if(k==='sheet' && !/learner/i.test(rel)){ skipped.push(name); return; }
+    if(k==='guide'){ if(/learner/i.test(name) && /\.(docx?|pdf)$/i.test(name)) guide=f; return; }
+    const mm=name.match(/^M(\d{2})/i); if(!mm) return;
+    const m='m'+mm[1]; if(!MIDS.includes(m)) return;
+    if(k==='video' && !/\.(mp4|m4v|webm|mov)$/i.test(name)) return;
+    if(k!=='video' && !/\.(pptx?|docx?|pdf)$/i.test(name)) return;
+    plan.push({f,m,k});
+  });
+  if(guide) plan.unshift({f:guide, m:'all', k:'guide'});
+  if(!plan.length){ toast("No course files found. Choose the folder that holds 01 Guides, 02 Slides, 03 Videos, 04 Tests and 05 Answers."); return; }
+  const total=plan.reduce((a,x)=>a+x.f.size,0);
+  if(!confirm('Upload '+plan.length+' files ('+fmtSize(total)+') for the 12 modules?'+(skipped.length?'\n\nSkipped (kept off the website): '+skipped.length+' assessor/memo files.':'')+'\n\nKeep this page open until it finishes.')) return;
+  let done=0;
+  for(const x of plan){
+    const path='course/'+CID+'/'+(x.m==='all'?'shared':x.m)+'/'+x.k+'_'+x.f.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+    try{
+      const task=uploadBytesResumable(sref(storage,path), x.f, {contentType:typeOf(x.f)||'application/octet-stream'});
+      await new Promise((res,rej)=>task.on('state_changed', t=>{ $('bulkNote').textContent='Uploading '+x.f.name+' ('+Math.round((done+t.bytesTransferred)/total*100)+'% of everything)'; }, rej, res));
+      const url=await getDownloadURL(task.snapshot.ref);
+      (x.m==='all'? MIDS : [x.m]).forEach(m=>{ const el=$('st-'+m+'-'+x.k); if(el) el.value=url; });
+      done+=x.f.size;
+    }catch(e){ console.warn(e); toast('Upload of '+x.f.name+' failed ('+(e.code||e.message)+'). Saving what uploaded.'); break; }
+  }
+  $('bulkNote').textContent='✔ Files uploaded. Saving the course…';
+  await saveSetup(true);
+};
+window.saveSetup = async (quiet)=>{
   const b=writeBatch(db), titles=[]; let bad='';
   MIDS.forEach((m,i)=>{
     const d={n:i+1, prev:prevOf(m), title:val('st-'+m+'-title')};
@@ -984,10 +1053,10 @@ window.saveSetup = async ()=>{
   });
   if(bad){ toast('Links must start with https:// (check '+bad+').'); return; }
   const untr=[]; MIDS.forEach((m,i)=>MEDIA.forEach(k=>{ const v=val('st-'+m+'-'+k); if(v && !trackable(v)) untr.push('Module '+(i+1)+' '+(k==='video'?'video':'presentation')); }));
-  if(untr.length && !confirm('These links cannot be checked for real watching (students could skip them): '+untr.join(', ')+'.\n\nUse an .mp4 file link or a YouTube link to track them. Save anyway?')) return;
+  if(untr.length && quiet!==true && !confirm('These links cannot be checked for real watching (students could skip them): '+untr.join(', ')+'.\n\nUse an .mp4 file link or a YouTube link to track them. Save anyway?')) return;
   b.set(doc(db,'courses',CID), {title:val('setTitle')||DEFAULT_TITLE, titles, updatedAt:serverTimestamp()});
   $('setSave').disabled=true;
-  try{ await b.commit(); $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.'); }
+  try{ await b.commit(); $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.'); if(quiet===true) $('bulkNote').textContent='✔ All done: the course is set up and saved.'; }
   catch(e){ toast('Could not save: '+e.code+' (only full mentors can change the course).'); }
   $('setSave').disabled=false;
 };
