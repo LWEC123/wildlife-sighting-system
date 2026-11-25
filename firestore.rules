@@ -78,6 +78,12 @@ service cloud.firestore {
     function enrolledIn(cid) {
       return progActive() && progEnrol().data.get('paused', {}).get(cid, false) != true;
     }
+    // "Choose one" modules (e.g. module 5: choose your province): a student opens only
+    // the option they chose, kept in choice/<courseId>_<uid>.
+    function chose(cid, opt) {
+      return exists(/databases/$(database)/documents/choice/$(cid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/choice/$(cid + '_' + request.auth.uid)).data.opt == opt;
+    }
     function passedModule(cid, mid) {
       return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
         && get(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
@@ -94,7 +100,8 @@ service cloud.firestore {
         allow get: if isMentor()
           || (enrolledIn(cid)
               && get(/databases/$(database)/documents/courses/$(cid)).data.get('published', true) != false
-              && (resource.data.prev == '' || passedModule(cid, resource.data.prev)));
+              && (resource.data.prev == '' || passedModule(cid, resource.data.prev))
+              && (resource.data.get('opt', '') == '' || chose(cid, resource.data.opt)));
         allow list: if isMentor();
         allow write: if isFullMentor();
       }
@@ -165,6 +172,20 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'sec'])
         && request.resource.data.sec <= resource.data.sec + 120;
+      allow delete: if false;
+    }
+
+    // A student's pick in a "choose one" module. The student makes it once; only staff
+    // can change it afterwards.
+    match /choice/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list: if isMentor();
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.opt is string && request.resource.data.opt.size() == 1
+        && enrolledIn(request.resource.data.cid);
+      allow create, update: if isMentor();
       allow delete: if false;
     }
 
