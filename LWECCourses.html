@@ -1612,7 +1612,8 @@ window.openStu = (uid, quiet)=>{
       const vid=watchTxt(m,pm);
       const test=pm.submittedAt? 'handed in '+fmtDT(pm.submittedAt) : '—';
       const res= passed[m]===true? '<span class="pill ok">Competent</span>' : mk&&mk.outcome==='NYC'&&ms(mk.at)>=ms(pm.submittedAt)? '<span class="pill bad">Not yet competent</span>' : pm.submittedAt? '<span class="pill wait">To mark</span>' : '—';
-      return '<tr><td>'+esc(modTitle(m))+'</td><td class="sm">'+esc(opened)+'</td><td class="sm">'+vid+'</td><td class="sm">'+test+'</td><td>'+res+'</td></tr>';
+      const prior= passed[m]===true? '' : ' <button class="btn small ghost" style="margin-top:4px;" onclick="priorCompetent(\''+uid+'\',\''+m+'\')" title="For work done before the online portal: marks this module and every earlier module that is not competent yet">✔ Already competent</button>';
+      return '<tr><td>'+esc(modTitle(m))+'</td><td class="sm">'+esc(opened)+'</td><td class="sm">'+vid+'</td><td class="sm">'+test+'</td><td>'+res+prior+'</td></tr>';
     }).join('')+'</table></div>'
     +'<h3>Recent sessions</h3>';
   const ss=x.sess.slice().sort((a,b)=>ms(b.start)-ms(a.start)).slice(0,25);
@@ -1758,6 +1759,29 @@ window.mark = async (c,uid,m,outcome)=>{
       hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
     toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
   }catch(e){ toast('Could not save the mark: '+e.code); }
+};
+
+// Work a long-term student completed before the online portal: mark this module and every
+// earlier module that is not competent yet, so the student continues from the next one.
+window.priorCompetent = async (uid,m)=>{
+  const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
+  const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
+  if(!as.name){ toast('Type your assessor name on the Marking page first (it is saved for next time).'); return; }
+  const x=stuSummary(e), passed=(x.r.passed||{}), upto=x.mids.indexOf(m);
+  const todo=x.mids.slice(0,upto+1).filter(k=>passed[k]!==true);
+  if(!todo.length){ toast('Already competent.'); return; }
+  if(!confirm('Record '+todo.map(k=>'Module '+(parseInt(k.slice(1,3),10)||k)).join(', ')+' as competent for '+(e.name||e.email)+'?\n\nUse this for work they completed before the online portal. It shows in their PoE pack as "Competent before the online portal", recorded by '+as.name+'.')) return;
+  const good='Competent before the online portal (work completed earlier, recorded by the assessor).';
+  const now=Timestamp.now(), pass={}, marks={}, hist={}, fields=['uid','cid'];
+  todo.forEach(k=>{
+    pass[k]=true; if(k.length>3) pass[baseOf(k)]=true;
+    marks[k]={outcome:'C', good, fix:'', by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), prior:true};
+    hist[k]=arrayUnion({outcome:'C', good, fix:'', by:as.name, reg:as.reg, byUid:me.uid, at:now, submittedAt:null, answers:'', link:'', paper:false, prior:true});
+    fields.push('passed.'+k,'marks.'+k,'hist.'+k); if(k.length>3) fields.push('passed.'+baseOf(k));
+  });
+  try{ await setDoc(doc(db,'results',CID+'_'+uid), {uid, cid:CID, passed:pass, marks, hist}, {mergeFields:fields});
+    toast(todo.length+' module'+(todo.length>1?'s':'')+' recorded as competent. The student can carry on from the next module.'); }
+  catch(err){ toast('Could not save: '+err.code); }
 };
 
 /* ---------- access codes (one code = the whole qualification) ---------- */
