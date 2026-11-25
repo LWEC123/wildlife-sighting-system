@@ -29,6 +29,16 @@ service firebase.storage {
       allow update: if false;
     }
 
+    // Course files (guides, presentations, videos, tests, answer sheets). Uploaded by
+    // full mentors from Course setup. A student only ever receives the link of a module
+    // they have unlocked; never upload assessor memos.
+    match /course/{cid}/{rest=**} {
+      allow read: if isMentor() || enrolled();
+      allow write: if isMentor()
+        && firestore.get(/databases/(default)/documents/mentors/$(request.auth.uid)).data.get('level', 'full') == 'full'
+        && request.resource.size < 1024 * 1024 * 1024;
+    }
+
     match /{all=**} {
       allow read, write: if false;
     }
