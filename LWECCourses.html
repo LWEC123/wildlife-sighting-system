@@ -428,11 +428,25 @@ onAuthStateChanged(auth, async user=>{
     authMode('login'); return;
   }
   $('authView').hidden=true; $('appMain').hidden=false; $('whoBox').hidden=false;
-  try{ const p=await getDoc(doc(db,'users',user.uid)); profile=p.exists()?p.data():{}; }catch(e){ profile={}; }
-  if(!profile.role && !pendingCode){
+  // Read the profile and the staff record, retrying on a bad connection. Never fall
+  // back to the student screen (or rewrite the profile) just because a read failed.
+  let lastErr='';
+  const tryGet=async ref=>{ for(let i=0;i<4;i++){ try{ return await getDoc(ref); }catch(e){ console.warn('retry',e); lastErr=(e&&e.code)||String(e); if(lastErr==='permission-denied') return null; await new Promise(r=>setTimeout(r,1500*(i+1))); } } return null; };
+  const [p,m]=await Promise.all([tryGet(doc(db,'users',user.uid)), tryGet(doc(db,'mentors',user.uid))]);
+  if(!p || !m){
+    $('claimCard').hidden=true; $('courseView').hidden=true;
+    $('staffCourseNote').hidden=false;
+    $('staffCourseNote').innerHTML= lastErr==='permission-denied'
+      ? '<h2>⚠️ The college server refused access</h2><p class="note">The Firestore security rules in Firebase are blocking the portal (code: permission-denied). The rules need to be published again in Firebase → Firestore → Rules.</p>'
+      : '<h2>⚠️ Could not connect</h2><p class="note">The portal could not reach the college server ('+esc(lastErr)+'). Check your internet connection, then <a href="#" onclick="location.reload();return false;">reload the page</a>.</p>';
+    return;
+  }
+  profile=p.exists()?p.data():{};
+  if(!p.exists() && !pendingCode){
     try{ await setDoc(doc(db,'users',user.uid), {name:'',email:user.email||'',role:'student',sno:'',idno:'',mentor:'',prog:'',saqa:'',createdAt:serverTimestamp()}); }catch(e){}
   }
-  try{ const m=await getDoc(doc(db,'mentors',user.uid)); isMentor=m.exists(); mentorLevel=isMentor?(m.data().level||'full'):null; }catch(e){ isMentor=false; }
+  isMentor=m.exists(); mentorLevel=isMentor?(m.data().level||'full'):null;
+  if(isMentor && profile.role!=='mentor') updateDoc(doc(db,'users',user.uid), {role:'mentor', mlevel:mentorLevel}).catch(()=>{});
   $('whoName').textContent=(profile.name||user.email||'')+(isMentor?' · staff':'');
   listenCourse();
   if(isMentor) startStaff(); else startStudent();
