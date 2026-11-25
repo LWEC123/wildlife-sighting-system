@@ -282,6 +282,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
   <div class="card">
     <div class="tablewrap"><table class="t" id="monTable"></table></div>
   </div>
+  <div class="card" id="classGrid" hidden></div>
   <div class="card" id="stuDetail" hidden></div>
   <div class="card" id="stuUpload" hidden></div>
 </section>
@@ -347,6 +348,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
       <textarea id="setChO" placeholder="Limpopo&#10;Mpumalanga&#10;Western Cape&#10;Gauteng&#10;KwaZulu-Natal"></textarea>
       <p class="sm">Each option is its own module with its own files, named with a letter after the module number: M05A_Limpopo, M05B_Mpumalanga, and so on. A student clicks one option, works through only that module, and the next module opens once it is marked competent. Click <b>Save course</b> and the option modules appear below. Leave the module number empty for no choice.</p>
     </details>
+    <div class="btnrow"><label class="btn small ghost" style="margin:0;cursor:pointer;">Load outcome descriptions (Tag_Key.txt)<input type="file" accept=".txt" hidden onchange="importTagKey(this)"></label><span class="sm" id="tagNote"></span></div>
     <div id="setMods" style="margin-top:12px;"></div>
     <div class="btnrow"><button class="btn" id="setSave" onclick="saveSetup()">Save course</button><span class="sm" id="setNote"></span></div>
   </div>
@@ -365,7 +367,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          sendPasswordResetEmail, signOut, onAuthStateChanged
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
+import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
          onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
@@ -647,7 +649,7 @@ function syncResults(){
     if(resUnsubs[cid]) return;
     resUnsubs[cid]=onSnapshot(doc(db,'results',cid+'_'+me.uid), s=>{
       const d=s.exists()?s.data():{}; resultsBy[cid]={passed:d.passed||{}, marks:d.marks||{}};
-      if(cid===CID) results=resultsBy[cid];
+      if(cid===CID){ results=resultsBy[cid]; Object.keys(OT).forEach(k=>{ if(k.startsWith(cid+'/') && OT[k].phase!=='doing') delete OT[k]; }); }
       renderCourse();
     }, e=>console.warn('results',e));
   });
@@ -732,7 +734,8 @@ function renderCourse(){
       +'</div>';
   }).join('');
   // keep a playing video alive: only re-render the list when nothing is playing
-  if(!anyPlaying()) { flushVideo(); players={}; $('modList').innerHTML=html; if(openMid) mountPlayer(openMid); }
+  if(!anyPlaying()) { flushVideo(); players={}; keepInputs('modList', ()=>{ $('modList').innerHTML=html; });
+    if(openMid){ mountPlayer(openMid); if($('ot-'+openMid)){ if(OT[CID+'/'+openMid]) drawTest(openMid); else loadTest(openMid); } } }
 }
 function renderLanding(){
   const ids=courseIds();
@@ -822,6 +825,17 @@ function modBody(mid, st){
     else if(e==='pdf') h+=itemRow(it.label+op, '<button class="btn small secondary" onclick="viewDoc(\''+mid+'\',\''+it.k+'\')">👁 View</button>');
     else h+=itemRow(it.label, '<span class="sm">Being prepared for viewing. Ask your assessor.</span>');
   });
+  if(otOf(m)){
+    const fin=baseOf(mid)===midsOf(CID).slice(-1)[0];
+    h+='<h3>'+(fin? '🎓 Final assessment' : '📝 Module quiz')+'</h3>';
+    if(st==='passed') h+='<p class="note">Your assessor marked this '+(fin?'assessment':'module')+' <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+scoreBox(mk)+feedbackBox(mk);
+    else if(st==='waiting') h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon.'+(fin?'':' The next module opens once it is marked competent.')+'</p>';
+    else {
+      if(st==='nyc') h+='<div class="callout">Your assessor marked this <b>not yet competent</b>. Read the feedback, go back over the module, then take the test again: you will get different questions.</div>'+scoreBox(mk)+feedbackBox(mk);
+      h+= canHandIn(mid)? '<div id="ot-'+mid+'"></div>' : '<div class="callout">Watch the module video'+(trackable(m.slides)?' and the presentation':'')+' through (at least '+NEED_PCT+'%) before you start the test.</div>';
+    }
+    return h;
+  }
   h+='<h3>Hand in your test</h3>';
   if(st==='passed'){
     h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk);
@@ -990,6 +1004,280 @@ document.addEventListener('keydown', e=>{
   const k=(e.key||'').toLowerCase();
   if(k==='s' || (k==='p' && !$('viewer').hidden)){ e.preventDefault(); toast('Course material can only be viewed here.'); }
 });
+
+/* ---------- keep what someone is typing when a list re-draws ---------- */
+function keepInputs(box, draw){
+  const el=$(box); const saved={}; let focus=null, selS=0, selE=0;
+  if(el) el.querySelectorAll('input[id],textarea[id],select[id]').forEach(i=>{ saved[i.id]= i.type==='checkbox'||i.type==='radio'? {c:i.checked} : {v:i.value}; });
+  const a=document.activeElement; if(a && a.id && el && el.contains(a)){ focus=a.id; try{ selS=a.selectionStart; selE=a.selectionEnd; }catch(e){} }
+  draw();
+  Object.keys(saved).forEach(id=>{ const i=$(id); if(!i || i.dataset.fresh) return; if('c' in saved[id]) i.checked=saved[id].c; else i.value=saved[id].v; });
+  if(focus && $(focus)){ $(focus).focus(); try{ $(focus).setSelectionRange(selS,selE); }catch(e){} }
+}
+
+/* =========================================================
+   ONLINE TESTS
+   tests/<cid>_<mid>_<ver>     question paper (no answers) — students, once the module is open
+   testkeys/<cid>_<mid>_<ver>  answers and memos — staff only, never sent to students
+   attempts/<cid>_<uid>_<mid>_<n>   one per sitting: version, start, hand-in time
+   answers/<cid>_<uid>_<mid>_<n>_<q> one per answer, can't be changed once saved
+   Attempt 1 is version A; after "not yet competent" the next attempt uses the next version (B…).
+   ========================================================= */
+const OT={};          // student: cid/mid -> state
+const TD={};          // student: an answer being typed or picked, kept across re-draws
+window.TD=TD;
+const TK={};          // staff: cid_mid_ver -> {paper, keys}
+const AN={};          // staff: attempt key -> {attempt, answers}
+const MV={};          // staff: marks typed into the marking list
+window.MV=MV;
+function otOf(m){ const o=(m||{}).otest; return o && (o.vers||[]).length? o : null; }
+function attKey(cid,uid,mid,n){ return cid+'_'+uid+'_'+mid+'_'+n; }
+function tsMs(t){ return ms(t) || 0; }
+function timeLeft(st){ if(!st.paper || !st.paper.time || !st.attempt) return null; const s=tsMs(st.attempt.startedAt); if(!s) return null; return s + st.paper.time*60000 - Date.now(); }
+function fmtLeft(msl){ msl=Math.max(0,msl); const m=Math.floor(msl/60000), s=Math.floor(msl%60000/1000); return m+':'+String(s).padStart(2,'0'); }
+
+async function loadTest(mid, force){
+  const key=CID+'/'+mid, m=curMod(mid), ot=otOf(m); if(!ot) return;
+  if(OT[key] && OT[key].busy) return;
+  if(OT[key] && !force) return;
+  const st=OT[key]={busy:true, phase:'loading'};
+  try{
+    const qs=await getDocs(query(collection(db,'attempts'), where('uid','==',me.uid), where('cid','==',CID), where('mid','==',mid)));
+    const atts=qs.docs.map(d=>d.data()).sort((a,b)=>a.att-b.att), last=atts[atts.length-1];
+    const mk=(results.marks||{})[mid];
+    if(!last){ Object.assign(st,{phase:'start', nextAtt:1, ver:'A'}); }
+    else if(!last.submittedAt){
+      st.attempt=last; st.att=last.att; st.ver=last.ver;
+      const ps=await getDoc(doc(db,'tests',CID+'_'+mid+'_'+last.ver)); st.paper=ps.data();
+      const as=await getDocs(query(collection(db,'answers'), where('uid','==',me.uid), where('cid','==',CID), where('mid','==',mid), where('att','==',last.att)));
+      st.answers={}; as.docs.forEach(d=>{ st.answers[d.data().n]=d.data().a; });
+      st.phase='doing';
+      const left=timeLeft(st);
+      if((left!=null && left<=0) || Object.keys(st.answers).length>=st.paper.questions.length){ st.busy=false; await submitOnline(mid,true); return; }
+    } else if(mk && mk.att===last.att && mk.outcome==='NYC'){
+      Object.assign(st,{phase:'start', nextAtt:last.att+1, ver: ot.vers[last.att % ot.vers.length]});
+    } else { st.phase='handed'; st.attempt=last; }
+  }catch(e){ console.warn('test',e); st.phase='error'; st.err=e.code||e.message; }
+  st.busy=false; drawTest(mid);
+}
+function drawTest(mid){
+  const box=$('ot-'+mid); if(!box) return;
+  const st=OT[CID+'/'+mid]; const m=curMod(mid), ot=otOf(m);
+  if(!st || st.phase==='loading'){ box.innerHTML='<p class="note">Loading the test…</p>'; return; }
+  if(st.phase==='error'){ box.innerHTML='<p class="note">The test could not be opened ('+esc(st.err)+'). Check your connection and try again.</p>'; return; }
+  if(st.phase==='handed'){ box.innerHTML='<p class="note">Your test is handed in. Your assessor will mark it soon.</p>'; return; }
+  if(st.phase==='start'){
+    box.innerHTML='<div class="sub-entry"><b>📝 Online test'+(st.nextAtt>1?' (attempt '+st.nextAtt+': new questions)':'')+'</b>'
+      +'<p class="note" style="margin-top:6px;">You see one question at a time. Once you save an answer it is locked: you <b>cannot go back</b> to change it.'+(ot.time?' You have <b>'+ot.time+' minutes</b> from when you start; the test hands itself in when the time is up.':'')+' Make sure you have time and a good connection before you start.</p>'
+      +'<div class="btnrow"><button class="btn" onclick="startTest(\''+mid+'\')">Start the test</button></div></div>';
+    return;
+  }
+  // doing
+  const qs=st.paper.questions, done=Object.keys(st.answers).length, q=qs.find(x=>!(x.n in st.answers));
+  if(!q){ box.innerHTML='<p class="note">Handing in…</p>'; return; }
+  const left=timeLeft(st);
+  let inp='';
+  const dk=CID+'/'+mid+'/'+st.att+'/'+q.n, dv=TD[dk];
+  if(q.type==='MC') inp=q.options.map((o,i)=>'<label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:6px 0;"><input type="radio" name="oq-'+mid+'" id="oq-'+mid+'-'+i+'" value="'+LETTERS[i]+'"'+(dv===LETTERS[i]?' checked':'')+' onchange="TD[\''+dk+'\']=this.value" style="width:auto;margin-top:3px;"> <span><b>'+LETTERS[i]+')</b> '+esc(o)+'</span></label>').join('');
+  else if(q.type==='TF') inp=['True','False'].map((o,i)=>'<label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:6px 0;"><input type="radio" name="oq-'+mid+'" id="oq-'+mid+'-'+i+'" value="'+o+'"'+(dv===o?' checked':'')+' onchange="TD[\''+dk+'\']=this.value" style="width:auto;"> '+o+'</label>').join('');
+  else inp='<textarea id="oq-'+mid+'-w" maxlength="5000" placeholder="Type your answer here." style="min-height:140px;" oninput="TD[\''+dk+'\']=this.value">'+esc(dv||'')+'</textarea>';
+  keepInputs('ot-'+mid, ()=>{ box.innerHTML='<div class="sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>Question '+(done+1)+' of '+qs.length+'</b><span class="sm">'+q.marks+' mark'+(q.marks==1?'':'s')+(left!=null?' · ⏱ <b id="otT-'+mid+'">'+fmtLeft(left)+'</b> left':'')+'</span></div>'
+    +'<div class="answer" style="background:#fff;padding:8px 0;font-size:.95rem;">'+esc(q.text)+'</div>'+inp
+    +'<div class="btnrow"><button class="btn" id="otBtn-'+mid+'" onclick="saveAnswer(\''+mid+'\')">'+(done+1===qs.length?'Save answer and hand in':'Save answer and go to the next question')+'</button></div>'
+    +'<p class="sm" style="margin-top:6px;">Once saved, this answer is locked.</p></div>'; });
+}
+window.startTest = async mid=>{
+  const st=OT[CID+'/'+mid], ot=otOf(curMod(mid)); if(!st||st.phase!=='start') return;
+  if(!confirm('Start the test now?'+(ot.time?'\n\nYou have '+ot.time+' minutes.':'')+'\nYou cannot go back to change an answer once it is saved.')) return;
+  try{
+    const ps=await getDoc(doc(db,'tests',CID+'_'+mid+'_'+st.ver));
+    if(!ps.exists()){ toast('This test is not ready yet. Ask your assessor.'); return; }
+    await setDoc(doc(db,'attempts',attKey(CID,me.uid,mid,st.nextAtt)), {uid:me.uid, cid:CID, mid, att:st.nextAtt, ver:st.ver, nq:ps.data().questions.length, startedAt:serverTimestamp()});
+    setCurrent(mid,'test-started');
+    await loadTest(mid,true);
+  }catch(e){ console.warn(e); toast('Could not start the test ('+(e.code||e.message)+').'); }
+};
+window.saveAnswer = async mid=>{
+  const st=OT[CID+'/'+mid]; if(!st||st.phase!=='doing') return;
+  const q=st.paper.questions.find(x=>!(x.n in st.answers)); if(!q) return;
+  let a='';
+  if(q.type==='WRITTEN') a=($('oq-'+mid+'-w').value||'').trim();
+  else { const c=document.querySelector('input[name="oq-'+mid+'"]:checked'); a=c? c.value : ''; }
+  if(!a && !confirm('You have not answered this question. Go on without an answer? You cannot come back to it.')) return;
+  const b=$('otBtn-'+mid); if(b) b.disabled=true;
+  try{
+    await setDoc(doc(db,'answers',attKey(CID,me.uid,mid,st.att)+'_'+q.n), {uid:me.uid, cid:CID, mid, att:st.att, ver:st.ver, n:q.n, a, at:serverTimestamp()});
+    st.answers[q.n]=a;
+    if(Object.keys(st.answers).length>=st.paper.questions.length) await submitOnline(mid);
+    else drawTest(mid);
+  }catch(e){
+    console.warn(e);
+    if(e.code==='permission-denied'){ toast('This answer could not be saved: the time is up or the test was handed in.'); await submitOnline(mid,true); }
+    else { toast('Not saved ('+(e.code||e.message)+'). Check your connection and press the button again.'); if(b) b.disabled=false; }
+  }
+};
+async function submitOnline(mid, auto){
+  const key=CID+'/'+mid, st=OT[key]; if(!st||!st.attempt&&!st.att) return;
+  const att=st.att||st.attempt.att;
+  try{
+    await updateDoc(doc(db,'attempts',attKey(CID,me.uid,mid,att)), {submittedAt:serverTimestamp()});
+  }catch(e){ console.warn('submit',e); }
+  await saveProg({mods:{[mid]:{submittedAt:serverTimestamp(), testAtt:att, testVer:st.ver||'', answers:'', link:'', paper:false}}});
+  setCurrent(mid,'test-submitted');
+  st.phase='handed'; drawTest(mid);
+  toast(auto? 'The test was handed in.' : 'Test handed in. Your assessor will mark it soon.');
+}
+setInterval(()=>{
+  Object.keys(OT).forEach(k=>{
+    const st=OT[k]; if(st.phase!=='doing') return; const [cid,mid]=k.split('/'); if(cid!==CID) return;
+    const left=timeLeft(st); if(left==null) return;
+    const el=$('otT-'+mid); if(el) el.textContent=fmtLeft(left);
+    if(left<=0 && !st.timeUp){ st.timeUp=true; submitOnline(mid,true); }
+  });
+},1000);
+function scoreBox(mk){
+  if(!mk || mk.total==null) return '';
+  const pct=mk.max? Math.round(mk.total/mk.max*100) : 0;
+  return '<p class="note" style="margin-top:6px;"><b>Test score: '+mk.total+' / '+mk.max+' ('+pct+'%)</b>'+(mk.ver?' · version '+esc(mk.ver):'')+'</p>'
+    +(mk.scores? '<div class="sm">'+Object.keys(mk.scores).sort((a,b)=>a-b).map(n=>'Q'+n+': '+mk.scores[n].s+'/'+mk.scores[n].max).join(' · ')+'</div>' : '');
+}
+
+/* ---------- test files: parse the plain-text format ---------- */
+function normTag(t){ return String(t||'').trim().toUpperCase().replace(/^SO\s*(\d+)\s*[-.\s]\s*AC\s*(\d+)$/,'SO$1-AC$2').replace(/\s+/g,'-'); }
+function parseTagKey(txt){ const k={}; String(txt).replace(/\r/g,'').split('\n').forEach(l=>{ const m=l.match(/^\s*([^=]+?)\s*=\s*(.+)$/); if(m) k[normTag(m[1])]=m[2].trim(); }); return k; }
+window.importTagKey = async inp=>{
+  const f=inp.files[0]; inp.value=''; if(!f) return;
+  const k=parseTagKey(await f.text()); const n=Object.keys(k).length;
+  if(!n){ toast('No lines like "SO1-AC1 = wording" found.'); return; }
+  try{ await setDoc(doc(db,'courses',CID), {tagkey:k}, {merge:true}); courses[CID]=Object.assign({},courses[CID]||{},{tagkey:k}); useCourse(CID); $('tagNote').textContent='✔ '+n+' outcome descriptions loaded.'; }
+  catch(e){ toast('Could not save: '+e.code); }
+};
+/* ---------- outcomes (SO/AC/EEK) grid from marked online tests ---------- */
+function tagStats(r){   // r = results doc; uses the latest marked attempt of every module
+  const st={}; const hist=(r&&r.hist)||{};
+  Object.keys(hist).forEach(m=>{ const hs=hist[m]||[]; const last=[...hs].reverse().find(h=>h.qa); if(!last) return;
+    last.qa.forEach(q=>(q.tags||[]).forEach(t=>{ const x=st[t]=st[t]||{s:0,max:0,mods:new Set()}; x.s+=+q.s||0; x.max+=+q.max||0; x.mods.add(m); })); });
+  return st;
+}
+function light(p){ return p==null? '' : p>=70? '🟢' : p>=50? '🟠' : '🔴'; }
+function tagLabel(t, cid){ const k=(cdef(cid||CID).tagkey||{})[t]; return k? t+': '+k : t; }
+function sortTags(a,b){ const n=x=>x.replace(/\d+/g,d=>d.padStart(4,'0')); return n(a).localeCompare(n(b)); }
+function struggling(st){ return Object.keys(st).filter(t=>st[t].max && st[t].s/st[t].max<0.5).sort(sortTags); }
+function gridOne(st, cid){
+  const tags=Object.keys(st).sort(sortTags);
+  if(!tags.length) return '<p class="note">No marked online tests with outcome tags yet.</p>';
+  return '<div class="tablewrap"><table class="t"><tr><th>Outcome</th><th>Score</th><th></th></tr>'+tags.map(t=>{ const x=st[t], p=x.max? Math.round(x.s/x.max*100):null;
+    return '<tr><td>'+esc(tagLabel(t,cid))+'</td><td>'+x.s+' / '+x.max+'</td><td>'+light(p)+' '+(p!=null?p+'%':'')+'</td></tr>'; }).join('')+'</table></div>';
+}
+function parseTest(txt, fname){
+  const out={time:0, ver:'', pass:0, questions:[], keys:{}, errors:[]};
+  const vm=(fname||'').match(/_([A-J])\.txt$/i); if(vm) out.ver=vm[1].toUpperCase();
+  const lines=String(txt).replace(/\r/g,'').split('\n');
+  let q=null, inMemo=false;
+  const close=()=>{ if(!q) return;
+    q.text=q.text.trim(); const k=out.keys[q.n]={};
+    if(q.type==='MC'){ const c=q._ok; if(q.options.length<2) out.errors.push('Question '+q.n+': needs at least two options a), b)…'); if(c.length!==1) out.errors.push('Question '+q.n+': mark exactly one option with * as correct'); k.answer=LETTERS[c[0]]||''; }
+    if(q.type==='TF'){ if(!/^(true|false)$/i.test(q._ans||'')) out.errors.push('Question '+q.n+': add ANSWER: True or ANSWER: False'); k.answer=/^t/i.test(q._ans||'')?'True':'False'; }
+    if(q._memo) k.memo=q._memo.trim();
+    if(q.type==='WRITTEN' && !k.memo) out.errors.push('Question '+q.n+': add a MEMO: line for the assessor');
+    if(!q.text) out.errors.push('Question '+q.n+': the question text is missing');
+    delete q._ok; delete q._ans; delete q._memo; out.questions.push(q); q=null; };
+  for(const raw of lines){
+    const l=raw.trim();
+    let mm;
+    if(!q && (mm=l.match(/^TIME:\s*(\d+)/i))){ out.time=+mm[1]; continue; }
+    if(!q && (mm=l.match(/^VERSION:\s*([A-J])/i))){ out.ver=mm[1].toUpperCase(); continue; }
+    if(!q && (mm=l.match(/^PASS:\s*(\d+)/i))){ out.pass=+mm[1]; continue; }
+    if(/^\(.*\)$/.test(l)) continue;
+    if((mm=l.match(/^(\d+)\s*[.)]\s*\[\s*(MC|TF|WRITTEN|SHORT|ESSAY)\s*(\d+(?:\.\d+)?)?\s*\]\s*(.*)$/i))){
+      close(); const ty=mm[2].toUpperCase();
+      q={n:+mm[1], type: ty==='MC'||ty==='TF'? ty : 'WRITTEN', marks: mm[3]? +mm[3] : 1, text:mm[4]||'', options:[], _ok:[]}; inMemo=false; continue;
+    }
+    if(!q){ if(l) out.errors.push('Not understood (before question 1): '+l.slice(0,60)); continue; }
+    if((mm=l.match(/^MEMO:\s*(.*)$/i))){ q._memo=(q._memo?q._memo+'\n':'')+mm[1]; inMemo=true; continue; }
+    if((mm=l.match(/^ANSWER:\s*(.*)$/i))){ q._ans=mm[1].trim(); continue; }
+    if((mm=l.match(/^TAGS?:\s*(.*)$/i))){ q.tags=[...new Set([...(q.tags||[]), ...mm[1].split(/[,;]/).map(normTag).filter(Boolean)])]; continue; }
+    if(inMemo){ if(l) q._memo+='\n'+l; continue; }
+    if(q.type==='MC' && (mm=l.match(/^([a-j])\s*[).]\s*(.*?)\s*(\*)?\s*$/i))){ if(mm[3]) q._ok.push(q.options.length); q.options.push(mm[2]); continue; }
+    if(l) q.text+=(q.text?'\n':'')+l;
+  }
+  close();
+  const seen={}; out.questions.forEach(x=>{ if(seen[x.n]) out.errors.push('Question number '+x.n+' is used twice'); seen[x.n]=1; });
+  if(!out.questions.length) out.errors.push('No questions found. Each question starts like: 1. [MC 2] Question text');
+  if(!out.ver) out.errors.push('Version unknown: name the file …_Test_A.txt (or add a line VERSION: A)');
+  return out;
+}
+async function saveTest(cid, mid, t){
+  const base=midsOf(cid), i=base.indexOf(baseOf(mid)), prev=i>0? base[i-1] : '', opt=mid.length>3? mid[3] : '';
+  const id=cid+'_'+mid+'_'+t.ver;
+  const b=writeBatch(db);
+  b.set(doc(db,'tests',id), {cid, mid, ver:t.ver, prev, opt, time:t.time||0, pass:t.pass||0, questions:t.questions, updatedAt:serverTimestamp()});
+  b.set(doc(db,'testkeys',id), {cid, mid, ver:t.ver, keys:t.keys, updatedAt:serverTimestamp()});
+  const vers=[...new Set([...(otOf(S.modules[mid])||{vers:[]}).vers, t.ver])].sort();
+  b.set(doc(db,'courses',cid,'modules',mid), {otest:{vers, time:t.time||0}}, {merge:true});
+  await b.commit();
+}
+window.importTests = async (inp, mid)=>{
+  const files=[...inp.files]; inp.value=''; const out=$('ots-'+mid); const msgs=[];
+  for(const f of files){
+    const t=parseTest(await f.text(), f.name);
+    if(t.errors.length){ msgs.push('⚠️ '+esc(f.name)+': '+t.errors.slice(0,4).map(esc).join('; ')); continue; }
+    try{ await saveTest(CID, mid, t); msgs.push('✔ '+esc(f.name)+': version '+t.ver+', '+t.questions.length+' questions'+(t.time?', '+t.time+' min':'')); }
+    catch(e){ msgs.push('⚠️ '+esc(f.name)+': could not save ('+esc(e.code||e.message)+')'); }
+  }
+  if(out) out.innerHTML=msgs.join('<br>');
+};
+window.previewTest = async (mid)=>{
+  const ot=otOf(S.modules[mid]); if(!ot){ toast('No online test imported for this module yet.'); return; }
+  $('viewer').hidden=false; document.body.style.overflow='hidden'; viewTok++;
+  $('vTitle').textContent=modTitle(mid)+' · online test (staff preview with answers)'; $('vNote').textContent='';
+  let h='';
+  for(const v of ot.vers){
+    const [p,k]=await Promise.all([getDoc(doc(db,'tests',CID+'_'+mid+'_'+v)), getDoc(doc(db,'testkeys',CID+'_'+mid+'_'+v))]);
+    const P=p.data()||{questions:[]}, K=(k.data()||{}).keys||{};
+    h+='<div class="card" style="max-width:900px;margin:0 auto 14px;"><h2>Version '+v+'</h2><p class="note">'+P.questions.length+' questions · '+P.questions.reduce((a,q)=>a+q.marks,0)+' marks'+(P.time?' · '+P.time+' minutes':' · no time limit')+'</p>'
+      +P.questions.map(q=>'<div class="sub-entry"><b>'+q.n+'. ['+q.type+', '+q.marks+']</b> <span style="white-space:pre-wrap">'+esc(q.text)+'</span>'
+        +(q.type==='MC'? '<div class="sm">'+q.options.map((o,i)=>(K[q.n]&&K[q.n].answer===LETTERS[i]?'✔ ':'')+LETTERS[i]+') '+esc(o)).join('<br>')+'</div>':'')
+        +(q.type==='TF'? '<div class="sm">Answer: '+esc((K[q.n]||{}).answer||'')+'</div>':'')
+        +((K[q.n]||{}).memo? '<div class="sm" style="white-space:pre-wrap;">Memo: '+esc(K[q.n].memo)+'</div>':'')+'</div>').join('')+'</div>';
+  }
+  $('vBody').innerHTML=h;
+};
+
+/* ---------- staff: marking an online test ---------- */
+async function loadMarkData(c, uid, m, att){
+  const ak=attKey(c,uid,m,att);
+  if(!AN[ak]){
+    const [a,as]=await Promise.all([getDoc(doc(db,'attempts',ak)), getDocs(query(collection(db,'answers'), where('cid','==',c), where('uid','==',uid), where('mid','==',m), where('att','==',att)))]);
+    const answers={}; as.docs.forEach(d=>answers[d.data().n]=d.data().a);
+    AN[ak]={attempt:a.data()||{}, answers};
+  }
+  const ver=AN[ak].attempt.ver||'A', tk=c+'_'+m+'_'+ver;
+  if(!TK[tk]){ const [p,k]=await Promise.all([getDoc(doc(db,'tests',tk)), getDoc(doc(db,'testkeys',tk))]); TK[tk]={paper:p.data()||{questions:[]}, keys:(k.data()||{}).keys||{}}; }
+  return {ak, ver, ...AN[ak], ...TK[tk]};
+}
+function autoScore(q,key,a){ if(q.type==='WRITTEN') return null; return a && key && a===key.answer ? q.marks : 0; }
+async function fillMark(c, uid, m, att){
+  const id=c+'-'+uid+'-'+m, box=$('mk-'+id); if(!box) return;
+  try{
+    const d=await loadMarkData(c,uid,m,att); if(!$('mk-'+id)) return;
+    const dur=tsMs(d.attempt.submittedAt)-tsMs(d.attempt.startedAt);
+    const over=d.paper.time && dur>d.paper.time*60000+60000;
+    keepInputs('mk-'+id, ()=>{ $('mk-'+id).innerHTML='<p class="sm">Online test, version <b>'+esc(d.ver)+'</b> (attempt '+att+') · started '+fmtDT(d.attempt.startedAt)+' · handed in '+fmtDT(d.attempt.submittedAt)+(dur>0?' · took '+fmtDur(dur/1000):'')+(d.paper.time?' of '+d.paper.time+' min allowed':'')+(over?' <span class="pill bad">over time</span>':'')+'</p>'
+      +'<div class="tablewrap"><table class="t"><tr><th>#</th><th>Question</th><th>Student\'s answer</th><th>Answer / memo</th><th>Mark</th></tr>'
+      +d.paper.questions.map(q=>{ const a=d.answers[q.n], k=d.keys[q.n]||{}, au=autoScore(q,k,a);
+        const shown= a==null? '<i class="sm">not answered</i>' : q.type==='MC'? esc(a)+') '+esc(q.options[LETTERS.indexOf(a)]||'') : '<span style="white-space:pre-wrap">'+esc(a)+'</span>';
+        const key= q.type==='MC'? esc(k.answer||'')+') '+esc(q.options[LETTERS.indexOf(k.answer)]||'') : q.type==='TF'? esc(k.answer||'') : '';
+        return '<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;max-width:260px;">'+esc(q.text)+'</td><td>'+shown+(au!=null?(au?' ✔':' ✘'):'')+'</td><td class="sm" style="white-space:pre-wrap;">'+key+(k.memo?(key?'<br>':'')+'Memo: '+esc(k.memo):'')+'</td>'
+          +'<td style="white-space:nowrap;"><input id="sc-'+id+'-'+q.n+'" type="number" min="0" max="'+q.marks+'" step="0.5" value="'+(MV['sc-'+id+'-'+q.n]!=null? MV['sc-'+id+'-'+q.n] : au!=null?au:'')+'" style="width:70px;" oninput="window.MV[this.id]=this.value;sumMark(\''+id+'\')"> / '+q.marks+'</td></tr>'; }).join('')
+      +'</table></div><p class="note" style="margin-top:6px;"><b>Total: <span id="tot-'+id+'"></span></b>'+(d.paper.pass?' · pass mark '+d.paper.pass+'%':'')+'</p>'; });
+    sumMark(id);
+  }catch(e){ console.warn(e); box.innerHTML='<p class="note">Could not load the online test ('+esc(e.code||e.message)+').</p>'; }
+}
+window.sumMark = id=>{
+  let t=0, mx=0; document.querySelectorAll('[id^="sc-'+id+'-"]').forEach(i=>{ t+=+i.value||0; mx+=+i.max||0; });
+  const el=$('tot-'+id); if(el) el.textContent=t+' / '+mx+(mx?' ('+Math.round(t/mx*100)+'%)':'');
+};
 
 /* ---------- video tracking (no skipping ahead, real watching time only) ---------- */
 const MEDIA=['slides','video'];   // a presentation saved as a video (.mp4) is tracked the same way
@@ -1286,7 +1574,19 @@ function renderMonitor(){
       +'<td>'+busyText(r)+(r.waiting.length?'<div><span class="pill wait">'+r.waiting.length+' to mark</span></div>':'')+(r.newEv?'<div><span class="pill wait">'+r.newEv+' new upload'+(r.newEv>1?'s':'')+'</span></div>':'')+'</td>'
       +'<td>'+r.done+'/'+NMODS+'<div class="bar" style="height:7px;width:90px;"><i style="width:'+Math.round(r.done/NMODS*100)+'%"></i></div></td>'
       +'<td>'+fmtDur(r.weekSec)+'</td><td>'+fmtDur(r.totalSec)+'</td><td>'+r.sess.length+'</td></tr>').join('');
+  renderClassGrid(rows);
   if(curStu) openStu(curStu, true);
+}
+function renderClassGrid(rows){
+  const per=rows.map(r=>({r, st:tagStats(r.r)})), tags=[...new Set(per.flatMap(x=>Object.keys(x.st)))].sort(sortTags), box=$('classGrid');
+  if(!tags.length){ box.hidden=true; return; }
+  box.hidden=false;
+  box.innerHTML='<h2>🎯 Outcomes: where students are strong or struggling ('+esc(course.code)+')</h2><p class="note">From the latest marked online test of every module. 🟢 70% or more · 🟠 50 to 69% · 🔴 below 50%. Hover over a code for its wording.</p>'
+    +'<div class="tablewrap"><table class="t"><tr><th>Student</th>'+tags.map(t=>'<th title="'+esc(tagLabel(t))+'">'+esc(t)+'</th>').join('')+'<th>Struggling with</th></tr>'
+    +per.map(({r,st})=>'<tr><td><b>'+esc(r.e.name||r.e.email)+'</b></td>'+tags.map(t=>{ const x=st[t]; if(!x||!x.max) return '<td class="sm">·</td>'; const p=Math.round(x.s/x.max*100); return '<td title="'+esc(tagLabel(t))+': '+x.s+'/'+x.max+'">'+light(p)+' <span class="sm">'+p+'%</span></td>'; }).join('')
+      +'<td class="sm">'+(struggling(st).map(esc).join(', ')||'—')+'</td></tr>').join('')
+    +'<tr><td><b>Class</b></td>'+tags.map(t=>{ let a=0,b=0; per.forEach(({st})=>{ if(st[t]){ a+=st[t].s; b+=st[t].max; } }); const p=b?Math.round(a/b*100):null; return '<td>'+(p==null?'·':light(p)+' <span class="sm">'+p+'%</span>')+'</td>'; }).join('')+'<td></td></tr>'
+    +'</table></div>';
 }
 
 window.openStu = (uid, quiet)=>{
@@ -1319,6 +1619,8 @@ window.openStu = (uid, quiet)=>{
   h+= ss.length? '<div class="tablewrap"><table class="t"><tr><th>Signed in</th><th>Last active</th><th>Time active</th><th>Device</th></tr>'
       +ss.map(s=>'<tr><td>'+fmtDT(s.start)+'</td><td>'+fmtDT(s.last)+'</td><td>'+fmtDur(s.sec)+'</td><td>'+esc(s.device||'')+'</td></tr>').join('')+'</table></div>'
     : '<p class="note">No sessions yet.</p>';
+  const tst=tagStats(x.r), str=struggling(tst);
+  h+='<h3>🎯 Outcomes ('+esc(course.code)+')</h3>'+(str.length?'<div class="callout">Struggling with: <b>'+str.map(t=>esc(tagLabel(t))).join('; ')+'</b></div>':'')+gridOne(tst);
   h+='<h3>📁 Evidence file</h3>'+evGrouped(S.evidence.filter(v=>v.uid===uid), true);
   $('stuDetail').innerHTML=h; $('stuDetail').hidden=false;
   if(fresh) renderStaffUpload(e);
@@ -1414,16 +1716,18 @@ function renderMarking(){
   const items=[];
   courseIds(true).forEach(c=>S.enrol.forEach(e=>{ const x=stuSummary(e,c); x.waiting.forEach(m=>items.push({e, c, m, pm:(x.p.mods||{})[m]})); }));
   items.sort((a,b)=>ms(a.pm.submittedAt)-ms(b.pm.submittedAt));
-  $('markList').innerHTML = items.length? items.map(({e,c,m,pm})=>{
+  keepInputs('markList', ()=>{ $('markList').innerHTML = items.length? items.map(({e,c,m,pm})=>{
     const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link);
-    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
+    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
+      +(pm.testAtt? '<div id="mk-'+id+'" data-c="'+c+'" data-u="'+e.uid+'" data-m="'+m+'" data-a="'+pm.testAtt+'"><p class="note">Loading the online test…</p></div>' : '')
       +(pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
       +(link?'<p style="margin-top:8px;"><a href="'+esc(link)+'" target="_blank" rel="noopener">📎 Open completed answer sheet</a></p>':'')
       +(pm.paper?'<p class="note" style="margin-top:6px;">📄 Student says the answer sheet was handed in on paper.</p>':'')
       +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
       +'<label>Assessor feedback: what needs correction</label><textarea id="ff-'+id+'" placeholder="e.g. Question 7: explain the role of fire in the grassland biome. Resubmit by ..."></textarea>'
       +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
-  }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>';
+  }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>'; });
+  document.querySelectorAll('#markList [id^="mk-"]').forEach(b=>fillMark(b.dataset.c, b.dataset.u, b.dataset.m, +b.dataset.a));
 }
 function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){} return {name:a.name||profile.name||'', reg:a.reg||''}; }
 window.saveAssessor = ()=>{ try{ localStorage.setItem('lwec_assessor', JSON.stringify({name:val('asName'), reg:val('asReg')})); }catch(e){} };
@@ -1437,11 +1741,21 @@ window.mark = async (c,uid,m,outcome)=>{
   const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
   const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
+  let mx={};
+  if(pm.testAtt){
+    let d; try{ d=await loadMarkData(c,uid,m,pm.testAtt); }catch(e){ toast('The online test could not be loaded.'); return; }
+    const qa=d.paper.questions.map(q=>{ const el=$('sc-'+id+'-'+q.n); const v=el&&el.value!==''? Math.min(q.marks,Math.max(0,+el.value)) : null; const a=d.answers[q.n];
+      return {n:q.n, type:q.type, q:q.text, a: a==null? null : q.type==='MC'? a+') '+(q.options[LETTERS.indexOf(a)]||'') : a, s:v, max:q.marks, tags:q.tags||[]}; });
+    const miss=qa.filter(x=>x.s==null).map(x=>x.n); if(miss.length){ toast('Give a mark for question '+miss.join(', ')+'.'); return; }
+    const total=qa.reduce((a,x)=>a+x.s,0), max=qa.reduce((a,x)=>a+x.max,0), scores={}; qa.forEach(x=>scores[x.n]={s:x.s,max:x.max});
+    Object.assign(rec,{att:pm.testAtt, ver:d.ver, qa, total, max, startedAt:d.attempt.startedAt||null, submittedAt:d.attempt.submittedAt||rec.submittedAt});
+    mx={att:pm.testAtt, ver:d.ver, total, max, scores};
+  }
   try{
     await setDoc(doc(db,'results',c+'_'+uid), {uid, cid:c,
       passed: m.length>3? {[m]: outcome==='C', [baseOf(m)]: outcome==='C'} : {[m]: outcome==='C'},
-      marks:{[m]:{outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}},
-      hist:{[m]: arrayUnion(rec)}}, {merge:true});
+      marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}, mx)},
+      hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
     toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
   }catch(e){ toast('Could not save the mark: '+e.code); }
 };
@@ -1512,6 +1826,8 @@ function renderSetup(){
         +'<button class="btn small ghost" type="button" onclick="previewField(\''+m+'\',\''+it.k+'\')" title="Check this file">👁</button>'
         +'<label class="btn small ghost" style="margin:0;white-space:nowrap;cursor:pointer;">⬆️ Upload<input type="file" hidden onchange="uploadCourseFile(this,\''+m+'\',\''+it.k+'\')"></label></div>'
         +'<div class="sm" id="up-'+m+'-'+it.k+'">'+fieldHint(it.k, d[it.k])+'</div>').join('')
+      +'<label>📝 Online test ('+(baseOf(m)===midsOf(CID).slice(-1)[0]?'final assessment':'module quiz')+')</label><div class="sm" id="ots-'+m+'">'+(otOf(d)? 'Versions '+otOf(d).vers.join(', ')+(otOf(d).time?' · '+otOf(d).time+' min':' · no time limit') : 'None yet')+'</div>'
+      +'<div class="btnrow" style="margin-top:4px;"><label class="btn small ghost" style="margin:0;cursor:pointer;">Import test file(s) (.txt)<input type="file" accept=".txt" multiple hidden onchange="importTests(this,\''+m+'\')"></label><button class="btn small ghost" type="button" onclick="previewTest(\''+m+'\')">👁 Preview with answers</button></div>'
       +'</details>';
   }).join('');
 }
@@ -1544,17 +1860,23 @@ window.uploadCourseFile = async (inp,m,k)=>{
     out.textContent='✔ '+f.name+' uploaded. Click Save course when you are done. '+fieldHint(k,'storage:'+path);
   }catch(e){ console.warn(e); out.textContent='Upload failed ('+(e.code||e.message)+').'; }
 };
-const BULK_MAP=[ [/^01/, 'guide'], [/^02/, 'slides'], [/^03/, 'video'], [/^04/, 'test'], [/^05/, 'sheet'] ];
+const BULK_MAP=[ [/^01/, 'guide'], [/^02/, 'slides'], [/^03/, 'video'], [/^04/, 'test'], [/^05/, 'sheet'], [/^07/, 'otest'] ];
 // Which file wins when a module has several: PDF for viewing (guide, slides, test), Word for the answer sheet.
 function bulkRank(k,name){ const e=(name.split('.').pop()||'').toLowerCase(); if(k==='video') return isVideoExt(e)?2:0; if(k==='sheet') return /^docx?$/.test(e)?3:e==='pdf'?2:1; return e==='pdf'?3:/^(pptx?|docx?)$/.test(e)?1:0; }
 window.bulkUpload = async inp=>{
   const files=[...inp.files]; inp.value='';
-  const best={}, skipped=[];
+  const best={}, skipped=[], otests=[]; let tagKeyFile=null;
   files.forEach(f=>{
-    const rel=f.webkitRelativePath||f.name, parts=rel.split('/').slice(0,-1), top=parts.slice().reverse().find(p=>/^0[1-5]\b/.test(p))||'', name=f.name;
+    const rel=f.webkitRelativePath||f.name, parts=rel.split('/').slice(0,-1), top=parts.slice().reverse().find(p=>/^0[1-57]\b/.test(p))||'', name=f.name;
     if(/^(~\$|\.)/.test(name)) return;
     if(/assessor|conf|memo|memorand|facilitator/i.test(rel)){ skipped.push(name); return; }
     const hit=BULK_MAP.find(([re])=>re.test(top)); if(!hit) return;
+    if(hit[1]==='otest'){
+      if(!/\.txt$/i.test(name)) return;
+      if(/tag.?key/i.test(name)){ tagKeyFile=f; return; }
+      const mm=name.match(/^M(\d{2})([A-J])?(?=[_ .-])/i); if(!mm) return; const m='m'+mm[1]+(mm[2]||'').toLowerCase();
+      if(setupMids(CID).includes(m)) otests.push({f,m}); return;
+    }
     const k=hit[1], r=bulkRank(k,name); if(!r) return;
     if(k==='sheet' && !/learner/i.test(rel)){ skipped.push(name); return; }
     let m;
@@ -1564,14 +1886,14 @@ window.bulkUpload = async inp=>{
   });
   const plan=Object.values(best).sort((a,b)=>(a.m==='all'?-1:0)-(b.m==='all'?-1:0) || a.m.localeCompare(b.m));
   const note=$('bulkNote');
-  if(!plan.length){
+  if(!plan.length && !otests.length){
     note.innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ No course files found in that folder ('+files.length+' files looked at). Choose the folder that holds 01 Guides, 02 Slides, 03 Videos, 04 Tests and 05 Answers.</span>';
     return;
   }
   const count=k=>plan.filter(x=>x.k===k).length, pdfs=plan.filter(x=>/\.pdf$/i.test(x.f.name)).length;
   note.textContent='Found '+plan.length+' files: '+count('guide')+' guide, '+count('slides')+' presentations, '+count('video')+' videos, '+count('test')+' tests, '+count('sheet')+' answer sheets ('+pdfs+' as PDF).';
-  const total=plan.reduce((a,x)=>a+x.f.size,0);
-  if(!confirm('Upload '+plan.length+' files ('+fmtSize(total)+') for '+course.title+'?'+(skipped.length?'\n\nSkipped (kept off the website): '+skipped.length+' assessor/memo files.':'')+'\n\nKeep this page open until it finishes.')) return;
+  const total=plan.reduce((a,x)=>a+x.f.size,0)||1;
+  if(!confirm('Upload '+plan.length+' files ('+fmtSize(total)+') for '+course.title+(otests.length?', and import '+otests.length+' online test file(s)':'')+'?'+(skipped.length?'\n\nSkipped (kept off the website): '+skipped.length+' assessor/memo files.':'')+'\n\nKeep this page open until it finishes.')) return;
   let done=0, ok=0, failed=null;
   for(const x of plan){
     const path='course/'+CID+'/'+(x.m==='all'?'shared':x.m)+'/'+x.k+'_'+rnd()+'_'+safeName(x.f.name);
@@ -1588,6 +1910,17 @@ window.bulkUpload = async inp=>{
   }
   note.textContent='✔ '+ok+' files uploaded. Saving the course…';
   await saveSetup(true);
+  if(otests.length || tagKeyFile){
+    const msgs=[]; let okT=0;
+    if(tagKeyFile){ const k=parseTagKey(await tagKeyFile.text()); if(Object.keys(k).length){ try{ await setDoc(doc(db,'courses',CID), {tagkey:k}, {merge:true}); msgs.push(Object.keys(k).length+' outcome descriptions'); }catch(e){ msgs.push('⚠️ Tag_Key.txt not saved'); } } }
+    for(const x of otests){
+      const t=parseTest(await x.f.text(), x.f.name);
+      if(t.errors.length){ msgs.push('⚠️ '+esc(x.f.name)+': '+t.errors.slice(0,3).map(esc).join('; ')); continue; }
+      try{ await saveTest(CID, x.m, t); S.modules[x.m]=Object.assign({}, S.modules[x.m]||{}, {otest:{vers:[...new Set([...((otOf(S.modules[x.m])||{}).vers||[]), t.ver])].sort(), time:t.time||0}}); okT++; }
+      catch(e){ msgs.push('⚠️ '+esc(x.f.name)+': '+esc(e.code||e.message)); }
+    }
+    note.innerHTML=esc(note.textContent)+'<br>📝 Online tests imported: '+okT+' of '+otests.length+(msgs.length?'<br>'+msgs.join('<br>'):'');
+  }
 };
 window.saveSetup = async (quiet)=>{
   const b=writeBatch(db), titles=(course.titles||[]).slice(0,NMODS), otitles={}; let bad='';
@@ -1597,7 +1930,7 @@ window.saveSetup = async (quiet)=>{
     const n=parseInt(m.slice(1,3),10), d={n, prev:prevBase(m), title:val('st-'+m+'-title')};
     if(m.length>3){ d.opt=m[3]; otitles[m]=d.title; } else titles[n-1]=d.title;
     ITEMS.forEach(it=>{ const v=val('st-'+m+'-'+it.k); const sv=storeVal(v); if(v && !sv) bad='Module '+m.slice(1).toUpperCase()+' '+itemLabel(it.k); d[it.k]=sv; });
-    b.set(doc(db,'courses',CID,'modules',m), d);
+    b.set(doc(db,'courses',CID,'modules',m), d, {merge:true});
   });
   if(bad){ toast('Links must start with https:// (check '+bad+').'); return; }
   const n=Math.max(1,Math.min(40,parseInt(val('setN'),10)||NMODS));
@@ -1644,7 +1977,9 @@ window.printPoE = async uid=>{
         +(a.paper?'<tr><th>Paper</th><td colspan="3">Answer sheet handed in on paper: file it behind this page.</td></tr>':'')
         +'<tr><th>Feedback: done well</th><td colspan="3" style="white-space:pre-wrap;">'+esc(a.good||'')+'</td></tr>'
         +'<tr><th>Feedback: needs correction</th><td colspan="3" style="white-space:pre-wrap;">'+esc(a.fix||a.comment||'')+'</td></tr></table>'
-        +(a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'');
+        +(a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'')
+        +(a.qa? '<p style="margin-top:3mm;font-size:10pt;">Online test version '+esc(a.ver||'')+' · started '+fmtDT(a.startedAt)+' · handed in '+fmtDT(a.submittedAt)+' · score <b>'+a.total+' / '+a.max+' ('+(a.max?Math.round(a.total/a.max*100):0)+'%)</b></p>'
+          +'<table class="pr"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'+a.qa.map(q=>'<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'(not answered)':esc(q.a))+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td>'+q.s+' / '+q.max+'</td></tr>').join('')+'</table>' : '');
     });
     h+='<div class="decl">Learner declaration: I declare that the work handed in for this module is my own.</div>'
       +'<div class="sigline">Learner signature and date</div><div class="sigline">Assessor signature and date</div>'
@@ -1658,6 +1993,12 @@ window.printPoE = async uid=>{
       +'</table>'
       +ev.filter(v=>(v.type||'').startsWith('image/')&&v.url).map(v=>'<div style="display:inline-block;width:47%;margin:3mm 1%;vertical-align:top;page-break-inside:avoid;"><img src="'+esc(v.url)+'" style="width:100%;max-height:85mm;object-fit:contain;border:1px solid #999;"><div style="font-size:8.5pt;">'+esc(v.title)+' · '+fmtD(v.at)+'</div></div>').join('')
       +'<p style="font-size:9pt;margin-top:4mm;">Presentations, documents and videos are kept in the learner\'s online evidence file and can be opened by the assessor or moderator on request.</p></div>';
+  }
+  const tst=tagStats(r), tgs=Object.keys(tst).sort(sortTags);
+  if(tgs.length){
+    h+='<div class="pr-page"><div class="pr-h"><h1>Outcomes achieved</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>'
+      +'<p style="font-size:9.5pt;">From the latest marked online test of every module. 🟢 70% or more · 🟠 50 to 69% · 🔴 below 50%.</p>'
+      +'<table class="pr"><tr><th>Outcome</th><th>Marks</th><th>%</th><th></th></tr>'+tgs.map(t=>{ const x=tst[t], p=x.max?Math.round(x.s/x.max*100):0; return '<tr><td>'+esc(tagLabel(t))+'</td><td>'+x.s+' / '+x.max+'</td><td>'+p+'%</td><td>'+light(p)+'</td></tr>'; }).join('')+'</table></div>';
   }
   if(ag){
     h+='<div class="pr-page"><div class="pr-h"><h1>Learner agreement</h1><div class="sub">'+name+'</div></div>'
