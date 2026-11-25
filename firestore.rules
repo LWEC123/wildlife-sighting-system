@@ -60,5 +60,102 @@ service cloud.firestore {
         || (signedIn() && resource.data.uid == request.auth.uid
             && resource.data.signed == null);
     }
+
+    // ================= LWEC Learning Portal (LWECCourses.html) =================
+    // Ids: enrol/results/progress docs are '<courseId>_<uid>' (course ids have no '_').
+    function ownsKey(key) { return signedIn() && key.split('_')[1] == request.auth.uid; }
+    function enrolledIn(cid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/enrol/$(cid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/enrol/$(cid + '_' + request.auth.uid)).data.active == true;
+    }
+    function passedModule(cid, mid) {
+      return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+             .data.get('passed', {}).get(mid, false) == true;
+    }
+
+    // Course title and module titles: any signed-in user. Changed by full mentors.
+    match /courses/{cid} {
+      allow get: if signedIn();
+      allow list: if isMentor();
+      allow write: if isFullMentor();
+
+      // A module's file links reach a student only once the previous module is passed.
+      match /modules/{mid} {
+        allow get: if isMentor()
+          || (enrolledIn(cid) && (resource.data.prev == '' || passedModule(cid, resource.data.prev)));
+        allow list: if isMentor();
+        allow write: if isFullMentor();
+      }
+    }
+
+    // Personal access codes. Staff create them; a student who knows a code may
+    // claim it once, in the same write that creates their own enrolment.
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list, create, delete: if isMentor();
+      allow update: if isMentor()
+        || (signedIn()
+            && resource.data.claimedBy == null
+            && request.resource.data.claimedBy == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['claimedBy', 'claimedAt', 'claimedEmail'])
+            && existsAfter(/databases/$(database)/documents/enrol/$(resource.data.cid + '_' + request.auth.uid)));
+    }
+
+    // Enrolment = course access. Only created by claiming a code; staff pause/resume it.
+    match /enrol/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list, update: if isMentor();
+      allow create: if signedIn()
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.active == true
+        && get(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.claimedBy == null
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.claimedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.cid == request.resource.data.cid;
+      allow delete: if false;
+    }
+
+    // Marks: written by staff only. A student reads only their own.
+    match /results/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list, create, update: if isMentor();
+      allow delete: if false;
+    }
+
+    // What a student opened, watched and handed in. Students write their own while
+    // they have access; watch time may grow by at most a few minutes per write.
+    match /progress/{key} {
+      allow get: if isMentor() || ownsKey(key);
+      allow list: if isMentor();
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && enrolledIn(request.resource.data.cid)
+        && request.resource.data.get('totalSec', 0) <= 120;
+      allow update: if ownsKey(key)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.cid == resource.data.cid
+        && enrolledIn(resource.data.cid)
+        && request.resource.data.get('totalSec', 0) <= resource.data.get('totalSec', 0) + 120;
+      allow delete: if false;
+    }
+
+    // Sign-in sessions: start time, last activity and active seconds.
+    match /sessions/{sid} {
+      allow get: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isMentor();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.sec == 0
+        && enrolledIn(request.resource.data.cid);
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'sec'])
+        && request.resource.data.sec <= resource.data.sec + 120;
+      allow delete: if false;
+    }
   }
 }

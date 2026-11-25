@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/lwec-192.png">
+<link rel="apple-touch-icon" href="icons/lwec-192.png">
+<title>LWEC Learning Portal</title>
+<meta name="theme-color" content="#1e3a2a">
+<style>
+:root{
+  --green-deep:#1e3a2a; --green:#2d5741; --green-soft:#3e7257;
+  --sand:#f4efe4; --sand-deep:#e8e0cd; --gold:#e9c87b; --gold-deep:#c4a054;
+  --ink:#25301f; --muted:#5c6653; --card:#ffffff; --danger:#a03c2e; --ok:#2e7d4f;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+[hidden]{display:none !important;}
+body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); min-height:100vh;}
+header{background:var(--green-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+header img{height:46px; width:auto;}
+header .t{flex:1; min-width:0;}
+header .t b{display:block; font-size:1.05rem; letter-spacing:.3px;}
+header .t span{font-size:.75rem; color:var(--gold);}
+.who{display:flex; align-items:center; gap:8px; font-size:.78rem; color:#dfe9e0;}
+#whoName{max-width:42vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.who button{background:none; border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:999px; padding:4px 12px; font-size:.72rem; cursor:pointer;}
+@media (max-width:560px){ header img{height:36px;} header .t span{display:none;} #whoName{max-width:32vw;} }
+nav{display:flex; overflow-x:auto; background:var(--green); position:sticky; top:0; z-index:40;}
+nav button{flex:0 0 auto; background:none; border:none; color:#dfe9e0; padding:12px 16px; font-size:.9rem; cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap;}
+nav button.active{color:#fff; border-bottom-color:var(--gold); background:rgba(255,255,255,.06);}
+nav button .badge{background:var(--gold); color:var(--green-deep); border-radius:999px; padding:0 7px; font-size:.72rem; font-weight:700; margin-left:5px;}
+main{max-width:980px; margin:0 auto; padding:16px 12px 90px;}
+.card{background:var(--card); border-radius:12px; box-shadow:0 2px 10px rgba(30,58,42,.10); padding:18px 16px; margin-bottom:16px;}
+.card h2{color:var(--green-deep); font-size:1.15rem; margin-bottom:10px;}
+.card h3{color:var(--green); font-size:.98rem; margin:14px 0 6px;}
+.note{font-size:.82rem; color:var(--muted); line-height:1.5;}
+.callout{background:#fdf6e3; border:1.5px solid var(--gold-deep); border-radius:10px; padding:10px 12px; font-size:.84rem; line-height:1.55; margin:10px 0;}
+label{display:block; font-size:.82rem; font-weight:600; color:var(--green-deep); margin:10px 0 4px;}
+input,select,textarea{width:100%; padding:10px; border:1px solid #cfd8cc; border-radius:8px; font-size:.95rem; background:#fff; color:var(--ink); font-family:inherit;}
+textarea{min-height:90px; resize:vertical;}
+input.code{text-transform:uppercase; letter-spacing:2px; font-weight:700; font-family:Consolas,monospace;}
+.row{display:flex; gap:10px; flex-wrap:wrap;}
+.row>div{flex:1 1 200px;}
+.btn{display:inline-block; border:none; border-radius:999px; padding:11px 22px; font-weight:700; font-size:.92rem; cursor:pointer; background:var(--gold); color:var(--green-deep); text-decoration:none;}
+.btn.secondary{background:var(--green); color:#fff;}
+.btn.ghost{background:transparent; border:1.5px solid var(--green); color:var(--green);}
+.btn.danger{background:#fff; border:1.5px solid var(--danger); color:var(--danger);}
+.btn.small{padding:7px 14px; font-size:.8rem;}
+.btn.wide{width:100%; text-align:center;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+.btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; align-items:center;}
+.pill{display:inline-block; background:var(--sand); border-radius:999px; padding:3px 10px; font-size:.72rem; font-weight:700; color:var(--green); white-space:nowrap;}
+.pill.gold{background:var(--gold); color:var(--green-deep);}
+.pill.ok{background:#dff1e5; color:var(--ok);}
+.pill.wait{background:#fdf3dd; color:#8a6116;}
+.pill.bad{background:#fbeae7; color:var(--danger);}
+.pill.lock{background:var(--green-deep); color:var(--gold);}
+.pill.live{background:#7ec98f; color:#0f3a1d;}
+.statgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:8px;}
+.stat{background:var(--sand); border-radius:10px; padding:12px; text-align:center;}
+.stat b{display:block; font-size:1.5rem; color:var(--green-deep);}
+.stat span{font-size:.75rem; color:var(--muted);}
+.bar{background:var(--sand-deep); border-radius:999px; height:12px; overflow:hidden; margin-top:6px;}
+.bar i{display:block; height:100%; background:linear-gradient(90deg,var(--green),var(--green-soft)); border-radius:999px; transition:width .4s;}
+.mod{border:1px solid #e3ddcc; border-left:5px solid var(--green); border-radius:10px; margin-bottom:10px; background:#fff;}
+.mod.locked{border-left-color:#b9b2a0; background:#faf8f3;}
+.mod.passed{border-left-color:var(--gold-deep);}
+.mod>.mh{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; flex-wrap:wrap;}
+.mod.locked>.mh{cursor:default; color:var(--muted);}
+.mod>.mh b{color:var(--green-deep);}
+.mod.locked>.mh b{color:var(--muted);}
+.mod .mb{padding:0 14px 14px; border-top:1px solid #efe9da;}
+.item{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 0; border-bottom:1px dashed #e8e0cd;}
+.item:last-child{border-bottom:none;}
+.item .lbl{font-weight:600; color:var(--green-deep);}
+.item .sub{font-size:.78rem; color:var(--muted);}
+video,iframe.yt{width:100%; max-height:60vh; border-radius:10px; background:#000; margin-top:8px; border:0;}
+.ytbox{position:relative; width:100%; padding-top:56.25%; margin-top:8px;}
+.ytbox>div,.ytbox>iframe{position:absolute; inset:0; width:100%; height:100%; border-radius:10px;}
+table.t{width:100%; border-collapse:collapse; font-size:.84rem;}
+table.t th,table.t td{padding:8px 6px; border-bottom:1px solid #ece6d6; text-align:left; vertical-align:top;}
+table.t th{font-size:.74rem; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); background:var(--sand);}
+table.t tr.click{cursor:pointer;}
+table.t tr.click:hover td{background:#fbf8f0;}
+.tablewrap{overflow-x:auto;}
+.sm{font-size:.76rem; color:var(--muted);}
+.answer{white-space:pre-wrap; background:var(--sand); border-radius:8px; padding:10px; font-size:.88rem; margin-top:6px;}
+.sub-entry{border:1px solid #e3ddcc; border-radius:10px; padding:12px 14px; margin-bottom:10px;}
+.codechip{font-family:Consolas,monospace; font-weight:700; letter-spacing:1.5px; background:var(--sand); padding:3px 8px; border-radius:6px;}
+.modset{border:1px solid #e3ddcc; border-radius:10px; padding:10px 12px; margin-bottom:10px;}
+.modset summary{cursor:pointer; font-weight:700; color:var(--green-deep);}
+#authView{min-height:calc(100vh - 80px); display:flex; align-items:center; justify-content:center; padding:20px 14px;}
+.authbox{width:100%; max-width:420px;}
+.authbox .card{padding:24px 20px;}
+.authbox h2{text-align:center;}
+.authbox .sub{text-align:center; font-size:.8rem; color:var(--muted); margin-bottom:8px;}
+.authlinks{margin-top:16px; text-align:center; font-size:.82rem;}
+.authlinks a{color:var(--green); font-weight:700; cursor:pointer; text-decoration:underline;}
+.err{display:none; background:#fbeae7; color:var(--danger); border-radius:8px; padding:10px 12px; font-size:.82rem; margin-top:12px; line-height:1.45;}
+.err.show{display:block;}
+#boot{position:fixed; inset:0; background:var(--green-deep); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:500;}
+#boot .spin{width:34px; height:34px; border:4px solid rgba(255,255,255,.25); border-top-color:var(--gold); border-radius:50%; animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--green-deep); color:#fff; padding:10px 20px; border-radius:999px; font-size:.85rem; opacity:0; transition:opacity .3s; z-index:200; pointer-events:none; max-width:92vw; text-align:center;}
+.toast.show{opacity:1;}
+#slips{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #slips,#slips *{visibility:visible;}
+  #slips{display:block; position:absolute; left:0; top:0; width:100%;}
+  .slip{border:1px dashed #555; padding:10mm; margin:4mm; page-break-inside:avoid; font-size:11pt;}
+  .pr-page{page-break-after:always; padding:12mm; font-size:10.5pt; color:#000;}
+  .pr-page:last-child{page-break-after:auto;}
+  .pr-h{text-align:center; margin-bottom:6mm;} .pr-h h1{font-size:16pt; color:#1e3a2a;} .pr-h .sub{font-size:10pt;}
+  table.pr{width:100%; border-collapse:collapse; font-size:9pt; margin-top:3mm;}
+  table.pr th,table.pr td{border:1px solid #777; padding:3pt 5pt; text-align:left; vertical-align:top;}
+  table.pr th{background:#e9e4d4;}
+  .decl{margin-top:8mm; font-size:10pt;}
+  .sigline{display:inline-block; width:30%; margin-right:3%; margin-top:14mm; border-top:1px solid #000; font-size:9pt; padding-top:2pt;}
+  .slip .c{font-family:Consolas,monospace; font-size:18pt; font-weight:700; letter-spacing:3px;}
+}
+</style>
+</head>
+<body>
+<div id="boot"><div class="spin"></div><div>Opening the LWEC Learning Portal…</div></div>
+
+<header>
+  <img src="icons/lwec-logo.png" alt="LWEC">
+  <div class="t"><b>LWEC Learning Portal</b><span>Limpopo Wildlife Eco College · online courses</span></div>
+  <div class="who" id="whoBox" hidden><span id="whoName"></span><button onclick="doLogout()">Sign out</button></div>
+</header>
+
+<nav id="nav" hidden>
+  <button data-tab="course" id="navCourse" class="active">📘 My course</button>
+  <button data-tab="monitor" id="navMonitor" hidden>📊 Student monitor</button>
+  <button data-tab="marking" id="navMarking" hidden>✍️ Marking <span class="badge" id="markBadge" hidden></span></button>
+  <button data-tab="codes" id="navCodes" hidden>🔑 Access codes</button>
+  <button data-tab="setup" id="navSetup" hidden>🛠️ Course setup</button>
+</nav>
+
+<!-- ================= SIGN IN ================= -->
+<section id="authView" hidden>
+  <div class="authbox">
+    <form class="card" id="authLogin" onsubmit="doLogin(event)">
+      <h2>Sign in</h2>
+      <p class="sub">Use the same email and password as your LWEC Field Logbook.</p>
+      <label>Email</label><input type="email" id="li_email" autocomplete="username" required>
+      <label>Password</label><input type="password" id="li_pass" autocomplete="current-password" required>
+      <div class="btnrow"><button class="btn wide" id="li_btn">Sign in</button></div>
+      <div class="err" id="li_err"></div>
+      <div class="authlinks"><a onclick="authMode('reg')">New here? Create your account with your access code</a><br><br><a onclick="authMode('reset')">Forgot your password?</a></div>
+    </form>
+    <form class="card" id="authReg" onsubmit="doRegister(event)" hidden>
+      <h2>Create your account</h2>
+      <p class="sub">You need the personal access code the college gave you.</p>
+      <label>Your personal access code</label><input id="rg_code" class="code" placeholder="e.g. K7PM-3QXR-9B" required autocomplete="off">
+      <label>Full name</label><input id="rg_name" required>
+      <label>Email</label><input type="email" id="rg_email" autocomplete="username" required>
+      <label>Choose a password (at least 6 characters)</label><input type="password" id="rg_pass" autocomplete="new-password" minlength="6" required>
+      <label>Type the password again</label><input type="password" id="rg_pass2" autocomplete="new-password" minlength="6" required>
+      <div class="btnrow"><button class="btn wide" id="rg_btn">Create account</button></div>
+      <div class="err" id="rg_err"></div>
+      <div class="authlinks"><a onclick="authMode('login')">I already have an account</a></div>
+    </form>
+    <form class="card" id="authReset" onsubmit="doReset(event)" hidden>
+      <h2>Reset password</h2>
+      <p class="sub">We'll email you a link to choose a new password.</p>
+      <label>Email</label><input type="email" id="rs_email" required>
+      <div class="btnrow"><button class="btn wide" id="rs_btn">Send reset link</button></div>
+      <div class="err" id="rs_err"></div>
+      <div class="authlinks"><a onclick="authMode('login')">Back to sign in</a></div>
+    </form>
+  </div>
+</section>
+
+<main id="appMain" hidden>
+
+<!-- ================= STUDENT: COURSE ================= -->
+<section id="tab-course">
+  <div class="card" id="claimCard" hidden>
+    <h2>🔑 Enter your personal access code</h2>
+    <p class="note">Your course opens once you enter the code the college gave you. Each code belongs to one student and works only once.</p>
+    <label>Access code</label><input id="cl_code" class="code" placeholder="e.g. K7PM-3QXR-9B" autocomplete="off">
+    <div class="btnrow"><button class="btn" id="cl_btn" onclick="claimFromCard()">Open my course</button></div>
+    <div class="err" id="cl_err"></div>
+  </div>
+  <div class="card" id="pausedCard" hidden>
+    <h2>⏸️ Your access is paused</h2>
+    <p class="note">Please contact the LWEC office to have your course access switched back on.</p>
+  </div>
+  <div class="card" id="staffCourseNote" hidden>
+    <h2>Staff account</h2>
+    <p class="note">You're signed in as staff. Use <b>Student monitor</b> to follow students, <b>Marking</b> to mark tests, <b>Access codes</b> to give students their codes and <b>Course setup</b> to add the module links.</p>
+  </div>
+  <div id="courseView" hidden>
+    <div class="card">
+      <h2 id="cTitle">Course</h2>
+      <div class="tline note" id="cProgTxt"></div>
+      <div class="bar"><i id="cProgBar" style="width:0%"></i></div>
+      <p class="note" style="margin-top:10px;">Work through the modules in order. The next module opens once your assessor marks your test as <b>competent</b>.</p>
+    </div>
+    <div id="modList"></div>
+  </div>
+</section>
+
+<!-- ================= STAFF: MONITOR ================= -->
+<section id="tab-monitor" hidden>
+  <div class="card">
+    <h2>📊 Student monitor</h2>
+    <div class="statgrid" id="monStats"></div>
+    <div class="btnrow">
+      <button class="btn small ghost" onclick="exportCSV()">⬇️ Download as spreadsheet (CSV)</button>
+      <span class="sm">"Online now" means active on the course in the last 2 minutes. Time is only counted while a student is actually using the page (it stops after 10 idle minutes).</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tablewrap"><table class="t" id="monTable"></table></div>
+  </div>
+  <div class="card" id="stuDetail" hidden></div>
+</section>
+
+<!-- ================= STAFF: MARKING ================= -->
+<section id="tab-marking" hidden>
+  <div class="card">
+    <h2>✍️ Tests waiting to be marked</h2>
+    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo, which never goes on this website. Every mark is kept, with the student's answers, for their PoE pack.</p>
+    <div class="row">
+      <div><label>Assessor name (as on your registration)</label><input id="asName" onchange="saveAssessor()"></div>
+      <div><label>Assessor registration number</label><input id="asReg" onchange="saveAssessor()"></div>
+    </div>
+  </div>
+  <div id="markList"></div>
+</section>
+
+<!-- ================= STAFF: ACCESS CODES ================= -->
+<section id="tab-codes" hidden>
+  <div class="card">
+    <h2>🔑 Give students access</h2>
+    <p class="note">Type each student's name on its own line and press <b>Create codes</b>. Give each student their own code (or print the slips). A student creates their account with their code, or enters it after signing in with their Logbook account. Each code works once, for one student.</p>
+    <label>Student names (one per line)</label>
+    <textarea id="newNames" placeholder="Full name&#10;Full name"></textarea>
+    <div class="btnrow"><button class="btn" onclick="createCodes()">Create codes</button><button class="btn ghost small" onclick="printSlips()">🖨️ Print slips for unused codes</button></div>
+  </div>
+  <div class="card"><div class="tablewrap"><table class="t" id="codeTable"></table></div></div>
+</section>
+
+<!-- ================= STAFF: SETUP ================= -->
+<section id="tab-setup" hidden>
+  <div class="card">
+    <h2>🛠️ Course setup</h2>
+    <p class="note">Give each module a title and paste the link to each file. Students only ever receive the links of modules they've unlocked. <b>Never paste a link to an assessor memo here.</b></p>
+    <div class="callout">For a video to be tracked (how much was watched), use a direct video link ending in .mp4, a Firebase Storage link, or a YouTube link. Other links (OneDrive, Google Drive) still work, but only show that the student opened them.</div>
+    <label>Course title</label><input id="setTitle">
+    <div id="setMods" style="margin-top:12px;"></div>
+    <div class="btnrow"><button class="btn" id="setSave" onclick="saveSetup()">Save course</button><span class="sm" id="setNote"></span></div>
+  </div>
+</section>
+</main>
+
+<div id="slips"></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         sendPasswordResetEmail, signOut, onAuthStateChanged
+       } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
+         onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion
+       } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCBM6qjgvMZcpQDj_ZyIEFrWp5fzJjmNiY",
+  authDomain: "lwec-field-logbook.firebaseapp.com",
+  projectId: "lwec-field-logbook",
+  storageBucket: "lwec-field-logbook.firebasestorage.app",
+  messagingSenderId: "67985548748",
+  appId: "1:67985548748:web:a541ff7e7dba59ae7a6969"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ================= course definition ================= */
+const CID = 'us335815';
+const DEFAULT_TITLE = 'US 335815: Conduct a guided biome experience';
+const NMODS = 12;
+const MIDS = Array.from({length:NMODS}, (_,i)=>'m'+String(i+1).padStart(2,'0'));
+const ITEMS = [
+  {k:'guide',  label:'📖 Learner guide'},
+  {k:'slides', label:'🖥️ Narrated presentation'},
+  {k:'video',  label:'🎬 Module video'},
+  {k:'test',   label:'📝 Visual test'},
+  {k:'sheet',  label:'🗒️ Answer sheet'}
+];
+const IDLE_MS = 10*60*1000, BEAT_S = 60, ONLINE_MS = 2*60*1000;
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function val(id){ return $(id).value.trim(); }
+function ms(t){ if(!t) return 0; if(t.toMillis) return t.toMillis(); if(t instanceof Date) return t.getTime(); return +t||0; }
+function fmtDur(sec){ sec=Math.round(sec||0); if(sec<60) return sec? '<1 min':'0 min'; const h=Math.floor(sec/3600), m=Math.round((sec%3600)/60); return h? h+' h '+m+' min' : m+' min'; }
+function fmtDT(t){ const x=ms(t); if(!x) return '—'; return new Date(x).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function fmtD(t){ const x=ms(t); if(!x) return '—'; return new Date(x).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}); }
+function ago(t){ const x=ms(t); if(!x) return 'never'; const d=(Date.now()-x)/1000; if(d<90) return 'just now'; if(d<3600) return Math.round(d/60)+' min ago'; if(d<86400) return Math.round(d/3600)+' h ago'; return Math.round(d/86400)+' days ago'; }
+function safeUrl(u){ u=String(u||'').trim(); return /^https:\/\//i.test(u) ? u : ''; }
+function normCode(c){ return String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function fmtCode(c){ c=normCode(c); return c.slice(0,4)+'-'+c.slice(4,8)+'-'+c.slice(8); }
+function newCode(){
+  const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r=new Uint32Array(10); crypto.getRandomValues(r);
+  return Array.from(r, x=>A[x%A.length]).join('');
+}
+function itemLabel(k){ const it=ITEMS.find(i=>i.k===k); return it? it.label.replace(/^\S+\s/,'') : (k==='module'?'module overview':k); }
+function modTitle(mid){ const n=MIDS.indexOf(mid)+1; const t=(course.titles||[])[n-1]; return 'Module '+n+(t? ': '+t : ''); }
+function prevOf(mid){ const i=MIDS.indexOf(mid); return i>0? MIDS[i-1] : ''; }
+function friendlyAuthError(e){
+  const c=(e&&e.code)||'';
+  if(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found')) return "Email or password doesn't match. Check both, or use “Forgot your password?”.";
+  if(c.includes('email-already-in-use')) return "There's already an account with this email (perhaps your Field Logbook account). Go back, sign in with it, and then enter your code.";
+  if(c.includes('invalid-email')) return "That email address doesn't look right.";
+  if(c.includes('weak-password')) return "Please choose a password of at least 6 characters.";
+  if(c.includes('too-many-requests')) return "Too many attempts. Wait a few minutes and try again.";
+  if(c.includes('network-request-failed')) return "No internet connection. Please try again when you have signal.";
+  return "Something went wrong ("+c.replace('auth/','')+"). Please try again.";
+}
+function showErr(id,m){ const el=$(id); el.textContent=m; el.classList.add('show'); }
+function hideErrs(){ ['li_err','rg_err','rs_err','cl_err'].forEach(i=>$(i).classList.remove('show')); }
+
+/* ================= state ================= */
+let me=null, profile={}, isMentor=false, mentorLevel=null;
+let course={title:DEFAULT_TITLE, titles:[]};
+let enrol=null, results={passed:{},marks:{}}, progress={mods:{}};
+let modCache={};          // mid -> module doc data (links)
+let openMid=null;
+let unsubs=[];
+// staff
+let S={enrol:[], progress:{}, results:{}, sessions:[], invites:[], users:{}, modules:{}};
+let curStu=null;
+
+/* ================= auth ================= */
+window.authMode = m=>{ hideErrs(); $('authLogin').hidden=m!=='login'; $('authReg').hidden=m!=='reg'; $('authReset').hidden=m!=='reset'; };
+window.doLogin = async ev=>{
+  ev.preventDefault(); hideErrs(); $('li_btn').disabled=true;
+  try{ await signInWithEmailAndPassword(auth, val('li_email'), $('li_pass').value); }
+  catch(e){ showErr('li_err', friendlyAuthError(e)); }
+  $('li_btn').disabled=false;
+};
+let pendingCode=null;
+window.doRegister = async ev=>{
+  ev.preventDefault(); hideErrs();
+  if($('rg_pass').value!==$('rg_pass2').value){ showErr('rg_err',"The two passwords don't match."); return; }
+  const code=normCode($('rg_code').value);
+  if(code.length!==10){ showErr('rg_err',"That access code doesn't look complete. It has 10 letters and numbers."); return; }
+  $('rg_btn').disabled=true;
+  try{
+    pendingCode=code;
+    const cred=await createUserWithEmailAndPassword(auth, val('rg_email'), $('rg_pass').value);
+    await setDoc(doc(db,'users',cred.user.uid), { name:val('rg_name'), email:val('rg_email'), role:'student',
+      sno:'', idno:'', mentor:'', prog:'FETC: Tourist Guiding (SAQA 71549, NQF 4)', saqa:'SAQA ID 71549', createdAt:serverTimestamp() });
+  }catch(e){ pendingCode=null; showErr('rg_err', friendlyAuthError(e)); }
+  $('rg_btn').disabled=false;
+};
+window.doReset = async ev=>{
+  ev.preventDefault(); hideErrs(); $('rs_btn').disabled=true;
+  try{ await sendPasswordResetEmail(auth, val('rs_email')); toast('Reset email sent. Check your inbox (and spam folder).'); authMode('login'); }
+  catch(e){ showErr('rs_err', friendlyAuthError(e)); }
+  $('rs_btn').disabled=false;
+};
+window.doLogout = async ()=>{ if(confirm('Sign out of the Learning Portal on this device?')){ await endSession(); await signOut(auth); } };
+
+function stopAll(){ unsubs.forEach(u=>{try{u();}catch(e){}}); unsubs=[]; stopTracking(); }
+
+onAuthStateChanged(auth, async user=>{
+  $('boot').style.display='none';
+  stopAll(); me=user;
+  if(!user){
+    isMentor=false; enrol=null; modCache={}; S={enrol:[],progress:{},results:{},sessions:[],invites:[],users:{},modules:{}};
+    $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
+    authMode('login'); return;
+  }
+  $('authView').hidden=true; $('appMain').hidden=false; $('whoBox').hidden=false;
+  try{ const p=await getDoc(doc(db,'users',user.uid)); profile=p.exists()?p.data():{}; }catch(e){ profile={}; }
+  if(!profile.role && !pendingCode){
+    try{ await setDoc(doc(db,'users',user.uid), {name:'',email:user.email||'',role:'student',sno:'',idno:'',mentor:'',prog:'',saqa:'',createdAt:serverTimestamp()}); }catch(e){}
+  }
+  try{ const m=await getDoc(doc(db,'mentors',user.uid)); isMentor=m.exists(); mentorLevel=isMentor?(m.data().level||'full'):null; }catch(e){ isMentor=false; }
+  $('whoName').textContent=(profile.name||user.email||'')+(isMentor?' · staff':'');
+  listenCourse();
+  if(isMentor) startStaff(); else startStudent();
+});
+
+function listenCourse(){
+  unsubs.push(onSnapshot(doc(db,'courses',CID), s=>{
+    course=Object.assign({title:DEFAULT_TITLE, titles:[]}, s.exists()?s.data():{});
+    $('cTitle').textContent=course.title;
+    renderCourse(); if(isMentor){ renderMonitor(); renderMarking(); }
+  }, e=>console.warn('course',e)));
+}
+
+/* ================= tabs ================= */
+const TABS=['course','monitor','marking','codes','setup'];
+$('nav').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return; showTab(b.dataset.tab);
+});
+function showTab(t){
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===t));
+  TABS.forEach(x=>{ $('tab-'+x).hidden=(x!==t); });
+  if(t==='setup') renderSetup();
+}
+
+/* =========================================================
+   STUDENT
+   ========================================================= */
+function startStudent(){
+  $('nav').hidden=true; showTab('course');
+  const uid=me.uid, key=CID+'_'+uid;
+  unsubs.push(onSnapshot(doc(db,'enrol',key), async s=>{
+    enrol=s.exists()?s.data():null;
+    if(!enrol && pendingCode){ const c=pendingCode; pendingCode=null; await claim(c,'rg_err'); return; }
+    renderCourse();
+    if(enrol && enrol.active) startTracking(); else stopTracking();
+  }, e=>{ console.warn('enrol',e); enrol=null; renderCourse(); }));
+  unsubs.push(onSnapshot(doc(db,'results',key), s=>{
+    const d=s.exists()?s.data():{}; results={passed:d.passed||{}, marks:d.marks||{}};
+    renderCourse();
+  }, e=>console.warn('results',e)));
+  unsubs.push(onSnapshot(doc(db,'progress',key), s=>{
+    progress=Object.assign({mods:{}}, s.exists()?s.data():{}); if(!progress.mods) progress.mods={};
+    renderCourse();
+  }, e=>console.warn('progress',e)));
+}
+
+async function claim(code, errId){
+  hideErrs();
+  code=normCode(code);
+  if(code.length!==10){ showErr(errId,"That access code doesn't look complete. It has 10 letters and numbers."); return false; }
+  try{
+    const inv=await getDoc(doc(db,'invites',code));
+    if(!inv.exists()){ showErr(errId,"We couldn't find that code. Check it carefully, or ask the office for your code."); return false; }
+    const d=inv.data();
+    if(d.claimedBy && d.claimedBy!==me.uid){ showErr(errId,"This code has already been used by another account. Ask the office for help."); return false; }
+    const b=writeBatch(db);
+    b.update(doc(db,'invites',code), {claimedBy:me.uid, claimedAt:serverTimestamp(), claimedEmail:me.email||''});
+    b.set(doc(db,'enrol',d.cid+'_'+me.uid), {uid:me.uid, cid:d.cid, name:d.name||profile.name||'', email:me.email||'', code, active:true, at:serverTimestamp()});
+    await b.commit();
+    toast('Welcome! Your course is open. 🎓');
+    return true;
+  }catch(e){
+    console.warn(e);
+    showErr(errId,"That code couldn't be used. It may already be used, or your account already has the course. Ask the office for help.");
+    return false;
+  }
+}
+window.claimFromCard = async ()=>{ $('cl_btn').disabled=true; await claim($('cl_code').value,'cl_err'); $('cl_btn').disabled=false; };
+
+function modStatus(mid){
+  const prev=prevOf(mid);
+  const unlocked = !prev || results.passed[prev]===true;
+  if(results.passed[mid]===true) return 'passed';
+  if(!unlocked) return 'locked';
+  const p=(progress.mods||{})[mid]||{}, mk=(results.marks||{})[mid];
+  if(p.submittedAt && (!mk || ms(mk.at)<ms(p.submittedAt))) return 'waiting';
+  if(mk && mk.outcome==='NYC') return 'nyc';
+  return 'open';
+}
+const STATUS_PILL={
+  passed:'<span class="pill ok">✔ Competent</span>', locked:'<span class="pill lock">🔒 Locked</span>',
+  waiting:'<span class="pill wait">⏳ Test awaiting marking</span>', nyc:'<span class="pill bad">↻ Not yet competent: try again</span>',
+  open:'<span class="pill gold">Open</span>'
+};
+
+function renderCourse(){
+  if(!me) return;
+  if(isMentor){ $('claimCard').hidden=true; $('pausedCard').hidden=true; $('courseView').hidden=true; $('staffCourseNote').hidden=false; return; }
+  $('staffCourseNote').hidden=true;
+  $('claimCard').hidden=!!enrol; $('pausedCard').hidden=!(enrol && !enrol.active);
+  $('courseView').hidden=!(enrol && enrol.active);
+  if(!(enrol && enrol.active)) return;
+  const done=MIDS.filter(m=>results.passed[m]===true).length;
+  $('cProgTxt').textContent=done+' of '+NMODS+' modules competent'+(done===NMODS?' · course complete 🎉':'');
+  $('cProgBar').style.width=Math.round(done/NMODS*100)+'%';
+  const html=MIDS.map(mid=>{
+    const st=modStatus(mid), isOpen=openMid===mid && st!=='locked';
+    return '<div class="mod '+(st==='locked'?'locked':st==='passed'?'passed':'')+'" id="mod-'+mid+'">'
+      +'<div class="mh" onclick="toggleMod(\''+mid+'\')"><b>'+esc(modTitle(mid))+'</b>'+STATUS_PILL[st]+'</div>'
+      +(isOpen? '<div class="mb" id="mb-'+mid+'">'+modBody(mid,st)+'</div>' : '')
+      +'</div>';
+  }).join('');
+  // keep a playing video alive: only re-render the list when nothing is playing
+  if(!anyPlaying()) { flushVideo(); players={}; $('modList').innerHTML=html; if(openMid) mountPlayer(openMid); }
+}
+
+window.toggleMod = async mid=>{
+  if(modStatus(mid)==='locked') { toast('Finish the previous module (and pass its test) to open this one.'); return; }
+  if(openMid===mid){ openMid=null; pauseAll(); flushVideo(); players={}; renderCourse(); return; }
+  pauseAll(); flushVideo(); players={};
+  openMid=mid;
+  if(!modCache[mid]){
+    try{ const s=await getDoc(doc(db,'courses',CID,'modules',mid)); modCache[mid]=s.exists()?s.data():{}; }
+    catch(e){ console.warn(e); modCache[mid]={_err:true}; }
+  }
+  setCurrent(mid,'module');
+  renderCourse();
+};
+
+function modBody(mid, st){
+  const m=modCache[mid];
+  if(!m) return '<p class="note" style="padding-top:10px;">Loading…</p>';
+  if(m._err) return '<p class="note" style="padding-top:10px;">This module could not be opened. Check your connection and try again.</p>';
+  const p=(progress.mods||{})[mid]||{}, opened=p.opened||{}, mk=(results.marks||{})[mid];
+  let h='';
+  ITEMS.forEach(it=>{
+    const url=safeUrl(m[it.k]);
+    if(!url){ h+=itemRow(it.label,'<span class="sm">Not added yet</span>'); return; }
+    if(MEDIA.includes(it.k)){ h+=mediaRow(mid,it.k,it.label,url); return; }
+    h+=itemRow(it.label+(opened[it.k]?' <span class="pill ok">opened</span>':''),
+      '<a class="btn small secondary" href="'+esc(url)+'" target="_blank" rel="noopener" onclick="openedItem(\''+mid+'\',\''+it.k+'\')">Open</a>');
+  });
+  h+='<h3>Hand in your test</h3>';
+  if(st==='passed'){
+    h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk);
+  } else if(st==='waiting'){
+    h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon. The next module opens once it is marked competent.</p>';
+  } else {
+    if(st==='nyc') h+='<div class="callout">Your assessor marked this <b>not yet competent</b>. Please make the corrections below and hand in again.</div>'+feedbackBox(mk);
+    h+='<label>Your answers</label><textarea id="ans-'+mid+'" placeholder="Type your answers here, numbered as on the answer sheet.">'+esc(p.answers||'')+'</textarea>'
+      +'<label>Link to your completed answer sheet (optional)</label><input id="lnk-'+mid+'" placeholder="https://… (OneDrive, Google Drive, etc.)" value="'+esc(p.link||'')+'">'
+      +'<label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="pap-'+mid+'" style="width:auto;"'+(p.paper?' checked':'')+'> I handed my answer sheet in on paper</label>'
+      +(canHandIn(mid)? '<div class="btnrow"><button class="btn" onclick="submitTest(\''+mid+'\')">Hand in for marking</button></div>'
+        : '<div class="callout">Watch the module video'+(trackable(m.slides)?' and the presentation':'')+' through (at least '+NEED_PCT+'%) before you hand in.</div><div class="btnrow"><button class="btn" disabled>Hand in for marking</button></div>');
+  }
+  return h;
+}
+function feedbackBox(mk){
+  if(!mk) return '';
+  const g=mk.good||'', f=mk.fix||mk.comment||'';
+  if(!g && !f) return '';
+  return '<div class="sub-entry" style="margin-top:8px;"><b>📋 Assessor feedback</b> <span class="sm">'+esc(mk.by||'')+(mk.at?' · '+fmtD(mk.at):'')+'</span>'
+    +(g?'<p class="note" style="margin-top:6px;"><b style="color:var(--ok)">✔ Done well:</b></p><div class="answer">'+esc(g)+'</div>':'')
+    +(f?'<p class="note" style="margin-top:6px;"><b style="color:var(--danger)">✎ Needs correction:</b></p><div class="answer">'+esc(f)+'</div>':'')+'</div>';
+}
+function itemRow(l,r){ return '<div class="item"><span class="lbl">'+l+'</span>'+r+'</div>'; }
+
+window.openedItem = (mid,k)=>{
+  const o={}; o[k]=serverTimestamp();
+  saveProg({mods:{[mid]:{opened:o}}}); setCurrent(mid,k);
+};
+window.submitTest = async mid=>{
+  const answers=$('ans-'+mid).value.trim(), link=$('lnk-'+mid).value.trim(), paper=$('pap-'+mid).checked;
+  if(!canHandIn(mid)){ toast('Watch the video through first.'); return; }
+  if(!answers && !link && !paper){ toast('Type your answers, add a link, or tick that you handed in on paper.'); return; }
+  if(link && !safeUrl(link)){ toast('The link must start with https://'); return; }
+  await saveProg({mods:{[mid]:{answers, link, paper, submittedAt:serverTimestamp()}}});
+  setCurrent(mid,'test-submitted');
+  toast('Handed in. Your assessor will mark it soon.');
+};
+async function saveProg(patch){
+  if(!enrol||!enrol.active) return;
+  try{ await setDoc(doc(db,'progress',CID+'_'+me.uid), Object.assign({uid:me.uid, cid:CID}, patch), {merge:true}); }
+  catch(e){ console.warn('progress save',e); }
+}
+function setCurrent(mid,item){ saveProg({current:{mid,item,at:serverTimestamp()}}); }
+
+/* ---------- video tracking (no skipping ahead, real watching time only) ---------- */
+const MEDIA=['slides','video'];   // a narrated presentation saved as a video is tracked the same way
+const NEED_PCT=90;
+let players={};   // key mid-k -> {mid,k,pos,dur,sec,skips,playing,saved}
+function isYouTube(u){ return /(youtube\.com|youtu\.be)\//i.test(u); }
+function ytId(u){ const m=u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m?m[1]:''; }
+function isDirectVideo(u){ return /\.(mp4|webm|m4v|mov)(\?|#|$)/i.test(u) || /firebasestorage\.(googleapis\.com|app)/i.test(u); }
+function trackable(u){ u=safeUrl(u); return !!u && (isDirectVideo(u) || (isYouTube(u) && !!ytId(u))); }
+function watchOf(mid,k){ return ((((progress.mods||{})[mid]||{}).watch||{})[k])||{}; }
+function anyPlaying(){ return Object.values(players).some(p=>p.playing); }
+function canHandIn(mid){
+  const m=modCache[mid]||{};
+  return MEDIA.every(k=>!trackable(m[k]) || (watchOf(mid,k).pct||0)>=NEED_PCT);
+}
+function mediaRow(mid,k,label,url){
+  const w=watchOf(mid,k);
+  if(trackable(url)){
+    return '<div class="item" style="display:block;"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><span class="lbl">'+label+'</span>'
+      +'<span class="sm" id="wp-'+mid+'-'+k+'">Watched: '+Math.round(w.pct||0)+'%</span></div>'
+      +'<div id="vb-'+mid+'-'+k+'"></div>'
+      +'<p class="sm" style="margin-top:4px;">You can pause and go back, but you can\'t skip ahead or speed up. The video pauses if you switch to another tab.</p></div>';
+  }
+  const opened=((((progress.mods||{})[mid]||{}).opened)||{})[k];
+  return itemRow(label+(opened?' <span class="pill ok">opened</span>':''),
+    '<a class="btn small secondary" href="'+esc(url)+'" target="_blank" rel="noopener" onclick="openedItem(\''+mid+'\',\''+k+'\')">Open</a>');
+}
+function mountPlayer(mid){
+  const m=modCache[mid]; if(!m) return;
+  MEDIA.forEach(k=>{
+    const url=safeUrl(m[k]), box=$('vb-'+mid+'-'+k); if(!box||!trackable(url)) return;
+    const w=watchOf(mid,k), key=mid+'-'+k;
+    const P=players[key]={mid,k,pos:w.pos||0,dur:w.dur||0,sec:0,skips:0,playing:false,saved:Math.round(w.pct||0),done:(w.pct||0)>=99};
+    if(isDirectVideo(url)){
+      box.innerHTML='<video controls controlsList="nodownload noplaybackrate" disablePictureInPicture preload="metadata" playsinline src="'+esc(url)+'"></video>';
+      const v=box.querySelector('video'); let lastT=0, lastWall=0;
+      v.addEventListener('loadedmetadata',()=>{ P.dur=v.duration; if(P.pos>2 && P.pos<v.duration-5) v.currentTime=P.pos; lastT=v.currentTime; });
+      v.addEventListener('play',()=>{ P.playing=true; lastT=v.currentTime; lastWall=performance.now(); setCurrent(mid,k); });
+      v.addEventListener('pause',()=>{ P.playing=false; saveWatch(P,true); });
+      v.addEventListener('ended',()=>{ P.playing=false; saveWatch(P,true); });
+      v.addEventListener('ratechange',()=>{ if(v.playbackRate>1){ v.playbackRate=1; toast('Videos play at normal speed.'); } });
+      v.addEventListener('seeking',()=>{
+        if(!P.done && v.currentTime>P.pos+2){ P.skips++; v.currentTime=P.pos; toast("You can't skip ahead. Watch the video through first."); }
+        lastT=v.currentTime; lastWall=performance.now();
+      });
+      v.addEventListener('timeupdate',()=>{
+        if(v.paused||v.seeking) return;
+        const now=performance.now(), dt=v.currentTime-lastT, real=(now-lastWall)/1000;
+        if(dt>0 && dt<2.5 && dt<=real*1.15+0.3){ P.sec+=dt; if(v.currentTime>P.pos) P.pos=v.currentTime; }
+        lastT=v.currentTime; lastWall=now; P.dur=v.duration||P.dur; tick(P);
+      });
+    } else {
+      box.innerHTML='<div class="ytbox"><div id="yt-'+key+'"></div></div>';
+      loadYT().then(()=>{
+        if(players[key]!==P) return;
+        let lastT=null;
+        const pl=new YT.Player('yt-'+key, {videoId:ytId(url), playerVars:{rel:0, modestbranding:1, disablekb:1, playsinline:1, start:Math.floor(P.pos>2?P.pos:0)},
+          events:{
+            onStateChange:e=>{ if(e.data===YT.PlayerState.PLAYING){ P.playing=true; setCurrent(mid,k); } else { P.playing=false; saveWatch(P,true); } },
+            onPlaybackRateChange:()=>{ if(pl.getPlaybackRate()>1){ pl.setPlaybackRate(1); toast('Videos play at normal speed.'); } }
+          }});
+        P.yt=pl;
+        P.timer=setInterval(()=>{
+          try{
+            if(players[key]!==P){ clearInterval(P.timer); return; }
+            const t=pl.getCurrentTime(); P.dur=pl.getDuration()||P.dur;
+            if(!P.done && t>P.pos+3){ P.skips++; pl.seekTo(P.pos,true); toast("You can't skip ahead. Watch the video through first."); lastT=P.pos; return; }
+            if(P.playing && lastT!=null){ const dt=t-lastT; if(dt>0 && dt<2.5){ P.sec+=dt; if(t>P.pos) P.pos=t; } }
+            lastT=t; tick(P);
+          }catch(err){}
+        },1000);
+      });
+    }
+  });
+}
+let ytReady=null;
+function loadYT(){
+  if(window.YT && window.YT.Player) return Promise.resolve();
+  if(ytReady) return ytReady;
+  ytReady=new Promise(res=>{ window.onYouTubeIframeAPIReady=res; const sc=document.createElement('script'); sc.src='https://www.youtube.com/iframe_api'; document.head.appendChild(sc); });
+  return ytReady;
+}
+function pctOf(P){ if(!P.dur) return P.saved; const near=P.pos>=P.dur-3? 100 : P.pos/P.dur*100; return Math.max(P.saved, Math.min(100, Math.round(near))); }
+function tick(P){
+  const pct=pctOf(P), el=$('wp-'+P.mid+'-'+P.k); if(el) el.textContent='Watched: '+pct+'%';
+  if(pct>=99) P.done=true;
+  if(pct>=P.saved+5 || (pct>=NEED_PCT && P.saved<NEED_PCT) || P.sec>=30) saveWatch(P,false);
+}
+function saveWatch(P, rerender){
+  const pct=pctOf(P);
+  if(pct<=P.saved && P.sec<1 && !P.skips) return;
+  const crossed=P.saved<NEED_PCT && pct>=NEED_PCT;
+  const w={pct, pos:Math.round(P.pos), dur:Math.round(P.dur||0), last:serverTimestamp()};
+  if(P.sec>=1) w.sec=increment(Math.round(P.sec));
+  if(P.skips) w.skips=increment(P.skips);
+  P.saved=Math.max(P.saved,pct); P.sec=0; P.skips=0;
+  saveProg({mods:{[P.mid]:{watch:{[P.k]:w}}}});
+  if(crossed && rerender) setTimeout(renderCourse,600);
+}
+function flushVideo(){ Object.values(players).forEach(P=>{ P.playing=false; saveWatch(P,false); if(P.timer) clearInterval(P.timer); }); }
+function pauseAll(){ Object.values(players).forEach(P=>{ try{ if(P.yt) P.yt.pauseVideo(); }catch(e){} }); document.querySelectorAll('video').forEach(v=>{ if(!v.paused) v.pause(); }); }
+
+/* ---------- time-on-course tracking ---------- */
+let sessRef=null, beat=null, tracking=false, lastAct=Date.now();
+['mousemove','keydown','scroll','touchstart','click'].forEach(ev=>window.addEventListener(ev,()=>{ lastAct=Date.now(); },{passive:true}));
+async function startTracking(){
+  if(tracking) return; tracking=true;
+  try{
+    sessRef=await addDoc(collection(db,'sessions'), {uid:me.uid, cid:CID, name:(enrol&&enrol.name)||profile.name||'', start:serverTimestamp(), last:serverTimestamp(), sec:0,
+      device:/Mobi|Android|iPhone/i.test(navigator.userAgent)?'phone':'computer'});
+  }catch(e){ console.warn('session',e); sessRef=null; }
+  saveProg({lastSeen:serverTimestamp()});
+  beat=setInterval(()=>{
+    const v=anyPlaying();
+    if(document.visibilityState!=='visible' && !v) return;
+    if(Date.now()-lastAct>IDLE_MS && !v) return;
+    if(sessRef) updateDoc(sessRef,{last:serverTimestamp(), sec:increment(BEAT_S)}).catch(e=>console.warn(e));
+    saveProg({lastSeen:serverTimestamp(), totalSec:increment(BEAT_S)});
+  }, BEAT_S*1000);
+}
+function stopTracking(){ if(beat){ clearInterval(beat); beat=null; } sessRef=null; tracking=false; }
+async function endSession(){ flushVideo(); if(sessRef){ try{ await updateDoc(sessRef,{last:serverTimestamp()}); }catch(e){} } stopTracking(); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ pauseAll(); flushVideo(); } else lastAct=Date.now(); });
+
+/* =========================================================
+   STAFF
+   ========================================================= */
+function startStaff(){
+  $('nav').hidden=false; ['navMonitor','navMarking','navCodes'].forEach(i=>$(i).hidden=false);
+  $('navSetup').hidden = mentorLevel!=='full';
+  showTab('monitor');
+  const a=assessor(); $('asName').value=a.name; $('asReg').value=a.reg;
+  const q=(c)=>query(collection(db,c), where('cid','==',CID));
+  unsubs.push(onSnapshot(q('enrol'), s=>{ S.enrol=s.docs.map(d=>Object.assign({id:d.id},d.data())); S.enrol.sort((a,b)=>(a.name||'').localeCompare(b.name||'')); renderMonitor(); }, e=>console.warn('enrol',e)));
+  unsubs.push(onSnapshot(q('progress'), s=>{ S.progress={}; s.docs.forEach(d=>S.progress[d.data().uid]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('progress',e)));
+  unsubs.push(onSnapshot(q('results'), s=>{ S.results={}; s.docs.forEach(d=>S.results[d.data().uid]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('results',e)));
+  unsubs.push(onSnapshot(q('invites'), s=>{ S.invites=s.docs.map(d=>Object.assign({code:d.id},d.data())); S.invites.sort((a,b)=>ms(b.createdAt)-ms(a.createdAt)); renderCodes(); }, e=>console.warn('invites',e)));
+  const since=Timestamp.fromMillis(Date.now()-90*86400000);
+  unsubs.push(onSnapshot(query(collection(db,'sessions'), where('start','>=',since)), s=>{
+    S.sessions=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(x=>x.cid===CID); renderMonitor();
+  }, e=>console.warn('sessions',e)));
+  unsubs.push(onSnapshot(collection(db,'courses',CID,'modules'), s=>{ S.modules={}; s.docs.forEach(d=>S.modules[d.id]=d.data()); }, e=>console.warn('modules',e)));
+  setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
+}
+
+function stuSummary(e){
+  const p=S.progress[e.uid]||{}, r=S.results[e.uid]||{}, passed=r.passed||{}, marks=r.marks||{};
+  const sess=S.sessions.filter(s=>s.uid===e.uid);
+  const lastSeen=Math.max(ms(p.lastSeen), ...sess.map(s=>ms(s.last)), 0);
+  const weekAgo=Date.now()-7*86400000;
+  const weekSec=sess.filter(s=>ms(s.start)>=weekAgo).reduce((a,s)=>a+(s.sec||0),0);
+  const done=MIDS.filter(m=>passed[m]===true).length;
+  const waiting=MIDS.filter(m=>{ const pm=(p.mods||{})[m]||{}; return pm.submittedAt && passed[m]!==true && (!marks[m] || ms(marks[m].at)<ms(pm.submittedAt)); });
+  const cur=p.current||null;
+  return {p, r, sess, lastSeen, weekSec, totalSec:p.totalSec||0, done, waiting, cur, online: lastSeen && Date.now()-lastSeen<ONLINE_MS};
+}
+function busyText(x){
+  if(x.done===NMODS) return 'Finished the course 🎉';
+  if(!x.cur || !x.cur.mid) return '<span class="sm">Not started yet</span>';
+  const n=MIDS.indexOf(x.cur.mid)+1;
+  const what= x.cur.item==='test-submitted' ? 'handed in the test' : itemLabel(x.cur.item);
+  return 'Module '+n+' · '+esc(what)+' <span class="sm">('+ago(x.cur.at)+')</span>';
+}
+
+function renderMonitor(){
+  if(!isMentor) return;
+  const rows=S.enrol.map(e=>Object.assign({e}, stuSummary(e)));
+  const online=rows.filter(r=>r.online&&r.e.active).length;
+  const waiting=rows.reduce((a,r)=>a+r.waiting.length,0);
+  const finished=rows.filter(r=>r.done===NMODS).length;
+  const active7=rows.filter(r=>r.lastSeen>Date.now()-7*86400000).length;
+  $('monStats').innerHTML=[
+    [S.enrol.filter(e=>e.active).length,'students with access'],[online,'online now'],[active7,'active this week'],[waiting,'tests to mark'],[finished,'finished the course']
+  ].map(([b,s])=>'<div class="stat"><b>'+b+'</b><span>'+s+'</span></div>').join('');
+  $('markBadge').hidden=!waiting; $('markBadge').textContent=waiting;
+  if(!rows.length){ $('monTable').innerHTML='<tr><td class="note">No students yet. Create access codes under <b>Access codes</b> and give each student theirs.</td></tr>'; return; }
+  $('monTable').innerHTML='<tr><th>Student</th><th>Last on</th><th>Busy with</th><th>Progress</th><th>This week</th><th>Total time</th><th>Sessions</th></tr>'
+    +rows.map(r=>'<tr class="click" onclick="openStu(\''+r.e.uid+'\')">'
+      +'<td><b>'+esc(r.e.name||r.e.email)+'</b>'+(r.e.active?'':' <span class="pill bad">paused</span>')+'<div class="sm">'+esc(r.e.email||'')+'</div></td>'
+      +'<td>'+(r.online?'<span class="pill live">● online now</span>':esc(ago(r.lastSeen)))+'</td>'
+      +'<td>'+busyText(r)+(r.waiting.length?'<div><span class="pill wait">'+r.waiting.length+' to mark</span></div>':'')+'</td>'
+      +'<td>'+r.done+'/'+NMODS+'<div class="bar" style="height:7px;width:90px;"><i style="width:'+Math.round(r.done/NMODS*100)+'%"></i></div></td>'
+      +'<td>'+fmtDur(r.weekSec)+'</td><td>'+fmtDur(r.totalSec)+'</td><td>'+r.sess.length+'</td></tr>').join('');
+  if(curStu) openStu(curStu, true);
+}
+
+window.openStu = (uid, quiet)=>{
+  const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
+  curStu=uid; const x=stuSummary(e), p=x.p, marks=(x.r.marks||{}), passed=(x.r.passed||{});
+  let h='<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;"><h2>'+esc(e.name||e.email)+'</h2>'
+    +'<div class="btnrow" style="margin-top:0;"><button class="btn small '+(e.active?'danger':'secondary')+'" onclick="toggleAccess(\''+uid+'\','+(!e.active)+')">'+(e.active?'Pause access':'Switch access back on')+'</button>'
+    +'<button class="btn small" onclick="printPoE(\''+uid+'\')">📄 PoE evidence pack</button><button class="btn small ghost" onclick="closeStu()">Close</button></div></div>'
+    +'<p class="note">'+esc(e.email||'')+' · joined '+fmtD(e.at)+' with code <span class="codechip">'+esc(fmtCode(e.code||''))+'</span></p>'
+    +'<div class="statgrid"><div class="stat"><b>'+x.done+'/'+NMODS+'</b><span>modules competent</span></div><div class="stat"><b>'+fmtDur(x.totalSec)+'</b><span>total time</span></div><div class="stat"><b>'+x.sess.length+'</b><span>sessions (90 days)</span></div><div class="stat"><b>'+(x.online?'Now':esc(ago(x.lastSeen)))+'</b><span>last on</span></div></div>'
+    +'<h3>Modules</h3><div class="tablewrap"><table class="t"><tr><th>Module</th><th>Opened</th><th>Watched (real viewing time)</th><th>Test</th><th>Result</th></tr>'
+    +MIDS.map(m=>{
+      const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, mk=marks[m];
+      const opened=ITEMS.filter(i=>op[i.k]).map(i=>itemLabel(i.k)).join(', ')||'—';
+      const vid=watchTxt(m,pm);
+      const test=pm.submittedAt? 'handed in '+fmtDT(pm.submittedAt) : '—';
+      const res= passed[m]===true? '<span class="pill ok">Competent</span>' : mk&&mk.outcome==='NYC'&&ms(mk.at)>=ms(pm.submittedAt)? '<span class="pill bad">Not yet competent</span>' : pm.submittedAt? '<span class="pill wait">To mark</span>' : '—';
+      return '<tr><td>'+esc(modTitle(m))+'</td><td class="sm">'+esc(opened)+'</td><td class="sm">'+vid+'</td><td class="sm">'+test+'</td><td>'+res+'</td></tr>';
+    }).join('')+'</table></div>'
+    +'<h3>Recent sessions</h3>';
+  const ss=x.sess.slice().sort((a,b)=>ms(b.start)-ms(a.start)).slice(0,25);
+  h+= ss.length? '<div class="tablewrap"><table class="t"><tr><th>Signed in</th><th>Last active</th><th>Time active</th><th>Device</th></tr>'
+      +ss.map(s=>'<tr><td>'+fmtDT(s.start)+'</td><td>'+fmtDT(s.last)+'</td><td>'+fmtDur(s.sec)+'</td><td>'+esc(s.device||'')+'</td></tr>').join('')+'</table></div>'
+    : '<p class="note">No sessions yet.</p>';
+  $('stuDetail').innerHTML=h; $('stuDetail').hidden=false;
+  if(!quiet) $('stuDetail').scrollIntoView({behavior:'smooth'});
+};
+function watchTxt(m,pm){
+  const w=pm.watch||{}, mod=S.modules[m]||{}, out=[];
+  MEDIA.forEach(k=>{
+    const x=w[k]; const nm=k==='video'?'Video':'Presentation';
+    if(x && x.pct!=null) out.push(nm+': '+x.pct+'% · '+fmtDur(x.sec||0)+(x.dur?' of '+fmtDur(x.dur):'')+(x.skips?' · <span style="color:var(--danger)">'+x.skips+' skip attempt'+(x.skips>1?'s':'')+' blocked</span>':''));
+    else if(mod[k] && !trackable(mod[k]) && (pm.opened||{})[k]) out.push(nm+': opened (cannot be checked)');
+  });
+  return out.join('<br>')||'—';
+}
+window.closeStu = ()=>{ curStu=null; $('stuDetail').hidden=true; };
+window.toggleAccess = async (uid,on)=>{
+  if(!on && !confirm('Pause this student\'s access? They will not be able to open the course until you switch it back on.')) return;
+  try{ await updateDoc(doc(db,'enrol',CID+'_'+uid), {active:on}); toast(on?'Access switched on.':'Access paused.'); }
+  catch(e){ toast('Could not change access: '+e.code); }
+};
+
+/* ---------- marking ---------- */
+function renderMarking(){
+  if(!isMentor) return;
+  const items=[];
+  S.enrol.forEach(e=>{ const x=stuSummary(e); x.waiting.forEach(m=>items.push({e, m, pm:(x.p.mods||{})[m]})); });
+  items.sort((a,b)=>ms(a.pm.submittedAt)-ms(b.pm.submittedAt));
+  $('markList').innerHTML = items.length? items.map(({e,m,pm})=>{
+    const id=e.uid+'-'+m, link=safeUrl(pm.link);
+    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(modTitle(m))+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
+      +(pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
+      +(link?'<p style="margin-top:8px;"><a href="'+esc(link)+'" target="_blank" rel="noopener">📎 Open completed answer sheet</a></p>':'')
+      +(pm.paper?'<p class="note" style="margin-top:6px;">📄 Student says the answer sheet was handed in on paper.</p>':'')
+      +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
+      +'<label>Assessor feedback: what needs correction</label><textarea id="ff-'+id+'" placeholder="e.g. Question 7: explain the role of fire in the grassland biome. Resubmit by ..."></textarea>'
+      +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
+  }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>';
+}
+function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){} return {name:a.name||profile.name||'', reg:a.reg||''}; }
+window.saveAssessor = ()=>{ try{ localStorage.setItem('lwec_assessor', JSON.stringify({name:val('asName'), reg:val('asReg')})); }catch(e){} };
+window.mark = async (uid,m,outcome)=>{
+  const good=(($('fg-'+uid+'-'+m)||{}).value||'').trim(), fix=(($('ff-'+uid+'-'+m)||{}).value||'').trim();
+  const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
+  if(!as.name){ toast('Type your assessor name at the top of this page first.'); $('asName').focus(); return; }
+  if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
+  if(!good && !fix && !confirm('Mark without any written feedback?')) return;
+  const pm=((S.progress[uid]||{}).mods||{})[m]||{};
+  const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
+    submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
+  try{
+    await setDoc(doc(db,'results',CID+'_'+uid), {uid, cid:CID,
+      passed:{[m]: outcome==='C'},
+      marks:{[m]:{outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}},
+      hist:{[m]: arrayUnion(rec)}}, {merge:true});
+    toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
+  }catch(e){ toast('Could not save the mark: '+e.code); }
+};
+
+/* ---------- access codes ---------- */
+window.createCodes = async ()=>{
+  const names=$('newNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!names.length){ toast('Type at least one name.'); return; }
+  const b=writeBatch(db);
+  names.forEach(n=>b.set(doc(db,'invites',newCode()), {cid:CID, name:n, createdBy:me.uid, createdAt:serverTimestamp(), claimedBy:null}));
+  try{ await b.commit(); $('newNames').value=''; toast(names.length+' code'+(names.length>1?'s':'')+' created.'); }
+  catch(e){ toast('Could not create codes: '+e.code); }
+};
+function renderCodes(){
+  if(!S.invites.length){ $('codeTable').innerHTML='<tr><td class="note">No codes yet.</td></tr>'; return; }
+  $('codeTable').innerHTML='<tr><th>Student</th><th>Code</th><th>Status</th><th></th></tr>'+S.invites.map(i=>
+    '<tr><td><b>'+esc(i.name)+'</b><div class="sm">created '+fmtD(i.createdAt)+'</div></td><td><span class="codechip">'+esc(fmtCode(i.code))+'</span></td>'
+    +'<td>'+(i.claimedBy? '<span class="pill ok">Used</span> <span class="sm">'+esc(i.claimedEmail||'')+' · '+fmtD(i.claimedAt)+'</span>' : '<span class="pill wait">Not used yet</span>')+'</td>'
+    +'<td>'+(i.claimedBy?'':'<button class="btn small ghost" onclick="copyCode(\''+i.code+'\')">Copy</button> <button class="btn small danger" onclick="delCode(\''+i.code+'\')">Delete</button>')+'</td></tr>').join('');
+}
+window.copyCode = c=>{ navigator.clipboard.writeText(fmtCode(c)).then(()=>toast('Code copied.'),()=>toast(fmtCode(c))); };
+window.delCode = async c=>{ if(!confirm('Delete this unused code? It will stop working.')) return; try{ await deleteDoc(doc(db,'invites',c)); }catch(e){ toast('Could not delete: '+e.code); } };
+window.printSlips = ()=>{
+  const un=S.invites.filter(i=>!i.claimedBy); if(!un.length){ toast('No unused codes to print.'); return; }
+  const url=location.href.split('#')[0].split('?')[0];
+  $('slips').innerHTML=un.map(i=>'<div class="slip"><b>LWEC Learning Portal</b> · '+esc(course.title)+'<br><br>Student: <b>'+esc(i.name)+'</b><br>Your personal access code:<div class="c">'+esc(fmtCode(i.code))+'</div><br>Go to '+esc(url)+' and choose “Create your account with your access code”. Already have a Field Logbook account? Sign in with it and enter this code. Keep this code private: it works only once.</div>').join('');
+  window.print();
+};
+
+/* ---------- course setup ---------- */
+function renderSetup(){
+  $('setTitle').value=course.title||DEFAULT_TITLE;
+  $('setMods').innerHTML=MIDS.map((m,i)=>{
+    const d=S.modules[m]||{};
+    return '<details class="modset"'+(i===0?' open':'')+'><summary>Module '+(i+1)+(d.title?': '+esc(d.title):'')+'</summary>'
+      +'<label>Module title</label><input id="st-'+m+'-title" value="'+esc(d.title||'')+'">'
+      +ITEMS.map(it=>'<label>'+it.label+' link</label><input id="st-'+m+'-'+it.k+'" placeholder="https://…" value="'+esc(d[it.k]||'')+'">').join('')
+      +'</details>';
+  }).join('');
+}
+window.saveSetup = async ()=>{
+  const b=writeBatch(db), titles=[]; let bad='';
+  MIDS.forEach((m,i)=>{
+    const d={n:i+1, prev:prevOf(m), title:val('st-'+m+'-title')};
+    ITEMS.forEach(it=>{ const v=val('st-'+m+'-'+it.k); if(v && !safeUrl(v)) bad='Module '+(i+1)+' '+itemLabel(it.k); d[it.k]=v; });
+    titles.push(d.title); b.set(doc(db,'courses',CID,'modules',m), d);
+  });
+  if(bad){ toast('Links must start with https:// (check '+bad+').'); return; }
+  const untr=[]; MIDS.forEach((m,i)=>MEDIA.forEach(k=>{ const v=val('st-'+m+'-'+k); if(v && !trackable(v)) untr.push('Module '+(i+1)+' '+(k==='video'?'video':'presentation')); }));
+  if(untr.length && !confirm('These links cannot be checked for real watching (students could skip them): '+untr.join(', ')+'.\n\nUse an .mp4 file link or a YouTube link to track them. Save anyway?')) return;
+  b.set(doc(db,'courses',CID), {title:val('setTitle')||DEFAULT_TITLE, titles, updatedAt:serverTimestamp()});
+  $('setSave').disabled=true;
+  try{ await b.commit(); $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.'); }
+  catch(e){ toast('Could not save: '+e.code+' (only full mentors can change the course).'); }
+  $('setSave').disabled=false;
+};
+
+/* ---------- PoE evidence pack ---------- */
+window.printPoE = async uid=>{
+  const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
+  let u={}; try{ const s=await getDoc(doc(db,'users',uid)); u=s.exists()?s.data():{}; }catch(err){}
+  const x=stuSummary(e), p=x.p, r=x.r, hist=r.hist||{}, passed=r.passed||{};
+  const name=esc(u.name||e.name||e.email);
+  const stuLine='<table class="pr"><tr><th>Learner</th><td>'+name+'</td><th>Student no.</th><td>'+esc(u.sno||'')+'</td></tr><tr><th>ID number</th><td>'+esc(u.idno||'')+'</td><th>Email</th><td>'+esc(e.email||u.email||'')+'</td></tr><tr><th>Programme</th><td colspan="3">FETC: Tourist Guiding (SAQA ID 71549)</td></tr><tr><th>Unit standard</th><td colspan="3">'+esc(course.title)+'</td></tr></table>';
+  let h='<div class="pr-page"><div class="pr-h"><img src="icons/lwec-logo.png" style="height:60px;"><h1>Portfolio of Evidence: online learning record</h1><div class="sub">Limpopo Wildlife Eco College</div></div>'+stuLine
+    +'<h3 style="margin-top:6mm;">Summary</h3><table class="pr"><tr><th>Module</th><th>First opened</th><th>Video watched</th><th>Attempts</th><th>Outcome</th><th>Date</th><th>Assessor</th></tr>'
+    +MIDS.map(m=>{ const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, hs=hist[m]||[], last=hs[hs.length-1];
+      const first=Math.min(...Object.values(op).map(ms).filter(Boolean), Infinity);
+      return '<tr><td>'+esc(modTitle(m))+'</td><td>'+(first<Infinity?fmtD(first):'—')+'</td><td>'+watchTxt(m,pm).replace(/<[^>]+>/g,' ')+'</td><td>'+hs.length+'</td><td>'+(passed[m]===true?'Competent':last?'Not yet competent':'—')+'</td><td>'+(last?fmtD(last.at):'—')+'</td><td>'+(last?esc(last.by):'')+'</td></tr>'; }).join('')
+    +'</table><p style="margin-top:4mm;font-size:9pt;">Time active on the course: '+fmtDur(x.totalSec)+' · Sessions in the last 90 days: '+x.sess.length+' · Pack printed '+new Date().toLocaleString('en-ZA')+'</p></div>';
+  MIDS.forEach(m=>{
+    const hs=hist[m]||[]; if(!hs.length) return;
+    h+='<div class="pr-page"><div class="pr-h"><h1>'+esc(modTitle(m))+'</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>';
+    hs.forEach((a,i)=>{
+      h+='<h3>Attempt '+(i+1)+': '+(a.outcome==='C'?'Competent':'Not yet competent')+'</h3><table class="pr"><tr><th>Handed in</th><td>'+fmtDT(a.submittedAt)+'</td><th>Assessed</th><td>'+fmtDT(a.at)+'</td></tr>'
+        +'<tr><th>Assessor</th><td>'+esc(a.by)+'</td><th>Registration no.</th><td>'+esc(a.reg||'')+'</td></tr>'
+        +(a.link?'<tr><th>Answer sheet link</th><td colspan="3">'+esc(a.link)+'</td></tr>':'')
+        +(a.paper?'<tr><th>Paper</th><td colspan="3">Answer sheet handed in on paper: file it behind this page.</td></tr>':'')
+        +'<tr><th>Feedback: done well</th><td colspan="3" style="white-space:pre-wrap;">'+esc(a.good||'')+'</td></tr>'
+        +'<tr><th>Feedback: needs correction</th><td colspan="3" style="white-space:pre-wrap;">'+esc(a.fix||a.comment||'')+'</td></tr></table>'
+        +(a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'');
+    });
+    h+='<div class="decl">Learner declaration: I declare that the work handed in for this module is my own.</div>'
+      +'<div class="sigline">Learner signature and date</div><div class="sigline">Assessor signature and date</div>'
+      +'<div class="sigline">Moderator signature and date</div></div>';
+  });
+  $('slips').innerHTML=h;
+  document.title=(u.name||e.name||'Student')+' - US335815 PoE';
+  window.print();
+  setTimeout(()=>{ document.title='LWEC Learning Portal'; },1500);
+};
+
+/* ---------- CSV ---------- */
+window.exportCSV = ()=>{
+  const head=['Student','Email','Access','Last on','Busy with','Modules competent','Tests to mark','Time this week (min)','Total time (min)','Sessions (90 days)'].concat(MIDS.map((m,i)=>'Module '+(i+1)));
+  const lines=[head];
+  S.enrol.forEach(e=>{
+    const x=stuSummary(e), passed=(x.r.passed||{});
+    lines.push([e.name||'', e.email||'', e.active?'on':'paused', x.lastSeen?new Date(x.lastSeen).toLocaleString('en-ZA'):'never',
+      busyText(x).replace(/<[^>]+>/g,''), x.done, x.waiting.length, Math.round(x.weekSec/60), Math.round(x.totalSec/60), x.sess.length]
+      .concat(MIDS.map(m=>{ const pm=(x.p.mods||{})[m]||{}; return passed[m]===true?'Competent': pm.submittedAt?'Handed in': (pm.opened&&Object.keys(pm.opened).length)?'Started':''; })));
+  });
+  const csv=lines.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
+  a.download='LWEC-student-monitor-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+};
+</script>
+</body>
+</html>
