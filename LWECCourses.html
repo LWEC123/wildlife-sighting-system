@@ -120,6 +120,29 @@ table.t tr.click:hover td{background:#fbf8f0;}
   .sigline{display:inline-block; width:30%; margin-right:3%; margin-top:14mm; border-top:1px solid #000; font-size:9pt; padding-top:2pt;}
   .slip .c{font-family:Consolas,monospace; font-size:18pt; font-weight:700; letter-spacing:3px;}
 }
+/* protected viewing */
+.vwrap{position:relative; margin-top:8px; background:#000; border-radius:10px; overflow:hidden; -webkit-user-select:none; user-select:none;}
+.vwrap video{margin-top:0; display:block;}
+.vwrap:fullscreen{display:flex; align-items:center; justify-content:center;}
+.vwrap:fullscreen video{max-height:100vh; height:100%; border-radius:0;}
+.wm{position:absolute; top:12%; left:6%; pointer-events:none; color:rgba(255,255,255,.42); font-size:.8rem; font-weight:700; text-shadow:0 0 3px rgba(0,0,0,.6); white-space:nowrap; transition:top 1.5s, left 1.5s; z-index:3;}
+.vwrap:fullscreen .wm{font-size:1.1rem;}
+.fsbtn{position:absolute; top:8px; right:8px; z-index:4; background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:.9rem;}
+.loadbox{background:var(--sand); border-radius:10px; padding:14px; margin-top:8px;}
+#viewer{position:fixed; inset:0; background:#2b2f2a; z-index:300; display:flex; flex-direction:column;}
+.vhead{background:var(--green-deep); color:#fff; padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.vhead b{flex:1; min-width:0;}
+.vhead .sm{color:#dfe9e0;}
+#vBody{flex:1; overflow:auto; padding:12px; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+.pg{background:#fff; margin:0 auto 12px; max-width:1000px; box-shadow:0 2px 10px rgba(0,0,0,.4); position:relative;}
+.pg canvas{display:block; width:100%; height:auto;}
+.agree{background:var(--sand); border-radius:10px; padding:12px 14px; font-size:.86rem; line-height:1.55; max-height:46vh; overflow:auto;}
+.agree p{margin-bottom:8px;}
+.ccard{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid #e3ddcc; border-left:5px solid var(--green); border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff;}
+.ccard.off{border-left-color:#b9b2a0; background:#faf8f3;}
+.ccard .info{flex:1 1 260px;}
+#staffBar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:12px 16px;}
+#staffBar select{flex:1 1 260px; width:auto;}
 </style>
 </head>
 <body>
@@ -132,7 +155,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
 </header>
 
 <nav id="nav" hidden>
-  <button data-tab="course" id="navCourse" class="active">📘 My course</button>
+  <button data-tab="course" id="navCourse" class="active">📘 My courses</button>
   <button data-tab="evidence" id="navEvidence" hidden>📁 My evidence file</button>
   <button data-tab="monitor" id="navMonitor" hidden>📊 Student monitor</button>
   <button data-tab="marking" id="navMarking" hidden>✍️ Marking <span class="badge" id="markBadge" hidden></span></button>
@@ -194,8 +217,25 @@ table.t tr.click:hover td{background:#fbf8f0;}
     <h2>Staff account</h2>
     <p class="note">You're signed in as staff. Use <b>Student monitor</b> to follow students, <b>Marking</b> to mark tests, <b>Access codes</b> to give students their codes and <b>Course setup</b> to add the module links.</p>
   </div>
+  <div class="card" id="agreeCard" hidden>
+    <h2>📜 Learner agreement</h2>
+    <p class="note" style="margin-bottom:8px;">Please read this before you start. You only do this once.</p>
+    <div class="agree" id="agreeText"></div>
+    <label>Type your full name to sign</label><input id="ag_name" autocomplete="name">
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="ag_ok" style="width:auto;"> I have read this agreement and I accept it.</label>
+    <div class="btnrow"><button class="btn" id="ag_btn" onclick="acceptAgreement()">I accept: open my courses</button></div>
+    <div class="err" id="ag_err"></div>
+  </div>
+  <div id="courseList" hidden>
+    <div class="card">
+      <h2>🎓 FETC: Tourist Guiding (SAQA 71549)</h2>
+      <p class="note">These are the unit standards open to you online. Choose one to continue. New unit standards appear here as the college adds them.</p>
+    </div>
+    <div id="courseCards"></div>
+  </div>
   <div id="courseView" hidden>
     <div class="card">
+      <div class="btnrow" style="margin:0 0 8px;"><button class="btn small ghost" onclick="backToList()">← All my unit standards</button></div>
       <h2 id="cTitle">Course</h2>
       <div class="tline note" id="cProgTxt"></div>
       <div class="bar"><i id="cProgBar" style="width:0%"></i></div>
@@ -217,12 +257,17 @@ table.t tr.click:hover td{background:#fbf8f0;}
     </div>
     <label>What is it? (short title)</label><input id="ev_title" maxlength="120" placeholder="e.g. My presentation on the Savanna biome">
     <label>Notes for your assessor (where, when, what it shows)</label><textarea id="ev_note" maxlength="2000" placeholder="e.g. Photos taken on the guided walk at the LWEC reserve, 12 November."></textarea>
-    <label>Files (photos, PowerPoint, PDF, Word or short video; up to 100 MB each)</label>
-    <input type="file" id="ev_files" multiple accept="image/*,.ppt,.pptx,.pdf,.doc,.docx,.mp4,.mov,video/mp4,video/quicktime">
+    <label>Files (photos, PowerPoint, PDF, Word, Excel or video; up to 500 MB each)</label>
+    <input type="file" id="ev_files" multiple accept="image/*,.ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,video/mp4,video/quicktime">
     <div class="btnrow"><button class="btn" id="ev_btn" onclick="uploadEvidence()">⬆️ Upload</button><span class="sm" id="ev_prog"></span></div>
   </div>
   <div id="evList"></div>
 </section>
+
+<div class="card" id="staffBar" hidden>
+  <b style="color:var(--green-deep);">Unit standard:</b>
+  <select id="stCourse" onchange="pickStaffCourse(this.value)"></select>
+</div>
 
 <!-- ================= STAFF: MONITOR ================= -->
 <section id="tab-monitor" hidden>
@@ -238,6 +283,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
     <div class="tablewrap"><table class="t" id="monTable"></table></div>
   </div>
   <div class="card" id="stuDetail" hidden></div>
+  <div class="card" id="stuUpload" hidden></div>
 </section>
 
 <!-- ================= STAFF: MARKING ================= -->
@@ -258,6 +304,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
   <div class="card">
     <h2>🔑 Give students access</h2>
     <p class="note">Type each student's name on its own line and press <b>Create codes</b>. Give each student their own code (or print the slips). A student creates their account with their code, or enters it after signing in with their Logbook account. Each code works once, for one student.</p>
+    <div class="callout">One code opens the <b>whole qualification</b> (FETC: Tourist Guiding, SAQA 71549). A student never needs a new code for the next unit standard: every unit standard you publish in Course setup appears for them automatically. To stop a student, or one unit standard for a student, open them in the Student monitor.</div>
     <label>Student names (one per line)</label>
     <textarea id="newNames" placeholder="Full name&#10;Full name"></textarea>
     <div class="btnrow"><button class="btn" onclick="createCodes()">Create codes</button><button class="btn ghost small" onclick="printSlips()">🖨️ Print slips for unused codes</button></div>
@@ -268,18 +315,39 @@ table.t tr.click:hover td{background:#fbf8f0;}
 <!-- ================= STAFF: SETUP ================= -->
 <section id="tab-setup" hidden>
   <div class="card">
+    <h2>➕ Add a unit standard</h2>
+    <p class="note">Add the next unit standard of SAQA 71549 here. It stays hidden from students until you tick <b>Students can see this unit standard</b> below and save.</p>
+    <div class="row">
+      <div><label>Unit standard</label><select id="nu_us" onchange="nuPick()"></select></div>
+      <div id="nu_numBox" hidden><label>Unit standard number</label><input id="nu_num" inputmode="numeric" placeholder="e.g. 335814"></div>
+    </div>
+    <div class="row">
+      <div><label>Title</label><input id="nu_title"></div>
+      <div style="flex:0 1 160px;"><label>Number of modules</label><input id="nu_n" type="number" min="1" max="40" value="10"></div>
+    </div>
+    <div class="btnrow"><button class="btn secondary" onclick="addCourse()">Add unit standard</button></div>
+  </div>
+  <div class="card">
     <h2>🛠️ Course setup</h2>
-    <p class="note">Give each module a title and paste the link to each file. Students only ever receive the links of modules they've unlocked. <b>Never paste a link to an assessor memo here.</b></p>
-    <div class="callout">For a video to be tracked (how much was watched), use a direct video link ending in .mp4, a Firebase Storage link, or a YouTube link. Other links (OneDrive, Google Drive) still work, but only show that the student opened them.</div>
-    <div class="callout"><b>Fastest way:</b> click <b>📂 Upload the whole course folder</b> and choose the folder <i>US 335815 - Conduct a guided biome experience</i> on your computer. The portal matches every guide, presentation, video, test and learner answer sheet to its module by the M01 to M12 file names, uploads them, and saves the course. Anything in an Assessor, CONF or memo folder, and the Facilitator and Assessor Guide, is skipped automatically.
+    <p class="note">Give each module a title and add each file. Students only ever receive the links of modules they've unlocked. <b>Never paste a link to an assessor memo here.</b></p>
+    <div class="callout"><b>Protected files:</b> anything uploaded here can only be opened by signed-in students of this qualification, inside the portal. Guides, presentations and tests must be <b>PDF</b> so students can view them without downloading (they see their name and email across every page). Videos must be <b>.mp4</b> so watching is tracked. The learner answer sheet may be Word: students download it to fill in. Pasted links to other websites (OneDrive, YouTube) are not protected.</div>
+    <div class="callout"><b>Fastest way:</b> click <b>📂 Upload the whole course folder</b> and choose the unit standard's folder (e.g. <i>US 335815 - Conduct a guided biome experience</i>) on your computer. The portal matches every guide, presentation, video, test and learner answer sheet to its module by the M01, M02… file names, uses the PDF versions in <i>06 Portal PDFs</i> where they exist, uploads them, and saves the course. Anything in an Assessor, CONF or memo folder, and the Facilitator and Assessor Guide, is skipped automatically.
       <div class="btnrow"><label class="btn secondary" style="margin:0;cursor:pointer;">📂 Upload the whole course folder<input type="file" id="bulkDir" webkitdirectory directory multiple hidden onchange="bulkUpload(this)"></label><span class="sm" id="bulkNote"></span></div></div>
-    <label>Course title</label><input id="setTitle">
+    <div class="row">
+      <div><label>Course title</label><input id="setTitle"></div>
+      <div style="flex:0 1 160px;"><label>Number of modules</label><input id="setN" type="number" min="1" max="40"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:600;"><input type="checkbox" id="setPub" style="width:auto;"> Students can see this unit standard</label>
     <div id="setMods" style="margin-top:12px;"></div>
     <div class="btnrow"><button class="btn" id="setSave" onclick="saveSetup()">Save course</button><span class="sm" id="setNote"></span></div>
   </div>
 </section>
 </main>
 
+<div id="viewer" hidden oncontextmenu="return false">
+  <div class="vhead"><b id="vTitle"></b><span class="sm" id="vNote"></span><button class="btn small" onclick="closeViewer()">✕ Close</button></div>
+  <div id="vBody"></div>
+</div>
 <div id="slips"></div>
 <div class="toast" id="toast"></div>
 
@@ -307,23 +375,28 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const STORE_HOST = 'https://firebasestorage.googleapis.com';
+const BUCKET = firebaseConfig.storageBucket;
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 
-/* ================= course definition ================= */
-const CID = 'us335815';
-const DEFAULT_TITLE = 'US 335815: Conduct a guided biome experience';
-const NMODS = 12;
+/* ================= programme and courses =================
+   One access code enrols a student in the whole qualification. The enrolment doc is
+   enrol/us335815_<uid> (PK below: the first course's id, kept so issued codes stay valid).
+   Each unit standard is a course doc courses/<cid> (cid like us335815). Staff can pause a
+   student (active:false) or one unit standard for a student (paused.<cid>:true). */
+const PK = 'us335815';
+const QUAL = 'SAQA71549';
+const PROG = 'FETC: Tourist Guiding (SAQA ID 71549)';
 const DEFAULT_MOD_TITLES = ['The Savanna Biome','The Desert Biome','The Forest Biome','The Fynbos Biome','The Grassland Biome','Indian Ocean Coastal Belt',
   'The Nama Karoo Biome','Succulent Karoo Biome','Albany Thicket Biome','Cross-biome Guiding Skills','EEK and Cross-field Outcomes','Assessment'];
-const MIDS = Array.from({length:NMODS}, (_,i)=>'m'+String(i+1).padStart(2,'0'));
 const ITEMS = [
   {k:'guide',  label:'📖 Learner guide'},
-  {k:'slides', label:'🖥️ Narrated presentation'},
+  {k:'slides', label:'🖥️ Presentation'},
   {k:'video',  label:'🎬 Module video'},
   {k:'test',   label:'📝 Visual test'},
   {k:'sheet',  label:'🗒️ Answer sheet'}
 ];
-// Evidence folders: unit standards of FETC: Tourist Guiding (SAQA 71549). Add more as courses go online.
-const QUAL = 'SAQA71549';
+// Unit standards of FETC: Tourist Guiding (SAQA 71549). Used for evidence folders and "Add a unit standard".
 const US_LIST = [
   {id:'US335815', label:'US 335815: Conduct a guided biome experience'},
   {id:'US335799', label:'US 335799: Conduct a tourist guided nature experience'},
@@ -338,8 +411,19 @@ const US_LIST = [
   {id:'US246740', label:'US 246740: Care for customers'},
   {id:'US255914', label:'US 255914: Minimise and manage safety'}
 ];
-const EV_MAX = 100*1024*1024;
+const EV_MAX = 500*1024*1024;
 const IDLE_MS = 10*60*1000, BEAT_S = 60, ONLINE_MS = 2*60*1000;
+const AGREE_V = 1;
+const AGREE_TEXT = [
+  'This agreement is between me, the learner, and Limpopo Wildlife Eco College (LWEC), for the online learning material of '+PROG+'.',
+  '1. Copyright. All learning material on this portal (learner guides, presentations, videos, tests and answer sheets) is the copyright of Limpopo Wildlife Eco College. I may use it only for my own studies on this programme, and only inside this portal.',
+  '2. No copying or sharing. I will not download, copy, screen-record, photograph, print, upload, sell, share or pass on any of the material, in part or in full, to anyone, in any form.',
+  '3. My account is personal. I will not share my password or my access code, or let anyone else use my account.',
+  '4. Personal watermark. I understand that my name and email address are shown on everything I view, so any copy can be traced back to me.',
+  '5. My own work. The answers and evidence I hand in are my own work.',
+  '6. Records. I agree that the college records my sign-ins, the time I spend, what I watch and what I hand in, to confirm my learning for my Portfolio of Evidence and for CATHSSETA. The college keeps this information safely and uses it only for my training and accreditation (POPIA).',
+  '7. Breaking this agreement. If I break this agreement, the college may stop my access, and may take further action to protect its copyright.'
+];
 
 /* ================= helpers ================= */
 const $ = id => document.getElementById(id);
@@ -358,9 +442,9 @@ function newCode(){
   const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r=new Uint32Array(10); crypto.getRandomValues(r);
   return Array.from(r, x=>A[x%A.length]).join('');
 }
+function rnd(){ const r=new Uint32Array(2); crypto.getRandomValues(r); return Array.from(r,x=>x.toString(36)).join('').slice(0,10); }
+function safeName(n){ return String(n).replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80); }
 function itemLabel(k){ const it=ITEMS.find(i=>i.k===k); return it? it.label.replace(/^\S+\s/,'') : (k==='module'?'module overview':k); }
-function modTitle(mid){ const n=MIDS.indexOf(mid)+1; const t=(course.titles||[])[n-1]; return 'Module '+n+(t? ': '+t : ''); }
-function prevOf(mid){ const i=MIDS.indexOf(mid); return i>0? MIDS[i-1] : ''; }
 function friendlyAuthError(e){
   const c=(e&&e.code)||'';
   if(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found')) return "Email or password doesn't match. Check both, or use “Forgot your password?”.";
@@ -372,19 +456,57 @@ function friendlyAuthError(e){
   return "Something went wrong ("+c.replace('auth/','')+"). Please try again.";
 }
 function showErr(id,m){ const el=$(id); el.textContent=m; el.classList.add('show'); }
-function hideErrs(){ ['li_err','rg_err','rs_err','cl_err'].forEach(i=>$(i).classList.remove('show')); }
+function hideErrs(){ ['li_err','rg_err','rs_err','cl_err','ag_err'].forEach(i=>$(i).classList.remove('show')); }
+
+/* ---------- files: where a module's file lives and what kind it is ----------
+   Course files uploaded here are stored as "storage:<path>" and fetched with the signed-in
+   student's own login, so a copied link is useless. Old download links (with a token) are
+   turned into paths automatically. */
+function srcOf(v){
+  v=String(v||'').trim(); if(!v) return null;
+  if(v.startsWith('storage:')) return {kind:'store', path:v.slice(8)};
+  const m=v.match(/^https?:\/\/(?:firebasestorage\.googleapis\.com|127\.0\.0\.1:9199)\/v0\/b\/[^/]+\/o\/([^?#]+)/i);
+  if(m) return {kind:'store', path:decodeURIComponent(m[1])};
+  return safeUrl(v)? {kind:'url', url:v} : null;
+}
+function storeVal(v){ const s=srcOf(v); return !s? '' : s.kind==='store'? 'storage:'+s.path : s.url; }
+function extOf(v){ const s=srcOf(v); const n=s? (s.path||s.url) : String(v||''); const m=n.split(/[?#]/)[0].match(/\.([A-Za-z0-9]+)$/); return m? m[1].toLowerCase() : ''; }
+function isVideoExt(e){ return ['mp4','webm','m4v','mov'].includes(e); }
+function isYouTube(u){ return /(youtube\.com|youtu\.be)\//i.test(u); }
+function ytId(u){ const m=String(u).match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m?m[1]:''; }
+function trackable(v){ const s=srcOf(v); if(!s) return false; if(isVideoExt(extOf(v))) return true; return s.kind==='url' && isYouTube(s.url) && !!ytId(s.url); }
 
 /* ================= state ================= */
 let me=null, profile={}, isMentor=false, mentorLevel=null;
-let course={title:DEFAULT_TITLE, titles:[]};
-let enrol=null, results={passed:{},marks:{}}, progress={mods:{}};
-let modCache={};          // mid -> module doc data (links)
+let courses={};                         // cid -> course doc
+let CID=null, course={}, MIDS=[], NMODS=0;   // the course being looked at
+let enrol=null, agreed=null, resultsBy={}, results={passed:{},marks:{}}, progress={mods:{}};
+let modCache={};          // cid/mid -> module doc data
 let openMid=null;
-let unsubs=[];
+let unsubs=[], resUnsubs={}, progUnsub=null, modUnsub=null;
 // staff
-let S={enrol:[], progress:{}, results:{}, sessions:[], invites:[], users:{}, modules:{}, evidence:[]};
+let S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}};
 let curStu=null;
 let myEvidence=[];
+
+function cdef(cid){
+  const d=courses[cid]||{}, n=cid.replace(/^us/i,'');
+  const base={title: cid===PK? 'US 335815: Conduct a guided biome experience' : 'US '+n, code:'US'+n, nmods: cid===PK?12:10, titles:[], published: cid===PK};
+  const o=Object.assign({}, base, d);
+  o.nmods=Math.max(1, Math.min(40, parseInt(o.nmods,10)||base.nmods));
+  const i=US_LIST.findIndex(u=>u.id===o.code); o.order= d.order!=null? d.order : (i<0? 99 : i);
+  return o;
+}
+function midsOf(cid){ return Array.from({length:cdef(cid).nmods}, (_,i)=>'m'+String(i+1).padStart(2,'0')); }
+function useCourse(cid){ CID=cid; course=cdef(cid); MIDS=midsOf(cid); NMODS=MIDS.length; }
+function courseIds(all){ return [...new Set([PK, ...Object.keys(courses)])].filter(c=>all || cdef(c).published!==false).sort((a,b)=>cdef(a).order-cdef(b).order || a.localeCompare(b)); }
+function modTitle(mid, cid){
+  cid=cid||CID; const c=cdef(cid), n=parseInt(mid.slice(1),10);
+  const t=(c.titles||[])[n-1] || (cid===PK? DEFAULT_MOD_TITLES[n-1] : '');
+  return 'Module '+n+(t? ': '+t : '');
+}
+function prevOf(mid, mids){ mids=mids||MIDS; const i=mids.indexOf(mid); return i>0? mids[i-1] : ''; }
+function coursePaused(cid){ return !!(enrol && (enrol.paused||{})[cid]); }
 
 /* ================= auth ================= */
 window.authMode = m=>{ hideErrs(); $('authLogin').hidden=m!=='login'; $('authReg').hidden=m!=='reg'; $('authReset').hidden=m!=='reset'; };
@@ -415,15 +537,21 @@ window.doReset = async ev=>{
   catch(e){ showErr('rs_err', friendlyAuthError(e)); }
   $('rs_btn').disabled=false;
 };
-window.doLogout = async ()=>{ if(confirm('Sign out of the Learning Portal on this device?')){ await endSession(); await signOut(auth); } };
+window.doLogout = async ()=>{ if(confirm('Sign out of the Learning Portal on this device?')){ await endSession(); await clearMedia(); await signOut(auth); } };
 
-function stopAll(){ unsubs.forEach(u=>{try{u();}catch(e){}}); unsubs=[]; stopTracking(); }
+function stopAll(){
+  unsubs.forEach(u=>{try{u();}catch(e){}}); unsubs=[];
+  Object.values(resUnsubs).forEach(u=>{try{u();}catch(e){}}); resUnsubs={};
+  if(progUnsub){ progUnsub(); progUnsub=null; } if(modUnsub){ modUnsub(); modUnsub=null; }
+  stopTracking();
+}
 
 onAuthStateChanged(auth, async user=>{
   $('boot').style.display='none';
-  stopAll(); me=user;
+  stopAll(); me=user; closeViewer();
   if(!user){
-    isMentor=false; enrol=null; modCache={}; S={enrol:[],progress:{},results:{},sessions:[],invites:[],users:{},modules:{},evidence:[]}; myEvidence=[];
+    isMentor=false; enrol=null; agreed=null; resultsBy={}; modCache={}; CID=null; myEvidence=[];
+    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}};
     $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
     authMode('login'); return;
   }
@@ -434,7 +562,7 @@ onAuthStateChanged(auth, async user=>{
   const tryGet=async ref=>{ for(let i=0;i<4;i++){ try{ return await getDoc(ref); }catch(e){ console.warn('retry',e); lastErr=(e&&e.code)||String(e); if(lastErr==='permission-denied') return null; await new Promise(r=>setTimeout(r,1500*(i+1))); } } return null; };
   const [p,m]=await Promise.all([tryGet(doc(db,'users',user.uid)), tryGet(doc(db,'mentors',user.uid))]);
   if(!p || !m){
-    $('claimCard').hidden=true; $('courseView').hidden=true;
+    ['claimCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true);
     $('staffCourseNote').hidden=false;
     $('staffCourseNote').innerHTML= lastErr==='permission-denied'
       ? '<h2>⚠️ The college server refused access</h2><p class="note">The Firestore security rules in Firebase are blocking the portal (code: permission-denied). The rules need to be published again in Firebase → Firestore → Rules.</p>'
@@ -448,16 +576,17 @@ onAuthStateChanged(auth, async user=>{
   isMentor=m.exists(); mentorLevel=isMentor?(m.data().level||'full'):null;
   if(isMentor && profile.role!=='mentor') updateDoc(doc(db,'users',user.uid), {role:'mentor', mlevel:mentorLevel}).catch(()=>{});
   $('whoName').textContent=(profile.name||user.email||'')+(isMentor?' · staff':'');
-  listenCourse();
+  listenCourses();
   if(isMentor) startStaff(); else startStudent();
 });
 
-function listenCourse(){
-  unsubs.push(onSnapshot(doc(db,'courses',CID), s=>{
-    course=Object.assign({title:DEFAULT_TITLE, titles:[]}, s.exists()?s.data():{});
-    $('cTitle').textContent=course.title;
-    renderCourse(); if(isMentor){ renderMonitor(); renderMarking(); }
-  }, e=>console.warn('course',e)));
+function listenCourses(){
+  unsubs.push(onSnapshot(collection(db,'courses'), s=>{
+    courses={}; s.docs.forEach(d=>courses[d.id]=d.data());
+    if(CID) useCourse(CID);
+    if(isMentor){ fillStaffCourses(); renderMonitor(); renderMarking(); if(!$('tab-setup').hidden) renderSetup(); }
+    else { syncResults(); renderCourse(); }
+  }, e=>console.warn('courses',e)));
 }
 
 /* ================= tabs ================= */
@@ -468,6 +597,7 @@ $('nav').addEventListener('click', e=>{
 function showTab(t){
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.tab===t));
   TABS.forEach(x=>{ $('tab-'+x).hidden=(x!==t); });
+  $('staffBar').hidden=!(isMentor && (t==='monitor'||t==='setup'));
   if(t==='setup') renderSetup();
 }
 
@@ -476,24 +606,28 @@ function showTab(t){
    ========================================================= */
 function startStudent(){
   $('nav').hidden=true; $('navEvidence').hidden=false; showTab('course');
+  $('agreeText').innerHTML=AGREE_TEXT.map(p=>'<p>'+esc(p)+'</p>').join('');
   unsubs.push(onSnapshot(query(collection(db,'evidence'), where('uid','==',me.uid)), s=>{
     myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence();
   }, e=>console.warn('evidence',e)));
-  const uid=me.uid, key=CID+'_'+uid;
-  unsubs.push(onSnapshot(doc(db,'enrol',key), async s=>{
+  unsubs.push(onSnapshot(doc(db,'agree',me.uid), s=>{ agreed=s.exists()?s.data():false; renderCourse(); }, e=>{ console.warn('agree',e); agreed=false; renderCourse(); }));
+  unsubs.push(onSnapshot(doc(db,'enrol',PK+'_'+me.uid), async s=>{
     enrol=s.exists()?s.data():null;
     if(!enrol && pendingCode){ const c=pendingCode; pendingCode=null; await claim(c,'rg_err'); return; }
+    if(CID && coursePaused(CID)){ toast('This unit standard has been paused by the college.'); backToList(); }
     renderCourse();
     if(enrol && enrol.active) startTracking(); else stopTracking();
   }, e=>{ console.warn('enrol',e); enrol=null; renderCourse(); }));
-  unsubs.push(onSnapshot(doc(db,'results',key), s=>{
-    const d=s.exists()?s.data():{}; results={passed:d.passed||{}, marks:d.marks||{}};
-    renderCourse();
-  }, e=>console.warn('results',e)));
-  unsubs.push(onSnapshot(doc(db,'progress',key), s=>{
-    progress=Object.assign({mods:{}}, s.exists()?s.data():{}); if(!progress.mods) progress.mods={};
-    renderCourse();
-  }, e=>console.warn('progress',e)));
+}
+function syncResults(){
+  courseIds().forEach(cid=>{
+    if(resUnsubs[cid]) return;
+    resUnsubs[cid]=onSnapshot(doc(db,'results',cid+'_'+me.uid), s=>{
+      const d=s.exists()?s.data():{}; resultsBy[cid]={passed:d.passed||{}, marks:d.marks||{}};
+      if(cid===CID) results=resultsBy[cid];
+      renderCourse();
+    }, e=>console.warn('results',e));
+  });
 }
 
 async function claim(code, errId){
@@ -509,7 +643,7 @@ async function claim(code, errId){
     b.update(doc(db,'invites',code), {claimedBy:me.uid, claimedAt:serverTimestamp(), claimedEmail:me.email||''});
     b.set(doc(db,'enrol',d.cid+'_'+me.uid), {uid:me.uid, cid:d.cid, name:d.name||profile.name||'', email:me.email||'', code, active:true, at:serverTimestamp()});
     await b.commit();
-    toast('Welcome! Your course is open. 🎓');
+    toast('Welcome! Your courses are open. 🎓');
     return true;
   }catch(e){
     console.warn(e);
@@ -518,6 +652,20 @@ async function claim(code, errId){
   }
 }
 window.claimFromCard = async ()=>{ $('cl_btn').disabled=true; await claim($('cl_code').value,'cl_err'); $('cl_btn').disabled=false; };
+
+window.acceptAgreement = async ()=>{
+  hideErrs();
+  const nm=val('ag_name');
+  if(nm.length<4 || !/\s/.test(nm)){ showErr('ag_err','Type your full name (first name and surname) to sign.'); return; }
+  if(!$('ag_ok').checked){ showErr('ag_err','Tick the box to say you accept the agreement.'); return; }
+  $('ag_btn').disabled=true;
+  try{
+    await setDoc(doc(db,'agree',me.uid), {uid:me.uid, name:nm, email:me.email||'', version:AGREE_V, text:AGREE_TEXT.join('\n'), at:serverTimestamp(),
+      device:navigator.userAgent.slice(0,200)});
+    toast('Thank you. Your courses are open.');
+  }catch(e){ console.warn(e); showErr('ag_err','Could not save ('+(e.code||e.message)+'). Check your connection and try again.'); }
+  $('ag_btn').disabled=false;
+};
 
 function modStatus(mid){
   const prev=prevOf(mid);
@@ -537,14 +685,20 @@ const STATUS_PILL={
 
 function renderCourse(){
   if(!me) return;
-  if(isMentor){ $('claimCard').hidden=true; $('pausedCard').hidden=true; $('courseView').hidden=true; $('staffCourseNote').hidden=false; return; }
+  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
   $('staffCourseNote').hidden=true;
+  const active=!!(enrol && enrol.active), ready=active && !!agreed;
   $('claimCard').hidden=!!enrol; $('pausedCard').hidden=!(enrol && !enrol.active);
-  $('courseView').hidden=!(enrol && enrol.active);
-  $('nav').hidden=!(enrol && enrol.active);
-  if(!(enrol && enrol.active)) return;
+  $('agreeCard').hidden=!(active && agreed===false);
+  if(active && agreed===false && !$('ag_name').value) $('ag_name').value=enrol.name||profile.name||'';
+  $('nav').hidden=!ready;
+  $('courseList').hidden=!(ready && !CID);
+  $('courseView').hidden=!(ready && CID);
+  if(!ready) return;
+  if(!CID){ renderLanding(); return; }
+  $('cTitle').textContent=course.title;
   const done=MIDS.filter(m=>results.passed[m]===true).length;
-  $('cProgTxt').textContent=done+' of '+NMODS+' modules competent'+(done===NMODS?' · course complete 🎉':'');
+  $('cProgTxt').textContent=done+' of '+NMODS+' modules competent'+(done===NMODS?' · unit standard complete 🎉':'');
   $('cProgBar').style.width=Math.round(done/NMODS*100)+'%';
   const html=MIDS.map(mid=>{
     const st=modStatus(mid), isOpen=openMid===mid && st!=='locked';
@@ -556,32 +710,66 @@ function renderCourse(){
   // keep a playing video alive: only re-render the list when nothing is playing
   if(!anyPlaying()) { flushVideo(); players={}; $('modList').innerHTML=html; if(openMid) mountPlayer(openMid); }
 }
+function renderLanding(){
+  const ids=courseIds();
+  $('courseCards').innerHTML=ids.map(cid=>{
+    const c=cdef(cid), r=resultsBy[cid]||{passed:{}}, mids=midsOf(cid), done=mids.filter(m=>r.passed[m]===true).length, off=coursePaused(cid);
+    const pill= off? '<span class="pill bad">⏸️ Paused by the college</span>' : done===mids.length? '<span class="pill ok">✔ Complete</span>' : done? '<span class="pill gold">In progress</span>' : '<span class="pill">Not started</span>';
+    return '<div class="ccard'+(off?' off':'')+'"><div class="info"><b style="color:var(--green-deep)">'+esc(c.title)+'</b> '+pill
+      +'<div class="sm" style="margin-top:4px;">'+done+' of '+mids.length+' modules competent</div><div class="bar" style="height:8px;"><i style="width:'+Math.round(done/mids.length*100)+'%"></i></div></div>'
+      +(off? '' : '<button class="btn" onclick="openCourse(\''+cid+'\')">'+(done?'Continue':'Open')+'</button>')+'</div>';
+  }).join('') || '<div class="card"><p class="note">No unit standards are open yet.</p></div>';
+}
+window.openCourse = cid=>{
+  if(coursePaused(cid)){ toast('This unit standard has been paused by the college.'); return; }
+  useCourse(cid); openMid=null; results=resultsBy[cid]||{passed:{},marks:{}}; progress={mods:{}};
+  if(progUnsub) progUnsub();
+  progUnsub=onSnapshot(doc(db,'progress',cid+'_'+me.uid), s=>{
+    if(cid!==CID) return;
+    progress=Object.assign({mods:{}}, s.exists()?s.data():{}); if(!progress.mods) progress.mods={};
+    renderCourse();
+  }, e=>console.warn('progress',e));
+  renderCourse(); window.scrollTo(0,0);
+};
+window.backToList = ()=>{
+  pauseAll(); flushVideo(); players={}; openMid=null; CID=null;
+  if(progUnsub){ progUnsub(); progUnsub=null; }
+  renderCourse(); window.scrollTo(0,0);
+};
 
 window.toggleMod = async mid=>{
   if(modStatus(mid)==='locked') { toast('Finish the previous module (and pass its test) to open this one.'); return; }
   if(openMid===mid){ openMid=null; pauseAll(); flushVideo(); players={}; renderCourse(); return; }
   pauseAll(); flushVideo(); players={};
   openMid=mid;
-  if(!modCache[mid]){
-    try{ const s=await getDoc(doc(db,'courses',CID,'modules',mid)); modCache[mid]=s.exists()?s.data():{}; }
-    catch(e){ console.warn(e); modCache[mid]={_err:true}; }
+  const key=CID+'/'+mid;
+  if(!modCache[key]){
+    try{ const s=await getDoc(doc(db,'courses',CID,'modules',mid)); modCache[key]=s.exists()?s.data():{}; }
+    catch(e){ console.warn(e); modCache[key]={_err:true}; }
   }
   setCurrent(mid,'module');
   renderCourse();
 };
+function curMod(mid){ return modCache[CID+'/'+mid]; }
 
 function modBody(mid, st){
-  const m=modCache[mid];
+  const m=curMod(mid);
   if(!m) return '<p class="note" style="padding-top:10px;">Loading…</p>';
   if(m._err) return '<p class="note" style="padding-top:10px;">This module could not be opened. Check your connection and try again.</p>';
   const p=(progress.mods||{})[mid]||{}, opened=p.opened||{}, mk=(results.marks||{})[mid];
   let h='';
   ITEMS.forEach(it=>{
-    const url=safeUrl(m[it.k]);
-    if(!url){ h+=itemRow(it.label,'<span class="sm">Not added yet</span>'); return; }
-    if(MEDIA.includes(it.k)){ h+=mediaRow(mid,it.k,it.label,url); return; }
-    h+=itemRow(it.label+(opened[it.k]?' <span class="pill ok">opened</span>':''),
-      '<a class="btn small secondary" href="'+esc(url)+'" target="_blank" rel="noopener" onclick="openedItem(\''+mid+'\',\''+it.k+'\')">Open</a>');
+    const s=srcOf(m[it.k]);
+    if(!s){ h+=itemRow(it.label,'<span class="sm">Not added yet</span>'); return; }
+    if(MEDIA.includes(it.k) && trackable(m[it.k])){ h+=mediaRow(mid,it.k,it.label); return; }
+    const op=opened[it.k]?' <span class="pill ok">opened</span>':'';
+    if(s.kind==='url'){
+      h+=itemRow(it.label+op, '<a class="btn small secondary" href="'+esc(s.url)+'" target="_blank" rel="noopener" onclick="openedItem(\''+mid+'\',\''+it.k+'\')">Open</a>'); return;
+    }
+    const e=extOf(m[it.k]);
+    if(it.k==='sheet') h+=itemRow(it.label+op, '<button class="btn small secondary" onclick="downloadItem(\''+mid+'\',\''+it.k+'\')">⬇️ Download to fill in</button>');
+    else if(e==='pdf') h+=itemRow(it.label+op, '<button class="btn small secondary" onclick="viewDoc(\''+mid+'\',\''+it.k+'\')">👁 View</button>');
+    else h+=itemRow(it.label, '<span class="sm">Being prepared for viewing. Ask your assessor.</span>');
   });
   h+='<h3>Hand in your test</h3>';
   if(st==='passed'){
@@ -622,68 +810,196 @@ window.submitTest = async mid=>{
   toast('Handed in. Your assessor will mark it soon.');
 };
 async function saveProg(patch){
-  if(!enrol||!enrol.active) return;
+  if(!enrol||!enrol.active||!CID||isMentor) return;
   try{ await setDoc(doc(db,'progress',CID+'_'+me.uid), Object.assign({uid:me.uid, cid:CID}, patch), {merge:true}); }
   catch(e){ console.warn('progress save',e); }
 }
 function setCurrent(mid,item){ saveProg({current:{mid,item,at:serverTimestamp()}}); }
 
+/* ---------- protected files: fetched with the user's own login ---------- */
+const MEM={}, INFLIGHT={}, CACHE='lwec-course-v1';
+function cacheKey(path){ return location.origin+'/__lwec_media/'+encodeURIComponent(path); }
+async function fetchStore(path, onProg){
+  const tok=await me.getIdToken();
+  const r=await fetch(STORE_HOST+'/v0/b/'+BUCKET+'/o/'+encodeURIComponent(path)+'?alt=media', {headers:{Authorization:'Firebase '+tok}});
+  if(!r.ok) throw new Error(r.status===403||r.status===401? 'no-access' : 'http-'+r.status);
+  const total=+(r.headers.get('content-length')||0), type=r.headers.get('content-type')||'';
+  if(!r.body || !r.body.getReader) return await r.blob();
+  const rd=r.body.getReader(), parts=[]; let got=0;
+  for(;;){ const {done,value}=await rd.read(); if(done) break; parts.push(value); got+=value.length; if(onProg) onProg(got,total); }
+  return new Blob(parts,{type});
+}
+async function cachedBlob(path){ try{ const c=await caches.open(CACHE); const r=await c.match(cacheKey(path)); return r? await r.blob() : null; }catch(e){ return null; } }
+function getMedia(path, onProg){
+  if(MEM[path]) return Promise.resolve(MEM[path]);
+  if(INFLIGHT[path]){ if(onProg) INFLIGHT[path].cbs.push(onProg); return INFLIGHT[path].p; }
+  const cbs=onProg?[onProg]:[];
+  const p=(async()=>{
+    let b=await cachedBlob(path);
+    if(!b){
+      b=await fetchStore(path,(g,t)=>cbs.forEach(f=>{ try{ f(g,t); }catch(e){} }));
+      try{ const c=await caches.open(CACHE); await c.put(cacheKey(path), new Response(b,{headers:{'content-type':b.type}})); }catch(e){}
+    }
+    return MEM[path]=URL.createObjectURL(b);
+  })();
+  INFLIGHT[path]={p,cbs};
+  p.finally(()=>{ delete INFLIGHT[path]; });
+  return p;
+}
+async function clearMedia(){ try{ await caches.delete(CACHE); }catch(e){} Object.keys(MEM).forEach(k=>{ URL.revokeObjectURL(MEM[k]); delete MEM[k]; }); }
+function mediaErr(e){ return String(e&&e.message)==='no-access' ? "This file isn't open to you. If you think it should be, ask your assessor." : 'The file could not be loaded ('+esc(e&&e.message||e)+'). Check your connection and try again.'; }
+
+function wmText(){ return (enrol&&enrol.name||profile.name||'')+' · '+(me&&me.email||'')+' · '+new Date().toLocaleDateString('en-ZA')+' · LWEC'; }
+function wmHTML(){ return '<div class="wm">'+esc(wmText())+'</div>'; }
+setInterval(()=>{ document.querySelectorAll('.wm').forEach(el=>{ el.style.top=(4+Math.random()*80)+'%'; el.style.left=(2+Math.random()*45)+'%'; }); }, 9000);
+window.fullWrap = btn=>{
+  const w=btn.parentElement;
+  if(document.fullscreenElement){ document.exitFullscreen(); return; }
+  if(w.requestFullscreen) w.requestFullscreen().catch(()=>{});
+  else { const v=w.querySelector('video'); if(v&&v.webkitEnterFullscreen) v.webkitEnterFullscreen(); }
+};
+function videoHTML(src){
+  return '<div class="vwrap" oncontextmenu="return false"><video controls controlsList="nodownload noplaybackrate nofullscreen noremoteplayback" disablePictureInPicture disableRemotePlayback preload="metadata" playsinline src="'+esc(src)+'"></video>'
+    +wmHTML()+'<button class="fsbtn" type="button" onclick="fullWrap(this)" title="Full screen">⛶</button></div>';
+}
+function stamp(c){
+  const x=c.getContext('2d'), w=c.width, h=c.height, t=wmText();
+  x.save(); x.globalAlpha=.14; x.fillStyle='#1e3a2a'; x.textAlign='center';
+  x.font='bold '+Math.max(12,Math.round(w/40))+'px sans-serif';
+  x.translate(w/2,h/2); x.rotate(-Math.atan2(h,w));
+  const step=Math.max(40,Math.round(w/9)), span=Math.hypot(w,h)/2;
+  for(let y=-span; y<span; y+=step) x.fillText(t, (y/step%2)*w*.08, y);
+  x.restore();
+}
+let pdfjsP=null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return pdfjsP||(pdfjsP=new Promise((res,rej)=>{
+    const s=document.createElement('script'); s.src=PDFJS+'pdf.min.js';
+    s.onload=()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js'; res(window.pdfjsLib); };
+    s.onerror=()=>{ pdfjsP=null; rej(new Error('viewer could not load')); }; document.head.appendChild(s);
+  }));
+}
+let viewTok=0, viewIO=null;
+async function showPdf(path, title, onOpen){
+  const tok=++viewTok; $('viewer').hidden=false; document.body.style.overflow='hidden';
+  $('vTitle').textContent=title; $('vNote').textContent='View only · your name is shown on every page';
+  $('vBody').innerHTML='<div class="loadbox" style="max-width:500px;margin:30px auto;">Opening… <span id="vProg"></span><div class="bar"><i id="vBar" style="width:0%"></i></div></div>';
+  try{
+    const [lib,u]=await Promise.all([loadPdfJs(), getMedia(path,(g,t)=>{ const el=$('vProg'); if(el) el.textContent=t? Math.round(g/t*100)+'%' : fmtSize(g); const b=$('vBar'); if(b&&t) b.style.width=Math.round(g/t*100)+'%'; })]);
+    if(tok!==viewTok) return;
+    const buf=await (await fetch(u)).arrayBuffer();
+    const pdf=await lib.getDocument({data:buf}).promise;
+    if(tok!==viewTok) return;
+    if(onOpen) onOpen();
+    const body=$('vBody'); body.innerHTML='';
+    const vp1=(await pdf.getPage(1)).getViewport({scale:1});
+    const render=async d=>{
+      if(d.dataset.done) return; d.dataset.done='1';
+      const pg=await pdf.getPage(+d.dataset.n); if(tok!==viewTok) return;
+      const v0=pg.getViewport({scale:1}), dpr=Math.min(2,window.devicePixelRatio||1), w=(d.clientWidth||800)*dpr;
+      const vp=pg.getViewport({scale:w/v0.width}), c=document.createElement('canvas');
+      c.width=Math.round(vp.width); c.height=Math.round(vp.height); c.oncontextmenu=()=>false;
+      await pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise; stamp(c);
+      d.style.aspectRatio=''; d.appendChild(c);
+    };
+    if(viewIO) viewIO.disconnect();
+    viewIO=new IntersectionObserver(en=>en.forEach(x=>{ if(x.isIntersecting) render(x.target).catch(e=>console.warn(e)); }), {root:body, rootMargin:'800px'});
+    for(let i=1;i<=pdf.numPages;i++){ const d=document.createElement('div'); d.className='pg'; d.dataset.n=i; d.style.aspectRatio=vp1.width+'/'+vp1.height; body.appendChild(d); viewIO.observe(d); }
+    $('vNote').textContent=pdf.numPages+' page'+(pdf.numPages>1?'s':'')+' · view only · your name is shown on every page';
+  }catch(e){ console.warn(e); if(tok===viewTok) $('vBody').innerHTML='<div class="loadbox" style="max-width:500px;margin:30px auto;">'+mediaErr(e)+'</div>'; }
+}
+async function showVideo(path, title){
+  const tok=++viewTok; $('viewer').hidden=false; document.body.style.overflow='hidden';
+  $('vTitle').textContent=title; $('vNote').textContent='';
+  $('vBody').innerHTML='<div class="loadbox" style="max-width:500px;margin:30px auto;">Loading the video… <span id="vProg"></span></div>';
+  try{
+    const u=await getMedia(path,(g,t)=>{ const el=$('vProg'); if(el) el.textContent=t? Math.round(g/t*100)+'%' : fmtSize(g); });
+    if(tok!==viewTok) return;
+    $('vBody').innerHTML='<div style="max-width:1000px;margin:0 auto;">'+videoHTML(u)+'</div>';
+  }catch(e){ if(tok===viewTok) $('vBody').innerHTML='<div class="loadbox" style="max-width:500px;margin:30px auto;">'+mediaErr(e)+'</div>'; }
+}
+function closeViewer(){ viewTok++; if(viewIO){ viewIO.disconnect(); viewIO=null; } const vb=$('vBody'); if(vb) vb.innerHTML=''; $('viewer').hidden=true; document.body.style.overflow=''; }
+window.closeViewer=closeViewer;
+window.viewDoc = (mid,k)=>{
+  const s=srcOf((curMod(mid)||{})[k]); if(!s||s.kind!=='store') return;
+  showPdf(s.path, modTitle(mid)+' · '+itemLabel(k), ()=>openedItem(mid,k));
+};
+window.downloadItem = async (mid,k)=>{
+  const s=srcOf((curMod(mid)||{})[k]); if(!s||s.kind!=='store') return;
+  try{
+    toast('Downloading…');
+    const u=await getMedia(s.path);
+    const a=document.createElement('a'); a.href=u; a.download=modTitle(mid).replace(/[^A-Za-z0-9 ]+/g,'').trim()+' - Answer sheet.'+(extOf(s.path)||'docx'); a.click();
+    openedItem(mid,k);
+  }catch(e){ toast(mediaErr(e)); }
+};
+document.addEventListener('keydown', e=>{
+  if(isMentor || !(e.ctrlKey||e.metaKey)) return;
+  const k=(e.key||'').toLowerCase();
+  if(k==='s' || (k==='p' && !$('viewer').hidden)){ e.preventDefault(); toast('Course material can only be viewed here.'); }
+});
+
 /* ---------- video tracking (no skipping ahead, real watching time only) ---------- */
-const MEDIA=['slides','video'];   // a narrated presentation saved as a video is tracked the same way
+const MEDIA=['slides','video'];   // a presentation saved as a video (.mp4) is tracked the same way
 const NEED_PCT=90;
 let players={};   // key mid-k -> {mid,k,pos,dur,sec,skips,playing,saved}
-function isYouTube(u){ return /(youtube\.com|youtu\.be)\//i.test(u); }
-function ytId(u){ const m=u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m?m[1]:''; }
-function isDirectVideo(u){ return /\.(mp4|webm|m4v|mov)(\?|#|$)/i.test(u) || /firebasestorage\.(googleapis\.com|app)/i.test(u); }
-function trackable(u){ u=safeUrl(u); return !!u && (isDirectVideo(u) || (isYouTube(u) && !!ytId(u))); }
 function watchOf(mid,k){ return ((((progress.mods||{})[mid]||{}).watch||{})[k])||{}; }
 function anyPlaying(){ return Object.values(players).some(p=>p.playing); }
 function canHandIn(mid){
-  const m=modCache[mid]||{};
+  const m=curMod(mid)||{};
   return MEDIA.every(k=>!trackable(m[k]) || (watchOf(mid,k).pct||0)>=NEED_PCT);
 }
-function mediaRow(mid,k,label,url){
+function mediaRow(mid,k,label){
   const w=watchOf(mid,k);
-  if(trackable(url)){
-    return '<div class="item" style="display:block;"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><span class="lbl">'+label+'</span>'
-      +'<span class="sm" id="wp-'+mid+'-'+k+'">Watched: '+Math.round(w.pct||0)+'%</span></div>'
-      +'<div id="vb-'+mid+'-'+k+'"></div>'
-      +'<p class="sm" style="margin-top:4px;">You can pause and go back, but you can\'t skip ahead or speed up. The video pauses if you switch to another tab.</p></div>';
-  }
-  const opened=((((progress.mods||{})[mid]||{}).opened)||{})[k];
-  return itemRow(label+(opened?' <span class="pill ok">opened</span>':''),
-    '<a class="btn small secondary" href="'+esc(url)+'" target="_blank" rel="noopener" onclick="openedItem(\''+mid+'\',\''+k+'\')">Open</a>');
+  return '<div class="item" style="display:block;"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><span class="lbl">'+label+'</span>'
+    +'<span class="sm" id="wp-'+mid+'-'+k+'">Watched: '+Math.round(w.pct||0)+'%</span></div>'
+    +'<div id="vb-'+mid+'-'+k+'"></div>'
+    +'<p class="sm" style="margin-top:4px;">You can pause and go back, but you can\'t skip ahead or speed up. The video pauses if you switch to another tab.</p></div>';
+}
+function attachVideo(v,P){
+  const {mid,k}=P; let lastT=0, lastWall=0;
+  v.addEventListener('loadedmetadata',()=>{ P.dur=v.duration; if(P.pos>2 && P.pos<v.duration-5) v.currentTime=P.pos; lastT=v.currentTime; });
+  v.addEventListener('play',()=>{ P.playing=true; lastT=v.currentTime; lastWall=performance.now(); setCurrent(mid,k); });
+  v.addEventListener('pause',()=>{ P.playing=false; saveWatch(P,true); });
+  v.addEventListener('ended',()=>{ P.playing=false; saveWatch(P,true); });
+  v.addEventListener('ratechange',()=>{ if(v.playbackRate>1){ v.playbackRate=1; toast('Videos play at normal speed.'); } });
+  v.addEventListener('seeking',()=>{
+    if(!P.done && v.currentTime>P.pos+2){ P.skips++; v.currentTime=P.pos; toast("You can't skip ahead. Watch the video through first."); }
+    lastT=v.currentTime; lastWall=performance.now();
+  });
+  v.addEventListener('timeupdate',()=>{
+    if(v.paused||v.seeking) return;
+    const now=performance.now(), dt=v.currentTime-lastT, real=(now-lastWall)/1000;
+    if(dt>0 && dt<2.5 && dt<=real*1.15+0.3){ P.sec+=dt; if(v.currentTime>P.pos) P.pos=v.currentTime; }
+    lastT=v.currentTime; lastWall=now; P.dur=v.duration||P.dur; tick(P);
+  });
 }
 function mountPlayer(mid){
-  const m=modCache[mid]; if(!m) return;
+  const m=curMod(mid); if(!m) return;
   MEDIA.forEach(k=>{
-    const url=safeUrl(m[k]), box=$('vb-'+mid+'-'+k); if(!box||!trackable(url)) return;
+    const s=srcOf(m[k]), box=$('vb-'+mid+'-'+k); if(!box||!trackable(m[k])) return;
     const w=watchOf(mid,k), key=mid+'-'+k;
     const P=players[key]={mid,k,pos:w.pos||0,dur:w.dur||0,sec:0,skips:0,playing:false,saved:Math.round(w.pct||0),done:(w.pct||0)>=99};
-    if(isDirectVideo(url)){
-      box.innerHTML='<video controls controlsList="nodownload noplaybackrate" disablePictureInPicture preload="metadata" playsinline src="'+esc(url)+'"></video>';
-      const v=box.querySelector('video'); let lastT=0, lastWall=0;
-      v.addEventListener('loadedmetadata',()=>{ P.dur=v.duration; if(P.pos>2 && P.pos<v.duration-5) v.currentTime=P.pos; lastT=v.currentTime; });
-      v.addEventListener('play',()=>{ P.playing=true; lastT=v.currentTime; lastWall=performance.now(); setCurrent(mid,k); });
-      v.addEventListener('pause',()=>{ P.playing=false; saveWatch(P,true); });
-      v.addEventListener('ended',()=>{ P.playing=false; saveWatch(P,true); });
-      v.addEventListener('ratechange',()=>{ if(v.playbackRate>1){ v.playbackRate=1; toast('Videos play at normal speed.'); } });
-      v.addEventListener('seeking',()=>{
-        if(!P.done && v.currentTime>P.pos+2){ P.skips++; v.currentTime=P.pos; toast("You can't skip ahead. Watch the video through first."); }
-        lastT=v.currentTime; lastWall=performance.now();
-      });
-      v.addEventListener('timeupdate',()=>{
-        if(v.paused||v.seeking) return;
-        const now=performance.now(), dt=v.currentTime-lastT, real=(now-lastWall)/1000;
-        if(dt>0 && dt<2.5 && dt<=real*1.15+0.3){ P.sec+=dt; if(v.currentTime>P.pos) P.pos=v.currentTime; }
-        lastT=v.currentTime; lastWall=now; P.dur=v.duration||P.dur; tick(P);
-      });
-    } else {
-      box.innerHTML='<div class="ytbox"><div id="yt-'+key+'"></div></div>';
+    if(s.kind==='store'){
+      const go=async()=>{
+        box.innerHTML='<div class="loadbox"><div class="sm">Loading the video… <span id="ld-'+key+'"></span></div><div class="bar"><i id="lb-'+key+'" style="width:0%"></i></div></div>';
+        try{
+          const u=await getMedia(s.path,(g,t)=>{ const a=$('ld-'+key), b=$('lb-'+key); if(a) a.textContent=t? Math.round(g/t*100)+'% of '+fmtSize(t) : fmtSize(g); if(b&&t) b.style.width=Math.round(g/t*100)+'%'; });
+          if(players[key]!==P) return;
+          box.innerHTML=videoHTML(u); attachVideo(box.querySelector('video'),P);
+        }catch(e){ console.warn(e); if(players[key]===P) box.innerHTML='<div class="loadbox">'+mediaErr(e)+'</div>'; }
+      };
+      if(MEM[s.path] || INFLIGHT[s.path]){ go(); return; }
+      box.innerHTML='<div class="loadbox"><button class="btn secondary" type="button">▶ Load the video</button><p class="sm" style="margin-top:6px;">The video loads once onto this device (it can be 50 to 100 MB, so use Wi-Fi if you can), then plays here.</p></div>';
+      box.querySelector('button').onclick=go;
+      cachedBlob(s.path).then(b=>{ if(b && players[key]===P) go(); });
+    } else if(isYouTube(s.url)){
+      box.innerHTML='<div class="ytbox" oncontextmenu="return false"><div id="yt-'+key+'"></div>'+wmHTML()+'</div>';
       loadYT().then(()=>{
         if(players[key]!==P) return;
         let lastT=null;
-        const pl=new YT.Player('yt-'+key, {videoId:ytId(url), playerVars:{rel:0, modestbranding:1, disablekb:1, playsinline:1, start:Math.floor(P.pos>2?P.pos:0)},
+        const pl=new YT.Player('yt-'+key, {videoId:ytId(s.url), playerVars:{rel:0, modestbranding:1, disablekb:1, playsinline:1, start:Math.floor(P.pos>2?P.pos:0)},
           events:{
             onStateChange:e=>{ if(e.data===YT.PlayerState.PLAYING){ P.playing=true; setCurrent(mid,k); } else { P.playing=false; saveWatch(P,true); } },
             onPlaybackRateChange:()=>{ if(pl.getPlaybackRate()>1){ pl.setPlaybackRate(1); toast('Videos play at normal speed.'); } }
@@ -699,6 +1015,8 @@ function mountPlayer(mid){
           }catch(err){}
         },1000);
       });
+    } else {
+      box.innerHTML=videoHTML(s.url); attachVideo(box.querySelector('video'),P);
     }
   });
 }
@@ -735,10 +1053,9 @@ let sessRef=null, beat=null, tracking=false, lastAct=Date.now();
 async function startTracking(){
   if(tracking) return; tracking=true;
   try{
-    sessRef=await addDoc(collection(db,'sessions'), {uid:me.uid, cid:CID, name:(enrol&&enrol.name)||profile.name||'', start:serverTimestamp(), last:serverTimestamp(), sec:0,
+    sessRef=await addDoc(collection(db,'sessions'), {uid:me.uid, cid:QUAL, name:(enrol&&enrol.name)||profile.name||'', start:serverTimestamp(), last:serverTimestamp(), sec:0,
       device:/Mobi|Android|iPhone/i.test(navigator.userAgent)?'phone':'computer'});
   }catch(e){ console.warn('session',e); sessRef=null; }
-  saveProg({lastSeen:serverTimestamp()});
   beat=setInterval(()=>{
     const v=anyPlaying();
     if(document.visibilityState!=='visible' && !v) return;
@@ -751,11 +1068,13 @@ function stopTracking(){ if(beat){ clearInterval(beat); beat=null; } sessRef=nul
 async function endSession(){ flushVideo(); if(sessRef){ try{ await updateDoc(sessRef,{last:serverTimestamp()}); }catch(e){} } stopTracking(); }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ pauseAll(); flushVideo(); } else lastAct=Date.now(); });
 
-/* ---------- evidence file (student uploads) ---------- */
+/* ---------- evidence file ---------- */
 function usLabel(id){ const u=US_LIST.find(x=>x.id===id); return u? u.label : 'US '+String(id).replace(/^US/,''); }
 function fileIcon(t){ t=t||''; return t.startsWith('image/')?'🖼️': t.startsWith('video/')?'🎬': /presentation|powerpoint/.test(t)?'🖥️': /pdf/.test(t)?'📄': '📎'; }
-const EXT_TYPES={ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',mp4:'video/mp4',mov:'video/quicktime'};
+const EXT_TYPES={ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',gif:'image/gif',webp:'image/webp',mp4:'video/mp4',mov:'video/quicktime',m4v:'video/mp4'};
 function typeOf(f){ return f.type || EXT_TYPES[(f.name.split('.').pop()||'').toLowerCase()] || ''; }
+function evType(f){ const t=typeOf(f); return /^(image\/|video\/|application\/pdf$|application\/msword$|application\/vnd\.(ms-powerpoint|ms-excel|openxmlformats-officedocument\.))/.test(t)? t : ''; }
 function fmtSize(b){ return b>1048576? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
 function evReviewPill(e){
   const r=e.review||{};
@@ -767,9 +1086,9 @@ function evCard(e, staff){
   const r=e.review||{};
   return '<div class="sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">'
     +'<b>'+fileIcon(e.type)+' '+esc(e.title||e.name)+'</b>'+evReviewPill(e)+'</div>'
-    +'<div class="sm" style="margin-top:4px;">'+esc(e.name)+' · '+fmtSize(e.size||0)+' · uploaded '+fmtDT(e.at)+'</div>'
+    +'<div class="sm" style="margin-top:4px;">'+esc(e.name)+' · '+fmtSize(e.size||0)+' · '+(e.byStaff?'added by '+esc(e.uploadedByName||'the assessor')+' ':'uploaded ')+fmtDT(e.at)+'</div>'
     +(e.note?'<div class="answer">'+esc(e.note)+'</div>':'')
-    +(e.type&&e.type.startsWith('image/')&&e.url?'<a href="'+esc(e.url)+'" target="_blank" rel="noopener"><img src="'+esc(e.url)+'" alt="" style="max-width:100%;max-height:260px;border-radius:8px;margin-top:8px;"></a>':'')
+    +(e.type&&e.type.startsWith('image/')&&e.url?'<a href="'+esc(e.url)+'" target="_blank" rel="noopener"><img src="'+esc(e.url)+'" alt="" loading="lazy" style="max-width:100%;max-height:260px;border-radius:8px;margin-top:8px;"></a>':'')
     +(r.comment?'<p class="note" style="margin-top:6px;"><b>Assessor:</b> '+esc(r.comment)+' <span class="sm">('+esc(r.by||'')+', '+fmtD(r.at)+')</span></p>':'')
     +'<div class="btnrow">'+(e.url?'<a class="btn small secondary" href="'+esc(e.url)+'" target="_blank" rel="noopener">Open</a>':'')
     +(staff? '<input id="evc-'+e.id+'" placeholder="Comment for the student (optional)" style="flex:1 1 200px;width:auto;">'
@@ -784,10 +1103,19 @@ function evGrouped(list, staff){
   return Object.keys(groups).sort().map(us=>'<h3>📂 '+esc(usLabel(us))+' <span class="sm">('+groups[us].length+')</span></h3>'
     +groups[us].sort((a,b)=>ms(b.at)-ms(a.at)).map(e=>evCard(e,staff)).join('')).join('');
 }
+function usOptions(withOther){ return US_LIST.map(u=>'<option value="'+u.id+'">'+esc(u.label)+'</option>').join('')+(withOther?'<option value="OTHER">Another unit standard (type the number)</option>':''); }
 function renderMyEvidence(){
   const sel=$('ev_us');
-  if(!sel.options.length) sel.innerHTML=US_LIST.map(u=>'<option value="'+u.id+'">'+esc(u.label)+'</option>').join('')+'<option value="OTHER">Another unit standard (type the number)</option>';
+  if(!sel.options.length) sel.innerHTML=usOptions(true);
   $('evList').innerHTML='<div class="card">'+evGrouped(myEvidence,false)+'</div>';
+}
+async function putEvidence(uid, f, meta, onProg){
+  const id=doc(collection(db,'evidence')).id;
+  const path='evidence/'+uid+'/'+QUAL+'/'+meta.us+'/'+id+'_'+safeName(f.name);
+  const task=uploadBytesResumable(sref(storage,path), f, {contentType:evType(f)});
+  await new Promise((res,rej)=>task.on('state_changed', t=>onProg(t.bytesTransferred,t.totalBytes), rej, res));
+  const url=await getDownloadURL(task.snapshot.ref);
+  await setDoc(doc(db,'evidence',id), Object.assign({uid, name:f.name, qual:QUAL, path, url, type:evType(f), size:f.size, at:serverTimestamp()}, meta));
 }
 window.uploadEvidence = async ()=>{
   let us=$('ev_us').value;
@@ -795,22 +1123,16 @@ window.uploadEvidence = async ()=>{
   const title=val('ev_title'), note=val('ev_note'), files=[...$('ev_files').files];
   if(!files.length){ toast('Choose at least one file.'); return; }
   if(!title){ toast('Give your evidence a short title.'); return; }
-  const big=files.find(f=>f.size>EV_MAX); if(big){ toast(big.name+' is larger than 100 MB.'); return; }
-  const odd=files.find(f=>!typeOf(f)); if(odd){ toast(odd.name+': only photos, PowerPoint, PDF, Word or video files can be uploaded.'); return; }
+  const big=files.find(f=>f.size>EV_MAX); if(big){ toast(big.name+' is larger than 500 MB.'); return; }
+  const odd=files.find(f=>!evType(f)); if(odd){ toast(odd.name+': only photos, PowerPoint, PDF, Word, Excel or video files can be uploaded.'); return; }
   $('ev_btn').disabled=true;
   try{
     for(let i=0;i<files.length;i++){
-      const f=files[i], id=doc(collection(db,'evidence')).id;
-      const safe=f.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
-      const path='evidence/'+me.uid+'/'+QUAL+'/'+us+'/'+id+'_'+safe;
-      const task=uploadBytesResumable(sref(storage,path), f, {contentType:typeOf(f)});
-      await new Promise((res,rej)=>task.on('state_changed', t=>{ $('ev_prog').textContent='Uploading '+(i+1)+' of '+files.length+': '+Math.round(t.bytesTransferred/t.totalBytes*100)+'%'; }, rej, res));
-      const url=await getDownloadURL(task.snapshot.ref);
-      await setDoc(doc(db,'evidence',id), {uid:me.uid, name:f.name, title:files.length>1? title+' ('+(i+1)+')' : title, note, us, qual:QUAL,
-        path, url, type:typeOf(f), size:f.size, studentName:(enrol&&enrol.name)||profile.name||'', at:serverTimestamp()});
+      const f=files[i];
+      await putEvidence(me.uid, f, {title:files.length>1? title+' ('+(i+1)+')' : title, note, us, studentName:(enrol&&enrol.name)||profile.name||''},
+        (g,t)=>{ $('ev_prog').textContent='Uploading '+(i+1)+' of '+files.length+': '+Math.round(g/t*100)+'% of '+fmtSize(t)+'. Keep this page open.'; });
     }
     toast('Uploaded. Your assessor can see it now.'); $('ev_files').value=''; $('ev_title').value=''; $('ev_note').value='';
-    saveProg({current:{mid:'evidence', item:'upload', at:serverTimestamp()}});
   }catch(e){ console.warn(e); toast('Upload failed: '+(e.code||e.message)+'. Check your connection and try again.'); }
   $('ev_prog').textContent=''; $('ev_btn').disabled=false;
 };
@@ -826,58 +1148,88 @@ window.deleteEvidence = async id=>{
 function startStaff(){
   $('nav').hidden=false; ['navMonitor','navMarking','navCodes'].forEach(i=>$(i).hidden=false);
   $('navSetup').hidden = mentorLevel!=='full';
+  useCourse(PK); fillStaffCourses(); listenModules();
   showTab('monitor');
   const a=assessor(); $('asName').value=a.name; $('asReg').value=a.reg;
-  const q=(c)=>query(collection(db,c), where('cid','==',CID));
-  unsubs.push(onSnapshot(q('enrol'), s=>{ S.enrol=s.docs.map(d=>Object.assign({id:d.id},d.data())); S.enrol.sort((a,b)=>(a.name||'').localeCompare(b.name||'')); renderMonitor(); }, e=>console.warn('enrol',e)));
-  unsubs.push(onSnapshot(q('progress'), s=>{ S.progress={}; s.docs.forEach(d=>S.progress[d.data().uid]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('progress',e)));
-  unsubs.push(onSnapshot(q('results'), s=>{ S.results={}; s.docs.forEach(d=>S.results[d.data().uid]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('results',e)));
-  unsubs.push(onSnapshot(q('invites'), s=>{ S.invites=s.docs.map(d=>Object.assign({code:d.id},d.data())); S.invites.sort((a,b)=>ms(b.createdAt)-ms(a.createdAt)); renderCodes(); }, e=>console.warn('invites',e)));
+  unsubs.push(onSnapshot(query(collection(db,'enrol'), where('cid','==',PK)), s=>{ S.enrol=s.docs.map(d=>Object.assign({id:d.id},d.data())); S.enrol.sort((a,b)=>(a.name||'').localeCompare(b.name||'')); renderMonitor(); }, e=>console.warn('enrol',e)));
+  unsubs.push(onSnapshot(collection(db,'progress'), s=>{ S.prog={}; s.docs.forEach(d=>S.prog[d.id]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('progress',e)));
+  unsubs.push(onSnapshot(collection(db,'results'), s=>{ S.res={}; s.docs.forEach(d=>S.res[d.id]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('results',e)));
+  unsubs.push(onSnapshot(query(collection(db,'invites'), where('cid','==',PK)), s=>{ S.invites=s.docs.map(d=>Object.assign({code:d.id},d.data())); S.invites.sort((a,b)=>ms(b.createdAt)-ms(a.createdAt)); renderCodes(); }, e=>console.warn('invites',e)));
+  unsubs.push(onSnapshot(collection(db,'agree'), s=>{ S.agree={}; s.docs.forEach(d=>S.agree[d.id]=d.data()); renderMonitor(); }, e=>console.warn('agree',e)));
   const since=Timestamp.fromMillis(Date.now()-90*86400000);
   unsubs.push(onSnapshot(query(collection(db,'sessions'), where('start','>=',since)), s=>{
-    S.sessions=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(x=>x.cid===CID); renderMonitor();
+    S.sessions=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor();
   }, e=>console.warn('sessions',e)));
   unsubs.push(onSnapshot(collection(db,'evidence'), s=>{ S.evidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor(); }, e=>console.warn('evidence',e)));
-  unsubs.push(onSnapshot(collection(db,'courses',CID,'modules'), s=>{ S.modules={}; s.docs.forEach(d=>S.modules[d.id]=d.data()); }, e=>console.warn('modules',e)));
-  setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
+  unsubs.push(()=>clearInterval(monTimer));
+  monTimer=setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
 }
+let monTimer=null;
+function fillStaffCourses(){
+  const sel=$('stCourse'), ids=courseIds(true);
+  sel.innerHTML=ids.map(c=>'<option value="'+c+'"'+(c===CID?' selected':'')+'>'+esc(cdef(c).title)+(cdef(c).published===false?' (hidden from students)':'')+'</option>').join('');
+}
+function listenModules(){
+  if(modUnsub) modUnsub();
+  const cid=CID; S.modules={};
+  modUnsub=onSnapshot(collection(db,'courses',cid,'modules'), s=>{
+    if(cid!==CID) return;
+    S.modules={}; s.docs.forEach(d=>S.modules[d.id]=d.data());
+    migrateLinks(cid, s.docs);
+    if(!$('tab-setup').hidden && !setupDirty) renderSetup();
+  }, e=>console.warn('modules',e));
+}
+// Turn old download links (which work for anyone who has them) into protected file paths.
+function migrateLinks(cid, docs){
+  if(mentorLevel!=='full') return;
+  docs.forEach(d=>{
+    const x=d.data(), patch={};
+    ITEMS.forEach(it=>{ const v=x[it.k]; if(v && /^https?:\/\/[^/]+\/v0\/b\/[^/]+\/o\//i.test(v)){ const nv=storeVal(v); if(nv.startsWith('storage:')) patch[it.k]=nv; } });
+    if(Object.keys(patch).length) updateDoc(doc(db,'courses',cid,'modules',d.id), patch).then(()=>console.log('protected links',cid,d.id)).catch(e=>console.warn('migrate',e));
+  });
+}
+window.pickStaffCourse = cid=>{
+  useCourse(cid); setupDirty=false; listenModules(); fillStaffCourses();
+  renderMonitor(); if(!$('tab-setup').hidden) renderSetup();
+};
 
-function stuSummary(e){
-  const p=S.progress[e.uid]||{}, r=S.results[e.uid]||{}, passed=r.passed||{}, marks=r.marks||{};
+function stuSummary(e, cid){
+  cid=cid||CID; const mids=midsOf(cid);
+  const p=S.prog[cid+'_'+e.uid]||{}, r=S.res[cid+'_'+e.uid]||{}, passed=r.passed||{}, marks=r.marks||{};
   const sess=S.sessions.filter(s=>s.uid===e.uid);
-  const lastSeen=Math.max(ms(p.lastSeen), ...sess.map(s=>ms(s.last)), 0);
+  const lastSeen=Math.max(...sess.map(s=>ms(s.last)), ...courseIds(true).map(c=>ms((S.prog[c+'_'+e.uid]||{}).lastSeen)), 0);
   const weekAgo=Date.now()-7*86400000;
   const weekSec=sess.filter(s=>ms(s.start)>=weekAgo).reduce((a,s)=>a+(s.sec||0),0);
-  const done=MIDS.filter(m=>passed[m]===true).length;
-  const waiting=MIDS.filter(m=>{ const pm=(p.mods||{})[m]||{}; return pm.submittedAt && passed[m]!==true && (!marks[m] || ms(marks[m].at)<ms(pm.submittedAt)); });
+  const allSec=courseIds(true).reduce((a,c)=>a+((S.prog[c+'_'+e.uid]||{}).totalSec||0),0);
+  const done=mids.filter(m=>passed[m]===true).length;
+  const waiting=mids.filter(m=>{ const pm=(p.mods||{})[m]||{}; return pm.submittedAt && passed[m]!==true && (!marks[m] || ms(marks[m].at)<ms(pm.submittedAt)); });
   const cur=p.current||null;
   const newEv=S.evidence.filter(v=>v.uid===e.uid && !(v.review&&v.review.status)).length;
-  return {newEv, p, r, sess, lastSeen, weekSec, totalSec:p.totalSec||0, done, waiting, cur, online: lastSeen && Date.now()-lastSeen<ONLINE_MS};
+  return {cid, mids, newEv, p, r, sess, lastSeen, weekSec, totalSec:p.totalSec||0, allSec, done, waiting, cur, online: lastSeen && Date.now()-lastSeen<ONLINE_MS};
 }
 function busyText(x){
-  if(x.done===NMODS) return 'Finished the course 🎉';
+  if(x.done===x.mids.length) return 'Finished this unit standard 🎉';
   if(!x.cur || !x.cur.mid) return '<span class="sm">Not started yet</span>';
-  if(x.cur.mid==='evidence') return 'Uploaded evidence <span class="sm">('+ago(x.cur.at)+')</span>';
-  const n=MIDS.indexOf(x.cur.mid)+1;
+  const n=parseInt(x.cur.mid.slice(1),10)||'';
   const what= x.cur.item==='test-submitted' ? 'handed in the test' : itemLabel(x.cur.item);
   return 'Module '+n+' · '+esc(what)+' <span class="sm">('+ago(x.cur.at)+')</span>';
 }
 
 function renderMonitor(){
-  if(!isMentor) return;
+  if(!isMentor || !CID) return;
   const rows=S.enrol.map(e=>Object.assign({e}, stuSummary(e)));
   const online=rows.filter(r=>r.online&&r.e.active).length;
-  const waiting=rows.reduce((a,r)=>a+r.waiting.length,0);
+  const waiting=courseIds(true).reduce((a,c)=>a+S.enrol.reduce((b,e)=>b+stuSummary(e,c).waiting.length,0),0);
   const finished=rows.filter(r=>r.done===NMODS).length;
   const active7=rows.filter(r=>r.lastSeen>Date.now()-7*86400000).length;
   $('monStats').innerHTML=[
-    [S.enrol.filter(e=>e.active).length,'students with access'],[online,'online now'],[active7,'active this week'],[waiting,'tests to mark'],[finished,'finished the course']
+    [S.enrol.filter(e=>e.active).length,'students with access'],[online,'online now'],[active7,'active this week'],[waiting,'tests to mark (all unit standards)'],[finished,'finished '+esc(course.code||'')]
   ].map(([b,s])=>'<div class="stat"><b>'+b+'</b><span>'+s+'</span></div>').join('');
   $('markBadge').hidden=!waiting; $('markBadge').textContent=waiting;
   if(!rows.length){ $('monTable').innerHTML='<tr><td class="note">No students yet. Create access codes under <b>Access codes</b> and give each student theirs.</td></tr>'; return; }
-  $('monTable').innerHTML='<tr><th>Student</th><th>Last on</th><th>Busy with</th><th>Progress</th><th>This week</th><th>Total time</th><th>Sessions</th></tr>'
+  $('monTable').innerHTML='<tr><th>Student</th><th>Last on</th><th>Busy with ('+esc(course.code||'')+')</th><th>Progress</th><th>This week</th><th>Time on '+esc(course.code||'')+'</th><th>Sessions</th></tr>'
     +rows.map(r=>'<tr class="click" onclick="openStu(\''+r.e.uid+'\')">'
-      +'<td><b>'+esc(r.e.name||r.e.email)+'</b>'+(r.e.active?'':' <span class="pill bad">paused</span>')+'<div class="sm">'+esc(r.e.email||'')+'</div></td>'
+      +'<td><b>'+esc(r.e.name||r.e.email)+'</b>'+(r.e.active?'':' <span class="pill bad">paused</span>')+((r.e.paused||{})[CID]?' <span class="pill bad">'+esc(course.code)+' paused</span>':'')+(S.agree[r.e.uid]?'':' <span class="pill wait">agreement not signed</span>')+'<div class="sm">'+esc(r.e.email||'')+'</div></td>'
       +'<td>'+(r.online?'<span class="pill live">● online now</span>':esc(ago(r.lastSeen)))+'</td>'
       +'<td>'+busyText(r)+(r.waiting.length?'<div><span class="pill wait">'+r.waiting.length+' to mark</span></div>':'')+(r.newEv?'<div><span class="pill wait">'+r.newEv+' new upload'+(r.newEv>1?'s':'')+'</span></div>':'')+'</td>'
       +'<td>'+r.done+'/'+NMODS+'<div class="bar" style="height:7px;width:90px;"><i style="width:'+Math.round(r.done/NMODS*100)+'%"></i></div></td>'
@@ -887,13 +1239,21 @@ function renderMonitor(){
 
 window.openStu = (uid, quiet)=>{
   const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
-  curStu=uid; const x=stuSummary(e), p=x.p, marks=(x.r.marks||{}), passed=(x.r.passed||{});
+  const fresh=curStu!==uid || !quiet;
+  curStu=uid; const x=stuSummary(e), p=x.p, marks=(x.r.marks||{}), passed=(x.r.passed||{}), ag=S.agree[uid];
   let h='<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;"><h2>'+esc(e.name||e.email)+'</h2>'
-    +'<div class="btnrow" style="margin-top:0;"><button class="btn small '+(e.active?'danger':'secondary')+'" onclick="toggleAccess(\''+uid+'\','+(!e.active)+')">'+(e.active?'Pause access':'Switch access back on')+'</button>'
-    +'<button class="btn small" onclick="printPoE(\''+uid+'\')">📄 PoE evidence pack</button><button class="btn small ghost" onclick="closeStu()">Close</button></div></div>'
-    +'<p class="note">'+esc(e.email||'')+' · joined '+fmtD(e.at)+' with code <span class="codechip">'+esc(fmtCode(e.code||''))+'</span></p>'
-    +'<div class="statgrid"><div class="stat"><b>'+x.done+'/'+NMODS+'</b><span>modules competent</span></div><div class="stat"><b>'+fmtDur(x.totalSec)+'</b><span>total time</span></div><div class="stat"><b>'+x.sess.length+'</b><span>sessions (90 days)</span></div><div class="stat"><b>'+(x.online?'Now':esc(ago(x.lastSeen)))+'</b><span>last on</span></div></div>'
-    +'<h3>Modules</h3><div class="tablewrap"><table class="t"><tr><th>Module</th><th>Opened</th><th>Watched (real viewing time)</th><th>Test</th><th>Result</th></tr>'
+    +'<div class="btnrow" style="margin-top:0;"><button class="btn small '+(e.active?'danger':'secondary')+'" onclick="toggleAccess(\''+uid+'\','+(!e.active)+')">'+(e.active?'Pause all access':'Switch access back on')+'</button>'
+    +'<button class="btn small" onclick="printPoE(\''+uid+'\')">📄 PoE pack ('+esc(course.code)+')</button><button class="btn small ghost" onclick="closeStu()">Close</button></div></div>'
+    +'<p class="note">'+esc(e.email||'')+' · joined '+fmtD(e.at)+' with code <span class="codechip">'+esc(fmtCode(e.code||''))+'</span> · '
+    +(ag? '📜 learner agreement signed '+fmtDT(ag.at)+' as “'+esc(ag.name)+'”' : '<b style="color:var(--danger)">learner agreement not signed yet</b>')+'</p>'
+    +'<div class="statgrid"><div class="stat"><b>'+x.done+'/'+NMODS+'</b><span>'+esc(course.code)+' modules competent</span></div><div class="stat"><b>'+fmtDur(x.allSec)+'</b><span>total time (all unit standards)</span></div><div class="stat"><b>'+x.sess.length+'</b><span>sessions (90 days)</span></div><div class="stat"><b>'+(x.online?'Now':esc(ago(x.lastSeen)))+'</b><span>last on</span></div></div>'
+    +'<h3>Unit standards</h3><div class="tablewrap"><table class="t"><tr><th>Unit standard</th><th>Progress</th><th>Access</th></tr>'
+    +courseIds(true).map(c=>{ const y=stuSummary(e,c), off=!!(e.paused||{})[c], hid=cdef(c).published===false;
+      return '<tr><td>'+esc(cdef(c).title)+(hid?' <span class="sm">(hidden from students)</span>':'')+'</td><td>'+y.done+'/'+y.mids.length+' competent</td><td>'
+        +(off?'<span class="pill bad">Paused</span> ':'<span class="pill ok">Open</span> ')
+        +'<button class="btn small ghost" onclick="toggleCourse(\''+uid+'\',\''+c+'\','+(!off)+')">'+(off?'Open again':'Pause')+'</button></td></tr>'; }).join('')
+    +'</table></div>'
+    +'<h3>'+esc(course.title)+': modules</h3><div class="tablewrap"><table class="t"><tr><th>Module</th><th>Opened</th><th>Watched (real viewing time)</th><th>Test</th><th>Result</th></tr>'
     +MIDS.map(m=>{
       const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, mk=marks[m];
       const opened=ITEMS.filter(i=>op[i.k]).map(i=>itemLabel(i.k)).join(', ')||'—';
@@ -907,8 +1267,9 @@ window.openStu = (uid, quiet)=>{
   h+= ss.length? '<div class="tablewrap"><table class="t"><tr><th>Signed in</th><th>Last active</th><th>Time active</th><th>Device</th></tr>'
       +ss.map(s=>'<tr><td>'+fmtDT(s.start)+'</td><td>'+fmtDT(s.last)+'</td><td>'+fmtDur(s.sec)+'</td><td>'+esc(s.device||'')+'</td></tr>').join('')+'</table></div>'
     : '<p class="note">No sessions yet.</p>';
-  h+='<h3>📁 Evidence file (student uploads)</h3>'+evGrouped(S.evidence.filter(v=>v.uid===uid), true);
+  h+='<h3>📁 Evidence file</h3>'+evGrouped(S.evidence.filter(v=>v.uid===uid), true);
   $('stuDetail').innerHTML=h; $('stuDetail').hidden=false;
+  if(fresh) renderStaffUpload(e);
   if(!quiet) $('stuDetail').scrollIntoView({behavior:'smooth'});
 };
 function watchTxt(m,pm){
@@ -916,7 +1277,7 @@ function watchTxt(m,pm){
   MEDIA.forEach(k=>{
     const x=w[k]; const nm=k==='video'?'Video':'Presentation';
     if(x && x.pct!=null) out.push(nm+': '+x.pct+'% · '+fmtDur(x.sec||0)+(x.dur?' of '+fmtDur(x.dur):'')+(x.skips?' · <span style="color:var(--danger)">'+x.skips+' skip attempt'+(x.skips>1?'s':'')+' blocked</span>':''));
-    else if(mod[k] && !trackable(mod[k]) && (pm.opened||{})[k]) out.push(nm+': opened (cannot be checked)');
+    else if(mod[k] && !trackable(mod[k]) && (pm.opened||{})[k]) out.push(nm+': opened');
   });
   return out.join('<br>')||'—';
 }
@@ -926,43 +1287,92 @@ window.reviewEvidence = async (id,status)=>{
   try{ await updateDoc(doc(db,'evidence',id), {review:{status, comment, by:val('asName')||assessor().name||profile.name||'', at:serverTimestamp()}}); toast(status==='accepted'?'Accepted for the PoE.':'Sent back for correction.'); }
   catch(e){ toast('Could not save: '+e.code); }
 };
-window.closeStu = ()=>{ curStu=null; $('stuDetail').hidden=true; };
+window.closeStu = ()=>{ curStu=null; $('stuDetail').hidden=true; $('stuUpload').hidden=true; };
 window.toggleAccess = async (uid,on)=>{
-  if(!on && !confirm('Pause this student\'s access? They will not be able to open the course until you switch it back on.')) return;
-  try{ await updateDoc(doc(db,'enrol',CID+'_'+uid), {active:on}); toast(on?'Access switched on.':'Access paused.'); }
+  if(!on && !confirm('Pause this student\'s access to ALL unit standards? They will not be able to open anything until you switch it back on.')) return;
+  try{ await updateDoc(doc(db,'enrol',PK+'_'+uid), {active:on}); toast(on?'Access switched on.':'Access paused.'); }
+  catch(e){ toast('Could not change access: '+e.code); }
+};
+window.toggleCourse = async (uid,cid,pause)=>{
+  if(pause && !confirm('Pause '+cdef(cid).title+' for this student? Their other unit standards stay open.')) return;
+  try{ await updateDoc(doc(db,'enrol',PK+'_'+uid), {['paused.'+cid]:pause}); toast(pause?'Paused for this student.':'Open again for this student.'); }
   catch(e){ toast('Could not change access: '+e.code); }
 };
 
-/* ---------- marking ---------- */
+/* ---------- staff: upload earlier work into a student's evidence file ---------- */
+function renderStaffUpload(e){
+  const b=$('stuUpload');
+  b.innerHTML='<h2>⬆️ Upload work for '+esc(e.name||e.email)+'</h2>'
+    +'<p class="note">Put work this student handed in before the portal (or on paper, scanned) into their evidence file. It is marked <b>added by the assessor</b> and <b>accepted for PoE</b>. Choose files, or a whole folder. Files up to 500 MB each.</p>'
+    +'<div class="row"><div><label>Unit standard</label><select id="su_us">'+usOptions(false)+'</select></div></div>'
+    +'<label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="su_auto" checked style="width:auto;"> If a folder or file name has a unit standard number in it (e.g. <i>335814</i>), file it under that unit standard instead</label>'
+    +'<label>Title (optional: the file name is used if you leave it empty)</label><input id="su_title" maxlength="120" placeholder="e.g. Biome presentation, handed in 2025">'
+    +'<label>Note for the PoE (optional)</label><textarea id="su_note" maxlength="2000" placeholder="e.g. Handed in on paper in March 2025; scanned by the office."></textarea>'
+    +'<div class="row"><div><label>Files</label><input type="file" id="su_files" multiple></div><div><label>…or a whole folder</label><input type="file" id="su_dir" webkitdirectory directory multiple></div></div>'
+    +'<div class="btnrow"><button class="btn" id="su_btn" onclick="staffUpload(\''+e.uid+'\')">⬆️ Upload to their evidence file</button><span class="sm" id="su_prog"></span></div>';
+  b.hidden=false;
+  const cur=US_LIST.find(u=>u.id===course.code); if(cur) $('su_us').value=cur.id;
+}
+window.staffUpload = async uid=>{
+  const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
+  const files=[...$('su_files').files, ...$('su_dir').files].filter(f=>!/^(\.|~\$|thumbs\.db$|desktop\.ini$)/i.test(f.name));
+  if(!files.length){ toast('Choose files or a folder first.'); return; }
+  const fallback=$('su_us').value, auto=$('su_auto').checked, title=val('su_title'), note=val('su_note');
+  const ok=[], skipped=[];
+  files.forEach(f=>{ if(!evType(f)) skipped.push(f.name+' (type not allowed)'); else if(f.size>EV_MAX) skipped.push(f.name+' (over 500 MB)'); else ok.push(f); });
+  if(!ok.length){ toast('None of these files can be uploaded: '+skipped.slice(0,3).join(', ')); return; }
+  const usFor=f=>{ if(auto){ const m=(f.webkitRelativePath||f.name).match(/\b(\d{6})\b/g)||[]; const hit=m.map(n=>'US'+n).find(id=>US_LIST.some(u=>u.id===id)); if(hit) return hit; } return fallback; };
+  const total=ok.reduce((a,f)=>a+f.size,0);
+  if(!confirm('Upload '+ok.length+' file'+(ok.length>1?'s':'')+' ('+fmtSize(total)+') into '+(e.name||e.email)+'\'s evidence file?'+(skipped.length?'\n\n'+skipped.length+' file(s) will be skipped: '+skipped.slice(0,5).join(', '):'')+'\n\nKeep this page open until it finishes.')) return;
+  const by=val('asName')||assessor().name||profile.name||'';
+  $('su_btn').disabled=true; let done=0, n=0;
+  try{
+    for(const f of ok){
+      const base=f.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ');
+      await putEvidence(uid, f, {us:usFor(f), title: title? (ok.length>1? title+' ('+(n+1)+')' : title) : base, note, studentName:e.name||'',
+        byStaff:true, uploadedBy:me.uid, uploadedByName:by, sourcePath:(f.webkitRelativePath||'').slice(0,300),
+        review:{status:'accepted', comment:'Added by the assessor (work handed in before the online portal).', by, at:serverTimestamp()}},
+        (g,t)=>{ $('su_prog').textContent='Uploading '+(n+1)+' of '+ok.length+' ('+Math.round((done+g)/total*100)+'% of everything)'; });
+      done+=f.size; n++;
+    }
+    $('su_prog').textContent='✔ '+n+' file'+(n>1?'s':'')+' added'+(skipped.length?' · '+skipped.length+' skipped':'')+'.';
+    $('su_files').value=''; $('su_dir').value='';
+    toast('Added to the evidence file.');
+  }catch(err){ console.warn(err); $('su_prog').innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ Stopped after '+n+' of '+ok.length+' files: '+esc(err.code||err.message)+'</span>'; }
+  $('su_btn').disabled=false;
+};
+
+/* ---------- marking (all unit standards) ---------- */
 function renderMarking(){
   if(!isMentor) return;
   const items=[];
-  S.enrol.forEach(e=>{ const x=stuSummary(e); x.waiting.forEach(m=>items.push({e, m, pm:(x.p.mods||{})[m]})); });
+  courseIds(true).forEach(c=>S.enrol.forEach(e=>{ const x=stuSummary(e,c); x.waiting.forEach(m=>items.push({e, c, m, pm:(x.p.mods||{})[m]})); }));
   items.sort((a,b)=>ms(a.pm.submittedAt)-ms(b.pm.submittedAt));
-  $('markList').innerHTML = items.length? items.map(({e,m,pm})=>{
-    const id=e.uid+'-'+m, link=safeUrl(pm.link);
-    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(modTitle(m))+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
+  $('markList').innerHTML = items.length? items.map(({e,c,m,pm})=>{
+    const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link);
+    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
       +(pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
       +(link?'<p style="margin-top:8px;"><a href="'+esc(link)+'" target="_blank" rel="noopener">📎 Open completed answer sheet</a></p>':'')
       +(pm.paper?'<p class="note" style="margin-top:6px;">📄 Student says the answer sheet was handed in on paper.</p>':'')
       +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
       +'<label>Assessor feedback: what needs correction</label><textarea id="ff-'+id+'" placeholder="e.g. Question 7: explain the role of fire in the grassland biome. Resubmit by ..."></textarea>'
-      +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
+      +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
   }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>';
 }
 function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){} return {name:a.name||profile.name||'', reg:a.reg||''}; }
 window.saveAssessor = ()=>{ try{ localStorage.setItem('lwec_assessor', JSON.stringify({name:val('asName'), reg:val('asReg')})); }catch(e){} };
-window.mark = async (uid,m,outcome)=>{
-  const good=(($('fg-'+uid+'-'+m)||{}).value||'').trim(), fix=(($('ff-'+uid+'-'+m)||{}).value||'').trim();
+window.mark = async (c,uid,m,outcome)=>{
+  const id=c+'-'+uid+'-'+m;
+  const good=(($('fg-'+id)||{}).value||'').trim(), fix=(($('ff-'+id)||{}).value||'').trim();
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
   if(!as.name){ toast('Type your assessor name at the top of this page first.'); $('asName').focus(); return; }
   if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
   if(!good && !fix && !confirm('Mark without any written feedback?')) return;
-  const pm=((S.progress[uid]||{}).mods||{})[m]||{};
+  const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
   const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
   try{
-    await setDoc(doc(db,'results',CID+'_'+uid), {uid, cid:CID,
+    await setDoc(doc(db,'results',c+'_'+uid), {uid, cid:c,
       passed:{[m]: outcome==='C'},
       marks:{[m]:{outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}},
       hist:{[m]: arrayUnion(rec)}}, {merge:true});
@@ -970,12 +1380,12 @@ window.mark = async (uid,m,outcome)=>{
   }catch(e){ toast('Could not save the mark: '+e.code); }
 };
 
-/* ---------- access codes ---------- */
+/* ---------- access codes (one code = the whole qualification) ---------- */
 window.createCodes = async ()=>{
   const names=$('newNames').value.split('\n').map(s=>s.trim()).filter(Boolean);
   if(!names.length){ toast('Type at least one name.'); return; }
   const b=writeBatch(db);
-  names.forEach(n=>b.set(doc(db,'invites',newCode()), {cid:CID, name:n, createdBy:me.uid, createdAt:serverTimestamp(), claimedBy:null}));
+  names.forEach(n=>b.set(doc(db,'invites',newCode()), {cid:PK, qual:QUAL, name:n, createdBy:me.uid, createdAt:serverTimestamp(), claimedBy:null}));
   try{ await b.commit(); $('newNames').value=''; toast(names.length+' code'+(names.length>1?'s':'')+' created.'); }
   catch(e){ toast('Could not create codes: '+e.code); }
 };
@@ -991,74 +1401,115 @@ window.delCode = async c=>{ if(!confirm('Delete this unused code? It will stop w
 window.printSlips = ()=>{
   const un=S.invites.filter(i=>!i.claimedBy); if(!un.length){ toast('No unused codes to print.'); return; }
   const url=location.href.split('#')[0].split('?')[0];
-  $('slips').innerHTML=un.map(i=>'<div class="slip"><b>LWEC Learning Portal</b> · '+esc(course.title)+'<br><br>Student: <b>'+esc(i.name)+'</b><br>Your personal access code:<div class="c">'+esc(fmtCode(i.code))+'</div><br>Go to '+esc(url)+' and choose “Create your account with your access code”. Already have a Field Logbook account? Sign in with it and enter this code. Keep this code private: it works only once.</div>').join('');
+  $('slips').innerHTML=un.map(i=>'<div class="slip"><b>LWEC Learning Portal</b> · '+esc(PROG)+'<br><br>Student: <b>'+esc(i.name)+'</b><br>Your personal access code:<div class="c">'+esc(fmtCode(i.code))+'</div><br>Go to '+esc(url)+' and choose “Create your account with your access code”. Already have a Field Logbook account? Sign in with it and enter this code. This one code opens every unit standard of the qualification. Keep it private: it works only once.</div>').join('');
   window.print();
 };
 
 /* ---------- course setup ---------- */
+let setupDirty=false;
+$('tab-setup').addEventListener('input', e=>{ if(e.target.closest('#setMods')||e.target.id==='setTitle'||e.target.id==='setN') setupDirty=true; });
+function nuFill(){
+  const have=new Set(courseIds(true).map(c=>cdef(c).code));
+  $('nu_us').innerHTML=US_LIST.filter(u=>!have.has(u.id)).map(u=>'<option value="'+u.id+'">'+esc(u.label)+'</option>').join('')+'<option value="OTHER">Another unit standard (type the number)</option>';
+  nuPick();
+}
+window.nuPick = ()=>{
+  const v=$('nu_us').value; $('nu_numBox').hidden=v!=='OTHER';
+  const u=US_LIST.find(x=>x.id===v); $('nu_title').value=u? u.label : '';
+};
+window.addCourse = async ()=>{
+  let code=$('nu_us').value;
+  if(code==='OTHER'){ const n=val('nu_num').replace(/\D/g,''); if(n.length<5){ toast('Type the unit standard number.'); return; } code='US'+n; }
+  const cid='us'+code.slice(2), title=val('nu_title')||('US '+code.slice(2)), n=Math.max(1,Math.min(40,parseInt(val('nu_n'),10)||10));
+  if(courses[cid]||cid===PK){ toast('That unit standard is already added.'); return; }
+  const i=US_LIST.findIndex(u=>u.id===code);
+  try{
+    await setDoc(doc(db,'courses',cid), {title, code, nmods:n, titles:[], published:false, order:i<0?99:i, createdAt:serverTimestamp()});
+    toast(title+' added (hidden from students until you publish it).');
+    pickStaffCourse(cid);
+  }catch(e){ toast('Could not add: '+e.code); }
+};
 function renderSetup(){
-  $('setTitle').value=course.title||DEFAULT_TITLE;
+  if(!CID) return;
+  setupDirty=false; nuFill();
+  $('setTitle').value=course.title||''; $('setN').value=NMODS; $('setPub').checked=course.published!==false;
   $('setMods').innerHTML=MIDS.map((m,i)=>{
-    const d=S.modules[m]||{};
-    return '<details class="modset"'+(i===0?' open':'')+'><summary>Module '+(i+1)+': '+esc(d.title||DEFAULT_MOD_TITLES[i]||'')+(ITEMS.every(it=>d[it.k])?' ✔':'')+'</summary>'
-      +'<label>Module title</label><input id="st-'+m+'-title" value="'+esc(d.title||DEFAULT_MOD_TITLES[i]||'')+'">'
+    const d=S.modules[m]||{}, t=d.title||(course.titles||[])[i]||(CID===PK?DEFAULT_MOD_TITLES[i]:'')||'';
+    return '<details class="modset"'+(i===0?' open':'')+'><summary>Module '+(i+1)+(t?': '+esc(t):'')+(ITEMS.every(it=>d[it.k])?' ✔':'')+'</summary>'
+      +'<label>Module title</label><input id="st-'+m+'-title" value="'+esc(t)+'">'
       +ITEMS.map(it=>'<label>'+it.label+'</label><div style="display:flex;gap:8px;align-items:center;">'
-        +'<input id="st-'+m+'-'+it.k+'" placeholder="Paste a link, or upload the file →" value="'+esc(d[it.k]||'')+'">'
+        +'<input id="st-'+m+'-'+it.k+'" placeholder="Upload the file →  (or paste a link)" value="'+esc(storeVal(d[it.k])||d[it.k]||'')+'">'
+        +'<button class="btn small ghost" type="button" onclick="previewField(\''+m+'\',\''+it.k+'\')" title="Check this file">👁</button>'
         +'<label class="btn small ghost" style="margin:0;white-space:nowrap;cursor:pointer;">⬆️ Upload<input type="file" hidden onchange="uploadCourseFile(this,\''+m+'\',\''+it.k+'\')"></label></div>'
-        +'<div class="sm" id="up-'+m+'-'+it.k+'"></div>').join('')
+        +'<div class="sm" id="up-'+m+'-'+it.k+'">'+fieldHint(it.k, d[it.k])+'</div>').join('')
       +'</details>';
   }).join('');
 }
+function fieldHint(k,v){
+  const s=srcOf(v); if(!s) return '';
+  if(s.kind==='url') return '⚠️ Link to another website: not protected'+(MEDIA.includes(k)&&!trackable(v)?', and watching cannot be checked':'')+'.';
+  const e=extOf(v);
+  if(k==='sheet') return '🔒 Protected · students download it to fill in.';
+  if(isVideoExt(e)) return '🔒 Protected video · watching is tracked.';
+  if(e==='pdf') return '🔒 Protected · view only, with the student\'s name on every page.';
+  return '⚠️ Students can\'t open a .'+esc(e)+' file here. Upload the PDF version.';
+}
+window.previewField = (m,k)=>{
+  const v=val('st-'+m+'-'+k), s=srcOf(v);
+  if(!s){ toast('Nothing added yet.'); return; }
+  if(s.kind==='url'){ window.open(s.url,'_blank','noopener'); return; }
+  const e=extOf(v), t=modTitle(m)+' · '+itemLabel(k);
+  if(e==='pdf') showPdf(s.path,t); else if(isVideoExt(e)) showVideo(s.path,t); else toast('This file type cannot be previewed here.');
+};
 window.uploadCourseFile = async (inp,m,k)=>{
   const f=inp.files[0]; inp.value=''; if(!f) return;
   if(/memo|memorand/i.test(f.name)){ toast('This looks like an assessor memo. Memos must never go on the website.'); return; }
   if(f.size>1024*1024*1024){ toast('That file is larger than 1 GB.'); return; }
   const out=$('up-'+m+'-'+k);
-  const path='course/'+CID+'/'+m+'/'+k+'_'+Date.now()+'_'+f.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+  const path='course/'+CID+'/'+m+'/'+k+'_'+rnd()+'_'+safeName(f.name);
   try{
     const task=uploadBytesResumable(sref(storage,path), f, {contentType:typeOf(f)||'application/octet-stream'});
     await new Promise((res,rej)=>task.on('state_changed', t=>{ out.textContent='Uploading '+f.name+': '+Math.round(t.bytesTransferred/t.totalBytes*100)+'%'; }, rej, res));
-    $('st-'+m+'-'+k).value=await getDownloadURL(task.snapshot.ref);
-    out.textContent='✔ '+f.name+' uploaded. Click Save course when you are done.';
+    $('st-'+m+'-'+k).value='storage:'+path; setupDirty=true;
+    out.textContent='✔ '+f.name+' uploaded. Click Save course when you are done. '+fieldHint(k,'storage:'+path);
   }catch(e){ console.warn(e); out.textContent='Upload failed ('+(e.code||e.message)+').'; }
 };
 const BULK_MAP=[ [/^01/, 'guide'], [/^02/, 'slides'], [/^03/, 'video'], [/^04/, 'test'], [/^05/, 'sheet'] ];
+// Which file wins when a module has several: PDF for viewing (guide, slides, test), Word for the answer sheet.
+function bulkRank(k,name){ const e=(name.split('.').pop()||'').toLowerCase(); if(k==='video') return isVideoExt(e)?2:0; if(k==='sheet') return /^docx?$/.test(e)?3:e==='pdf'?2:1; return e==='pdf'?3:/^(pptx?|docx?)$/.test(e)?1:0; }
 window.bulkUpload = async inp=>{
   const files=[...inp.files]; inp.value='';
-  const plan=[], skipped=[];
-  let guide=null;
+  const best={}, skipped=[];
   files.forEach(f=>{
-    const rel=f.webkitRelativePath||f.name, parts=rel.split('/').slice(0,-1), top=parts.find(p=>/^0[1-5]\b/.test(p))||'', name=f.name;
+    const rel=f.webkitRelativePath||f.name, parts=rel.split('/').slice(0,-1), top=parts.slice().reverse().find(p=>/^0[1-5]\b/.test(p))||'', name=f.name;
+    if(/^(~\$|\.)/.test(name)) return;
     if(/assessor|conf|memo|memorand|facilitator/i.test(rel)){ skipped.push(name); return; }
     const hit=BULK_MAP.find(([re])=>re.test(top)); if(!hit) return;
-    const k=hit[1];
+    const k=hit[1], r=bulkRank(k,name); if(!r) return;
     if(k==='sheet' && !/learner/i.test(rel)){ skipped.push(name); return; }
-    if(k==='guide'){ if(/learner/i.test(name) && /\.(docx?|pdf)$/i.test(name)) guide=f; return; }
-    const mm=name.match(/^M(\d{2})/i); if(!mm) return;
-    const m='m'+mm[1]; if(!MIDS.includes(m)) return;
-    if(k==='video' && !/\.(mp4|m4v|webm|mov)$/i.test(name)) return;
-    if(k!=='video' && !/\.(pptx?|docx?|pdf)$/i.test(name)) return;
-    plan.push({f,m,k});
+    let m;
+    if(k==='guide'){ if(!/learner/i.test(name)) return; m='all'; }
+    else { const mm=name.match(/^M(\d{2})/i); if(!mm) return; m='m'+mm[1]; if(!MIDS.includes(m)) return; }
+    const key=m+'|'+k; if(!best[key] || r>best[key].r) best[key]={f,m,k,r};
   });
-  if(guide) plan.unshift({f:guide, m:'all', k:'guide'});
+  const plan=Object.values(best).sort((a,b)=>(a.m==='all'?-1:0)-(b.m==='all'?-1:0) || a.m.localeCompare(b.m));
   const note=$('bulkNote');
   if(!plan.length){
     note.innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ No course files found in that folder ('+files.length+' files looked at). Choose the folder that holds 01 Guides, 02 Slides, 03 Videos, 04 Tests and 05 Answers.</span>';
     return;
   }
-  const count=k=>plan.filter(x=>x.k===k).length;
-  note.textContent='Found '+plan.length+' files: '+count('guide')+' guide, '+count('slides')+' presentations, '+count('video')+' videos, '+count('test')+' tests, '+count('sheet')+' answer sheets.';
+  const count=k=>plan.filter(x=>x.k===k).length, pdfs=plan.filter(x=>/\.pdf$/i.test(x.f.name)).length;
+  note.textContent='Found '+plan.length+' files: '+count('guide')+' guide, '+count('slides')+' presentations, '+count('video')+' videos, '+count('test')+' tests, '+count('sheet')+' answer sheets ('+pdfs+' as PDF).';
   const total=plan.reduce((a,x)=>a+x.f.size,0);
-  if(!confirm('Upload '+plan.length+' files ('+fmtSize(total)+') for the 12 modules?'+(skipped.length?'\n\nSkipped (kept off the website): '+skipped.length+' assessor/memo files.':'')+'\n\nKeep this page open until it finishes.')) return;
+  if(!confirm('Upload '+plan.length+' files ('+fmtSize(total)+') for '+course.title+'?'+(skipped.length?'\n\nSkipped (kept off the website): '+skipped.length+' assessor/memo files.':'')+'\n\nKeep this page open until it finishes.')) return;
   let done=0, ok=0, failed=null;
   for(const x of plan){
-    const path='course/'+CID+'/'+(x.m==='all'?'shared':x.m)+'/'+x.k+'_'+x.f.name.replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+    const path='course/'+CID+'/'+(x.m==='all'?'shared':x.m)+'/'+x.k+'_'+rnd()+'_'+safeName(x.f.name);
     try{
       const task=uploadBytesResumable(sref(storage,path), x.f, {contentType:typeOf(x.f)||'application/octet-stream'});
       await new Promise((res,rej)=>task.on('state_changed', t=>{ $('bulkNote').textContent='Uploading '+x.f.name+' ('+Math.round((done+t.bytesTransferred)/total*100)+'% of everything)'; }, rej, res));
-      const url=await getDownloadURL(task.snapshot.ref);
-      (x.m==='all'? MIDS : [x.m]).forEach(m=>{ const el=$('st-'+m+'-'+x.k); if(el) el.value=url; });
-      done+=x.f.size; ok++;
+      (x.m==='all'? MIDS : [x.m]).forEach(m=>{ const el=$('st-'+m+'-'+x.k); if(el) el.value='storage:'+path; });
+      done+=x.f.size; ok++; setupDirty=true;
     }catch(e){ console.warn(e); failed=x.f.name+': '+(e.code||e.message); break; }
   }
   if(failed){
@@ -1072,32 +1523,37 @@ window.saveSetup = async (quiet)=>{
   const b=writeBatch(db), titles=[]; let bad='';
   MIDS.forEach((m,i)=>{
     const d={n:i+1, prev:prevOf(m), title:val('st-'+m+'-title')};
-    ITEMS.forEach(it=>{ const v=val('st-'+m+'-'+it.k); if(v && !safeUrl(v)) bad='Module '+(i+1)+' '+itemLabel(it.k); d[it.k]=v; });
+    ITEMS.forEach(it=>{ const v=val('st-'+m+'-'+it.k); const sv=storeVal(v); if(v && !sv) bad='Module '+(i+1)+' '+itemLabel(it.k); d[it.k]=sv; });
     titles.push(d.title); b.set(doc(db,'courses',CID,'modules',m), d);
   });
   if(bad){ toast('Links must start with https:// (check '+bad+').'); return; }
-  const untr=[]; MIDS.forEach((m,i)=>MEDIA.forEach(k=>{ const v=val('st-'+m+'-'+k); if(v && !trackable(v)) untr.push('Module '+(i+1)+' '+(k==='video'?'video':'presentation')); }));
-  if(untr.length && quiet!==true && !confirm('These links cannot be checked for real watching (students could skip them): '+untr.join(', ')+'.\n\nUse an .mp4 file link or a YouTube link to track them. Save anyway?')) return;
-  b.set(doc(db,'courses',CID), {title:val('setTitle')||DEFAULT_TITLE, titles, updatedAt:serverTimestamp()});
+  const n=Math.max(1,Math.min(40,parseInt(val('setN'),10)||NMODS));
+  b.set(doc(db,'courses',CID), {title:val('setTitle')||course.title, code:course.code, titles, nmods:n, published:$('setPub').checked, order:course.order, updatedAt:serverTimestamp()}, {merge:true});
   $('setSave').disabled=true;
-  try{ await b.commit(); $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.'); if(quiet===true) $('bulkNote').textContent='✔ All done: '+MIDS.filter(m=>ITEMS.every(it=>val('st-'+m+'-'+it.k))).length+' of 12 modules have all their files, and the course is saved.'; }
+  try{
+    await b.commit(); setupDirty=false;
+    $('setNote').textContent='Saved '+new Date().toLocaleTimeString('en-ZA'); toast('Course saved.');
+    if(quiet===true) $('bulkNote').textContent='✔ All done: '+MIDS.filter(m=>ITEMS.every(it=>val('st-'+m+'-'+it.k))).length+' of '+NMODS+' modules have all their files, and the course is saved.';
+    if(n!==NMODS){ useCourse(CID); setTimeout(renderSetup,300); }
+  }
   catch(e){ toast('Could not save: '+e.code+' (only full mentors can change the course).'); if(quiet===true) $('bulkNote').innerHTML='<span style="color:var(--danger);font-weight:700;">⚠️ Files uploaded but the course could not be saved ('+esc(e.code||'')+').</span>'; }
   $('setSave').disabled=false;
 };
 
-/* ---------- PoE evidence pack ---------- */
+/* ---------- PoE evidence pack (one unit standard) ---------- */
 window.printPoE = async uid=>{
   const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
   let u={}; try{ const s=await getDoc(doc(db,'users',uid)); u=s.exists()?s.data():{}; }catch(err){}
-  const x=stuSummary(e), p=x.p, r=x.r, hist=r.hist||{}, passed=r.passed||{};
+  const x=stuSummary(e), p=x.p, r=x.r, hist=r.hist||{}, passed=r.passed||{}, ag=S.agree[uid];
   const name=esc(u.name||e.name||e.email);
-  const stuLine='<table class="pr"><tr><th>Learner</th><td>'+name+'</td><th>Student no.</th><td>'+esc(u.sno||'')+'</td></tr><tr><th>ID number</th><td>'+esc(u.idno||'')+'</td><th>Email</th><td>'+esc(e.email||u.email||'')+'</td></tr><tr><th>Programme</th><td colspan="3">FETC: Tourist Guiding (SAQA ID 71549)</td></tr><tr><th>Unit standard</th><td colspan="3">'+esc(course.title)+'</td></tr></table>';
+  const stuLine='<table class="pr"><tr><th>Learner</th><td>'+name+'</td><th>Student no.</th><td>'+esc(u.sno||'')+'</td></tr><tr><th>ID number</th><td>'+esc(u.idno||'')+'</td><th>Email</th><td>'+esc(e.email||u.email||'')+'</td></tr><tr><th>Programme</th><td colspan="3">'+esc(PROG)+'</td></tr><tr><th>Unit standard</th><td colspan="3">'+esc(course.title)+'</td></tr>'
+    +'<tr><th>Learner agreement</th><td colspan="3">'+(ag? 'Accepted online on '+fmtDT(ag.at)+', signed as “'+esc(ag.name)+'” (version '+esc(ag.version)+')' : 'Not signed online')+'</td></tr></table>';
   let h='<div class="pr-page"><div class="pr-h"><img src="icons/lwec-logo.png" style="height:60px;"><h1>Portfolio of Evidence: online learning record</h1><div class="sub">Limpopo Wildlife Eco College</div></div>'+stuLine
     +'<h3 style="margin-top:6mm;">Summary</h3><table class="pr"><tr><th>Module</th><th>First opened</th><th>Video watched</th><th>Attempts</th><th>Outcome</th><th>Date</th><th>Assessor</th></tr>'
     +MIDS.map(m=>{ const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, hs=hist[m]||[], last=hs[hs.length-1];
       const first=Math.min(...Object.values(op).map(ms).filter(Boolean), Infinity);
       return '<tr><td>'+esc(modTitle(m))+'</td><td>'+(first<Infinity?fmtD(first):'—')+'</td><td>'+watchTxt(m,pm).replace(/<[^>]+>/g,' ')+'</td><td>'+hs.length+'</td><td>'+(passed[m]===true?'Competent':last?'Not yet competent':'—')+'</td><td>'+(last?fmtD(last.at):'—')+'</td><td>'+(last?esc(last.by):'')+'</td></tr>'; }).join('')
-    +'</table><p style="margin-top:4mm;font-size:9pt;">Time active on the course: '+fmtDur(x.totalSec)+' · Sessions in the last 90 days: '+x.sess.length+' · Pack printed '+new Date().toLocaleString('en-ZA')+'</p></div>';
+    +'</table><p style="margin-top:4mm;font-size:9pt;">Time active on this unit standard: '+fmtDur(x.totalSec)+' · Sessions in the last 90 days: '+x.sess.length+' · Pack printed '+new Date().toLocaleString('en-ZA')+'</p></div>';
   MIDS.forEach(m=>{
     const hs=hist[m]||[]; if(!hs.length) return;
     h+='<div class="pr-page"><div class="pr-h"><h1>'+esc(modTitle(m))+'</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>';
@@ -1114,35 +1570,40 @@ window.printPoE = async uid=>{
       +'<div class="sigline">Learner signature and date</div><div class="sigline">Assessor signature and date</div>'
       +'<div class="sigline">Moderator signature and date</div></div>';
   });
-  const ev=S.evidence.filter(v=>v.uid===uid && (!v.review || v.review.status!=='redo'));
+  const ev=S.evidence.filter(v=>v.uid===uid && v.us===course.code && (!v.review || v.review.status!=='redo'));
   if(ev.length){
-    h+='<div class="pr-page"><div class="pr-h"><h1>Additional evidence uploaded by the learner</h1><div class="sub">'+name+' · FETC: Tourist Guiding (SAQA ID 71549)</div></div>'
-      +'<table class="pr"><tr><th>Unit standard</th><th>Evidence</th><th>File</th><th>Uploaded</th><th>Assessor</th></tr>'
-      +ev.sort((a,b)=>(a.us||'').localeCompare(b.us||'')||ms(a.at)-ms(b.at)).map(v=>'<tr><td>'+esc(usLabel(v.us))+'</td><td><b>'+esc(v.title)+'</b>'+(v.note?'<br>'+esc(v.note):'')+'</td><td>'+esc(v.name)+'<br>'+fmtSize(v.size||0)+'</td><td>'+fmtD(v.at)+'</td><td>'+(v.review&&v.review.status==='accepted'?'Accepted, '+esc(v.review.by||'')+' '+fmtD(v.review.at)+(v.review.comment?'<br>'+esc(v.review.comment):''):'Not reviewed')+'</td></tr>').join('')
+    h+='<div class="pr-page"><div class="pr-h"><h1>Additional evidence</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>'
+      +'<table class="pr"><tr><th>Evidence</th><th>File</th><th>Added</th><th>Assessor</th></tr>'
+      +ev.sort((a,b)=>ms(a.at)-ms(b.at)).map(v=>'<tr><td><b>'+esc(v.title)+'</b>'+(v.note?'<br>'+esc(v.note):'')+'</td><td>'+esc(v.name)+'<br>'+fmtSize(v.size||0)+'</td><td>'+fmtD(v.at)+(v.byStaff?'<br>by the assessor':'<br>by the learner')+'</td><td>'+(v.review&&v.review.status==='accepted'?'Accepted, '+esc(v.review.by||'')+' '+fmtD(v.review.at)+(v.review.comment?'<br>'+esc(v.review.comment):''):'Not reviewed')+'</td></tr>').join('')
       +'</table>'
       +ev.filter(v=>(v.type||'').startsWith('image/')&&v.url).map(v=>'<div style="display:inline-block;width:47%;margin:3mm 1%;vertical-align:top;page-break-inside:avoid;"><img src="'+esc(v.url)+'" style="width:100%;max-height:85mm;object-fit:contain;border:1px solid #999;"><div style="font-size:8.5pt;">'+esc(v.title)+' · '+fmtD(v.at)+'</div></div>').join('')
       +'<p style="font-size:9pt;margin-top:4mm;">Presentations, documents and videos are kept in the learner\'s online evidence file and can be opened by the assessor or moderator on request.</p></div>';
   }
+  if(ag){
+    h+='<div class="pr-page"><div class="pr-h"><h1>Learner agreement</h1><div class="sub">'+name+'</div></div>'
+      +String(ag.text||'').split('\n').map(t=>'<p style="margin-bottom:3mm;font-size:10pt;">'+esc(t)+'</p>').join('')
+      +'<p style="margin-top:6mm;font-size:10pt;">Accepted online on <b>'+fmtDT(ag.at)+'</b>, signed by typing the name “<b>'+esc(ag.name)+'</b>”, from the account '+esc(ag.email||'')+'.</p></div>';
+  }
   $('slips').innerHTML=h;
   await Promise.all([...document.querySelectorAll('#slips img')].map(i=>i.complete?0:new Promise(r=>{ i.onload=i.onerror=r; setTimeout(r,8000); })));
-  document.title=(u.name||e.name||'Student')+' - US335815 PoE';
+  document.title=(u.name||e.name||'Student')+' - '+(course.code||'')+' PoE';
   window.print();
   setTimeout(()=>{ document.title='LWEC Learning Portal'; },1500);
 };
 
 /* ---------- CSV ---------- */
 window.exportCSV = ()=>{
-  const head=['Student','Email','Access','Last on','Busy with','Modules competent','Tests to mark','Time this week (min)','Total time (min)','Sessions (90 days)'].concat(MIDS.map((m,i)=>'Module '+(i+1)));
+  const head=['Student','Email','Access','Agreement signed','Last on','Busy with','Modules competent','Tests to mark','Time this week (min)','Time on unit standard (min)','Sessions (90 days)'].concat(MIDS.map((m,i)=>'Module '+(i+1)));
   const lines=[head];
   S.enrol.forEach(e=>{
     const x=stuSummary(e), passed=(x.r.passed||{});
-    lines.push([e.name||'', e.email||'', e.active?'on':'paused', x.lastSeen?new Date(x.lastSeen).toLocaleString('en-ZA'):'never',
+    lines.push([e.name||'', e.email||'', !e.active?'paused':(e.paused||{})[CID]?'unit standard paused':'on', S.agree[e.uid]?fmtD(S.agree[e.uid].at):'no', x.lastSeen?new Date(x.lastSeen).toLocaleString('en-ZA'):'never',
       busyText(x).replace(/<[^>]+>/g,''), x.done, x.waiting.length, Math.round(x.weekSec/60), Math.round(x.totalSec/60), x.sess.length]
       .concat(MIDS.map(m=>{ const pm=(x.p.mods||{})[m]||{}; return passed[m]===true?'Competent': pm.submittedAt?'Handed in': (pm.opened&&Object.keys(pm.opened).length)?'Started':''; })));
   });
   const csv=lines.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
-  a.download='LWEC-student-monitor-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+  a.download='LWEC-student-monitor-'+(course.code||'')+'-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
 };
 </script>
 </body>

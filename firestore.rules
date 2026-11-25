@@ -63,11 +63,20 @@ service cloud.firestore {
 
     // ================= LWEC Learning Portal (LWECCourses.html) =================
     // Ids: enrol/results/progress docs are '<courseId>_<uid>' (course ids have no '_').
+    // One access code enrols a student in the whole qualification (SAQA 71549): the
+    // enrolment is enrol/us335815_<uid>. Staff pause everything (active false) or one
+    // unit standard (paused.<courseId> true).
     function ownsKey(key) { return signedIn() && key.split('_')[1] == request.auth.uid; }
-    function enrolledIn(cid) {
+    function progEnrol() {
+      return get(/databases/$(database)/documents/enrol/$('us335815_' + request.auth.uid));
+    }
+    function progActive() {
       return signedIn()
-        && exists(/databases/$(database)/documents/enrol/$(cid + '_' + request.auth.uid))
-        && get(/databases/$(database)/documents/enrol/$(cid + '_' + request.auth.uid)).data.active == true;
+        && exists(/databases/$(database)/documents/enrol/$('us335815_' + request.auth.uid))
+        && progEnrol().data.active == true;
+    }
+    function enrolledIn(cid) {
+      return progActive() && progEnrol().data.get('paused', {}).get(cid, false) != true;
     }
     function passedModule(cid, mid) {
       return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
@@ -75,16 +84,17 @@ service cloud.firestore {
              .data.get('passed', {}).get(mid, false) == true;
     }
 
-    // Course title and module titles: any signed-in user. Changed by full mentors.
+    // Course (unit standard) titles: any signed-in user. Changed by full mentors.
     match /courses/{cid} {
-      allow get: if signedIn();
-      allow list: if isMentor();
+      allow get, list: if signedIn();
       allow write: if isFullMentor();
 
       // A module's file links reach a student only once the previous module is passed.
       match /modules/{mid} {
         allow get: if isMentor()
-          || (enrolledIn(cid) && (resource.data.prev == '' || passedModule(cid, resource.data.prev)));
+          || (enrolledIn(cid)
+              && get(/databases/$(database)/documents/courses/$(cid)).data.get('published', true) != false
+              && (resource.data.prev == '' || passedModule(cid, resource.data.prev)));
         allow list: if isMentor();
         allow write: if isFullMentor();
       }
@@ -150,7 +160,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.sec == 0
-        && enrolledIn(request.resource.data.cid);
+        && progActive();
       allow update: if signedIn()
         && resource.data.uid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'sec'])
@@ -158,17 +168,30 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Learner agreement (copyright and conduct), accepted once before starting.
+    match /agree/{uid} {
+      allow get: if isMentor() || (signedIn() && request.auth.uid == uid);
+      allow list: if isMentor();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+
     // Learner evidence file: a student's own uploads (photos, presentations) per unit
     // standard. The student adds and, until it is reviewed, deletes their own; staff
-    // see everything and record the review.
+    // see everything, record the review, and may add earlier work for a student.
     match /evidence/{id} {
       allow get: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
       allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid
-        && enrolledIn('us335815')
-        && !('review' in request.resource.data)
-        && request.resource.data.path.matches('evidence/' + request.auth.uid + '/.*');
+      allow create: if (signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && progActive()
+          && !('review' in request.resource.data)
+          && request.resource.data.path.matches('evidence/' + request.auth.uid + '/.*'))
+        || (isMentor()
+          && request.resource.data.byStaff == true
+          && request.resource.data.path.matches('evidence/' + request.resource.data.uid + '/.*'));
       allow update: if isMentor()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['review']);
       allow delete: if signedIn() && resource.data.uid == request.auth.uid
