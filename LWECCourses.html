@@ -268,12 +268,6 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
     <div class="btnrow"><button class="btn" id="ag_btn" onclick="acceptAgreement()">I accept: open my courses</button></div>
     <div class="err" id="ag_err"></div>
   </div>
-  <div class="card" id="aiCard" hidden>
-    <h2>🤖 AI help with marking</h2>
-    <p class="note">To get your marks back faster, the college can use an AI tool (Claude, made by Anthropic) to <b>suggest</b> marks for the tests and answer sheets you hand in. Your assessor always checks every mark and makes the final decision: the AI never decides if you are competent.</p>
-    <p class="note">If you say yes, your answers and uploaded answer sheets (with your name on them) are sent securely to Anthropic, which may process them outside South Africa. Anthropic does not use them to train its AI and keeps them only for a limited time. The college uses this only for marking your work (POPIA, sections 18 and 72). You can change your mind at any time on this page. If you say no, your assessor marks everything by hand, and nothing else changes for you.</p>
-    <div class="btnrow"><button class="btn" onclick="setAIConsent(true)">Yes, the AI may help mark my work</button><button class="btn secondary" onclick="setAIConsent(false)">No, my assessor marks by hand</button></div>
-  </div>
   <div id="courseList" hidden>
     <div class="card">
       <h2>🎓 FETC: Tourist Guiding (SAQA 71549)</h2>
@@ -343,12 +337,13 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
 <section id="tab-marking" hidden>
   <div class="card">
     <h2>✍️ Tests waiting to be marked</h2>
-    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo. When the AI has pre-marked a test (🤖), check its suggested marks and comments, change what you disagree with, then confirm with your own decision; the AI never decides. Memos you give the AI go into a locked folder that no browser can open. Every mark is kept, with the student's answers, for their PoE pack.</p>
+    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo. When the AI has pre-marked a test (🤖), click <b>Confirm the AI result</b> (or <b>Confirm all</b>) to accept its marks and feedback as your decision, or change anything first. Nothing counts until you confirm. Memos you give the AI go into a locked folder that no browser can open. Every mark is kept, with the student's answers, for their PoE pack.</p>
     <div class="row">
       <div><label>Assessor name (as on your registration)</label><input id="asName" onchange="saveAssessor()"></div>
       <div><label>Assessor registration number</label><input id="asReg" onchange="saveAssessor()"></div>
     </div>
   </div>
+  <div id="aiAll"></div>
   <div id="markList"></div>
   <details class="card" id="memoCard">
     <summary><b>🤖 Memos for AI pre-marking</b> <span class="sm">(answer sheets)</span></summary>
@@ -538,7 +533,8 @@ const AGREE_TEXT = [
   '4. Personal watermark. I understand that my name and email address are shown on everything I view, so any copy can be traced back to me.',
   '5. My own work. The answers and evidence I hand in are my own work.',
   '6. Records. I agree that the college records my sign-ins, the time I spend, what I watch and what I hand in, to confirm my learning for my Portfolio of Evidence and for CATHSSETA. The college keeps this information safely and uses it only for my training and accreditation (POPIA).',
-  '7. Breaking this agreement. If I break this agreement, the college may stop my access, and may take further action to protect its copyright.'
+  '7. Marking. My assessor marks my tests and makes every decision on whether I am competent. To help with this, the college uses an AI tool (Claude, made by Anthropic) that reads the answers and answer sheets I hand in and suggests marks to my assessor. My work may be processed outside South Africa for this; Anthropic does not use it to train its AI and keeps it only for a limited time. The college uses it only for marking my work (POPIA).',
+  '8. Breaking this agreement. If I break this agreement, the college may stop my access, and may take further action to protect its copyright.'
 ];
 
 /* ================= helpers ================= */
@@ -602,7 +598,6 @@ let openMid=null;
 let unsubs=[], resUnsubs={}, progUnsub=null, modUnsub=null;
 // staff
 let S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}};
-let myAI=undefined;   // student: their AI pre-marking consent doc (null = not answered yet)
 let curStu=null;
 let myEvidence=[];
 
@@ -683,7 +678,7 @@ onAuthStateChanged(auth, async user=>{
   stopAll(); me=user; closeViewer();
   if(!user){
     isMentor=false; enrol=null; agreed=null; resultsBy={}; modCache={}; CID=null; myEvidence=[];
-    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}}; myChoice={}; myAI=undefined;
+    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}}; myChoice={};
     $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
     authMode('login'); return;
   }
@@ -694,7 +689,7 @@ onAuthStateChanged(auth, async user=>{
   const tryGet=async ref=>{ for(let i=0;i<4;i++){ try{ return await getDoc(ref); }catch(e){ console.warn('retry',e); lastErr=(e&&e.code)||String(e); if(lastErr==='permission-denied') return null; await new Promise(r=>setTimeout(r,1500*(i+1))); } } return null; };
   const [p,m]=await Promise.all([tryGet(doc(db,'users',user.uid)), tryGet(doc(db,'mentors',user.uid))]);
   if(!p || !m){
-    ['claimCard','courseView','courseList','agreeCard','aiCard'].forEach(i=>$(i).hidden=true);
+    ['claimCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true);
     $('staffCourseNote').hidden=false;
     $('staffCourseNote').innerHTML= lastErr==='permission-denied'
       ? '<h2>⚠️ The college server refused access</h2><p class="note">The Firestore security rules in Firebase are blocking the portal (code: permission-denied). The rules need to be published again in Firebase → Firestore → Rules.</p>'
@@ -750,7 +745,6 @@ function startStudent(){
     myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); if(CID) renderCourse(); else renderStuPoe();
   }, e=>console.warn('evidence',e)));
   unsubs.push(onSnapshot(doc(db,'agree',me.uid), s=>{ agreed=s.exists()?s.data():false; renderCourse(); }, e=>{ console.warn('agree',e); agreed=false; renderCourse(); }));
-  unsubs.push(onSnapshot(doc(db,'aiconsent',me.uid), s=>{ myAI=s.exists()?s.data():null; renderCourse(); }, e=>{ console.warn('aiconsent',e); myAI=undefined; renderCourse(); }));
   unsubs.push(onSnapshot(doc(db,'enrol',PK+'_'+me.uid), async s=>{
     enrol=s.exists()?s.data():null;
     if(!enrol && pendingCode){ const c=pendingCode; pendingCode=null; await claim(c,'rg_err'); return; }
@@ -806,15 +800,6 @@ window.acceptAgreement = async ()=>{
   }catch(e){ console.warn(e); showErr('ag_err','Could not save ('+(e.code||e.message)+'). Check your connection and try again.'); }
   $('ag_btn').disabled=false;
 };
-// AI pre-marking consent (POPIA): the student's own choice, which they can change any time.
-const AI_CONSENT_TEXT='AI pre-marking: the college may send my answers and answer sheets to Anthropic (Claude) so the AI can suggest marks to my assessor, who makes the final decision. My work may be processed outside South Africa. I can change this at any time.';
-window.setAIConsent = async ok=>{
-  try{ await setDoc(doc(db,'aiconsent',me.uid), {uid:me.uid, ok, name:(enrol&&enrol.name)||profile.name||'', email:me.email||'', text:AI_CONSENT_TEXT, at:serverTimestamp()});
-    toast(ok? 'Thank you. The AI may now help your assessor mark your work.' : 'Saved. Your assessor will mark your work by hand.'); }
-  catch(e){ console.warn(e); toast('Could not save ('+(e.code||e.message)+'). Try again.'); }
-};
-window.changeAIConsent = ()=>{ $('aiCard').hidden=false; $('aiCard').scrollIntoView({behavior:'smooth'}); };
-
 function modStatus(mid){
   const prev=prevOf(mid);
   const unlocked = !prev || results.passed[prev]===true;
@@ -834,13 +819,12 @@ const STATUS_PILL={
 
 function renderCourse(){
   if(!me) return;
-  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard','aiCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
+  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
   $('staffCourseNote').hidden=true;
   const active=!!(enrol && enrol.active), ready=active && !!agreed;
   $('claimCard').hidden=!!enrol; $('pausedCard').hidden=!(enrol && !enrol.active);
   $('agreeCard').hidden=!(active && agreed===false);
-  $('aiCard').hidden=!(active && !!agreed && myAI===null);
-  $('aiLine').innerHTML= myAI? '🤖 AI help with marking: <b>'+(myAI.ok?'yes':'no')+'</b> · <a href="#" onclick="changeAIConsent();return false;">change</a>' : '';
+  $('aiLine').textContent='🤖 Your assessor marks every test. An AI tool (Claude, by Anthropic) reads your hand-ins first and suggests marks to help your assessor; your assessor makes every decision.';
   if(active && agreed===false && !$('ag_name').value) $('ag_name').value=enrol.name||profile.name||'';
   $('nav').hidden=!ready;
   $('courseList').hidden=!(ready && !CID);
@@ -1649,15 +1633,24 @@ async function fillMark(c, uid, m, att){
         const shown= a==null? '<i class="sm">not answered</i>' : q.type==='MC'? esc(a)+') '+esc(q.options[LETTERS.indexOf(a)]||'') : '<span style="white-space:pre-wrap">'+esc(a)+'</span>';
         const key= q.type==='MC'? esc(k.answer||'')+') '+esc(q.options[LETTERS.indexOf(k.answer)]||'') : q.type==='TF'? esc(k.answer||'') : '';
         return '<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;max-width:260px;">'+esc(q.text)+'</td><td>'+shown+(au!=null?(au?' ✔':' ✘'):'')+'</td><td class="sm" style="white-space:pre-wrap;">'+key+(k.memo?(key?'<br>':'')+'Memo: '+esc(k.memo):'')+'</td>'
-          +'<td style="white-space:nowrap;"><input id="sc-'+id+'-'+q.n+'" type="number" min="0" max="'+q.marks+'" step="0.5" value="'+(MV['sc-'+id+'-'+q.n]!=null? MV['sc-'+id+'-'+q.n] : au!=null?au:'')+'" style="width:70px;" oninput="window.MV[this.id]=this.value;sumMark(\''+id+'\')"> / '+q.marks+'</td></tr>'; }).join('')
-      +'</table></div><p class="note" style="margin-top:6px;"><b>Total: <span id="tot-'+id+'"></span></b>'+(d.paper.pass?' · pass mark '+d.paper.pass+'%':'')+'</p>'; });
+          +'<td style="white-space:nowrap;"><input id="sc-'+id+'-'+q.n+'" data-w="'+(q.type==='WRITTEN'?1:0)+'" type="number" min="0" max="'+q.marks+'" step="0.5" value="'+(MV['sc-'+id+'-'+q.n]!=null? MV['sc-'+id+'-'+q.n] : au!=null?au:'')+'" style="width:70px;" oninput="window.MV[this.id]=this.value;sumMark(\''+id+'\')"> / '+q.marks+'</td></tr>'; }).join('')
+      +'</table></div><p class="note" style="margin-top:6px;" data-pass="'+(d.paper.pass||70)+'" id="pass-'+id+'"><b>Total: <span id="tot-'+id+'"></span></b> · pass mark '+(d.paper.pass||70)+'% in <b>each</b> part<br><span id="parts-'+id+'"></span></p>'; });
     sumMark(id);
   }catch(e){ console.warn(e); box.innerHTML='<p class="note">Could not load the online test ('+esc(e.code||e.message)+').</p>'; }
 }
 window.sumMark = id=>{
   let t=0, mx=0; document.querySelectorAll('[id^="sc-'+id+'-"]').forEach(i=>{ t+=+i.value||0; mx+=+i.max||0; });
   const el=$('tot-'+id); if(el) el.textContent=t+' / '+mx+(mx?' ('+Math.round(t/mx*100)+'%)':'');
+  const pe=$('parts-'+id); if(pe){ const x=testParts(id); pe.innerHTML=[['Multiple choice',x.mc],['Written',x.wr]].filter(r=>r[1].max).map(r=>r[0]+': <b>'+r[1].s+' / '+r[1].max+' ('+r[1].pct+'%)</b> '+(r[1].pct>=x.pass?'✔':'<span class="pill bad">below '+x.pass+'%</span>')).join(' · '); }
 };
+// Online test: competence is needed in BOTH parts (multiple choice and written), each at the pass mark.
+function testParts(id){
+  const pass=+(($('pass-'+id)||{}).dataset||{}).pass||70, mc={s:0,max:0}, wr={s:0,max:0};
+  document.querySelectorAll('[id^="sc-'+id+'-"][data-w]').forEach(i=>{ const o=i.dataset.w==='1'?wr:mc; o.s+=+i.value||0; o.max+=+i.max||0; });
+  [mc,wr].forEach(o=>o.pct= o.max? Math.round(o.s/o.max*1000)/10 : 100);
+  const redo=[mc.pct<pass&&'multiple-choice', wr.pct<pass&&'written'].filter(Boolean);
+  return {mc, wr, pass, redo, outcome: redo.length?'NYC':'C'};
+}
 
 /* ---------- video tracking (no skipping ahead, real watching time only) ---------- */
 const MEDIA=['slides','video'];   // a presentation saved as a video (.mp4) is tracked the same way
@@ -1885,9 +1878,8 @@ function startStaff(){
   if(mentorLevel==='full'){
     unsubs.push(onSnapshot(collection(db,'premarks'), s=>{ S.pre={}; s.docs.forEach(d=>S.pre[d.id]=d.data()); renderMarking(); renderMonitor(); }, e=>console.warn('premarks',e)));
     unsubs.push(onSnapshot(collection(db,'memos'), s=>{ S.memos={}; s.docs.forEach(d=>S.memos[d.id]=d.data()); renderMemos(); }, e=>console.warn('memos',e)));
-    unsubs.push(onSnapshot(collection(db,'aiconsent'), s=>{ S.aic={}; s.docs.forEach(d=>S.aic[d.id]=d.data()); renderMarking(); }, e=>console.warn('aiconsent',e)));
   }
-  if(location.hash==='#marking') showTab('marking');
+  if(location.hash.startsWith('#marking')){ MARK_JUMP=location.hash.slice(9); showTab('marking'); }
   unsubs.push(()=>clearInterval(monTimer));
   monTimer=setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
 }
@@ -2248,11 +2240,10 @@ const AI_CONF={high:'', medium:' <span class="pill wait">check</span>', low:' <s
 function aiBox(c,uid,m,pm,id){
   const p=preFor(c,uid,m,pm), again='<button class="btn small ghost" onclick="runPremark(\''+c+'\',\''+uid+'\',\''+m+'\')">🔄 Run AI pre-mark'+(p.status==='none'?'':' again')+'</button>';
   const head='<p class="note" style="margin-top:8px;"><b>🤖 AI pre-mark</b> <span class="sm">(a suggestion only: you make the decision)</span></p>';
-  const aic=S.aic[uid];
   if(p.status==='not-needed') return '';
-  if(p.status==='none' || p.status==='old') return head+'<p class="sm">'+(aic&&aic.ok===false? 'The student said no to AI pre-marking: please mark this one yourself.' : !aic? 'The student has not answered the AI consent question yet, so the AI cannot read this work.' : p.status==='old'? 'The AI result is for an earlier hand-in.' : 'Not pre-marked yet.')+'</p>'+(aic&&aic.ok? '<div class="btnrow">'+again+'</div>':'');
+  if(p.status==='none' || p.status==='old') return head+'<p class="sm">'+(p.status==='old'? 'The AI result is for an earlier hand-in.' : 'Not pre-marked yet.')+'</p><div class="btnrow">'+again+'</div>';
   if(p.status==='running') return head+'<p class="sm">⏳ The AI is reading the work and the memo (usually 1 to 3 minutes)…</p>';
-  if(p.status==='no-consent') return head+'<p class="sm">The student has not agreed to AI pre-marking, so the AI did not read this work. Please mark it yourself.</p>'+(aic&&aic.ok? '<div class="btnrow">'+again+'</div>':'');
+  if(p.status==='no-consent') return head+'<p class="sm">This hand-in was skipped under the old opt-in. Click below to let the AI pre-mark it now.</p><div class="btnrow">'+again+'</div>';
   if(p.status==='no-memo') return head+'<p class="sm">There is no memo for this module yet. Upload it under <b>Memos for AI pre-marking</b> at the bottom of this page, then run it.</p><div class="btnrow">'+again+'</div>';
   if(p.status==='nothing-to-read') return head+'<p class="sm">The AI found nothing it could read. '+(p.warnings||[]).map(esc).join(' ')+'</p><div class="btnrow">'+again+'</div>';
   if(p.status==='error') return head+'<p class="sm" style="color:var(--danger)">The AI could not pre-mark this: '+esc(p.error||'')+'</p><div class="btnrow">'+again+'</div>';
@@ -2263,10 +2254,43 @@ function aiBox(c,uid,m,pm,id){
     +'</table></div>'
     +'<p class="note" style="margin-top:6px;">AI total: <b>'+r.total+' / '+r.max_total+' ('+r.percent+'%)</b>'+(sheet?' · your total: <b id="tot-'+id+'"></b>':'')+' · version '+esc(r.version||'?')+' '+(AI_REC[r.recommendation]||'')+'</p>'
     +(r.notes?'<p class="sm">⚠️ '+esc(r.notes)+'</p>':'')+((p.warnings||[]).length?'<p class="sm">⚠️ '+p.warnings.map(esc).join('<br>⚠️ ')+'</p>':'')
+    +(aiCanConfirm(p,pm)? '<div class="btnrow"><button class="btn small" onclick="confirmAI(\''+c+'\',\''+uid+'\',\''+m+'\')">✔ Confirm the AI result'+(sheet? ': '+(r.recommendation==='C'?'Competent':'Not yet competent') : '')+'</button></div>' : '')
     +'<div class="btnrow">'+(sheet?'':'<button class="btn small secondary" onclick="useAIMarks(\''+c+'\',\''+uid+'\',\''+m+'\')">Use the AI marks for the written questions</button>')
     +'<button class="btn small secondary" onclick="useAIFeedback(\''+c+'\',\''+uid+'\',\''+m+'\')">✍️ Copy the AI feedback into the boxes</button>'+again+'</div>'
-    +'<p class="sm">Read '+esc((p.files||[]).join(', '))+' against '+esc(p.memo||'the memo')+' · '+fmtDT(p.at)+'. Check the marks, change anything you disagree with, then click <b>Competent</b> or <b>Not yet competent</b> to confirm.</p>';
+    +'<p class="sm">Read '+esc((p.files||[]).join(', '))+' against '+esc(p.memo||'the memo')+' · '+fmtDT(p.at)+'. If you agree, click <b>Confirm the AI result</b>. Otherwise change the marks or feedback and click <b>Competent</b> or <b>Not yet competent</b>.</p>';
 }
+// One-click sign-off: the assessor accepts the AI's marks, feedback and recommendation as their own decision.
+function aiCanConfirm(p,pm){ return p && p.status==='done' && p.result && (pm.testAtt || ['C','NYC'].includes(p.result.recommendation)); }
+async function confirmAIOne(c,uid,m,quiet){
+  const id=c+'-'+uid+'-'+m, pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{}, p=preFor(c,uid,m,pm);
+  if(!aiCanConfirm(p,pm)) return false;
+  const r=p.result;
+  if($('fg-'+id) && !$('fg-'+id).value.trim()) $('fg-'+id).value=r.good||'';
+  if($('ff-'+id) && !$('ff-'+id).value.trim()) $('ff-'+id).value=r.fix||'';
+  let outcome=r.recommendation;
+  if(pm.testAtt){
+    if(!$('mk-'+id) || !document.querySelector('[id^="sc-'+id+'-"]')){ if(!quiet) toast('The online test is still loading. Try again in a moment.'); return false; }
+    r.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el && el.dataset.w==='1'){ el.value=Math.min(+el.max||q.mark,q.mark); window.MV[el.id]=el.value; } });
+    sumMark(id);
+    const x=testParts(id); outcome=x.outcome;
+    if(x.redo.length && $('ff-'+id)){ const note='To be competent you need '+x.pass+'% in both parts. Multiple choice: '+x.mc.s+'/'+x.mc.max+' ('+x.mc.pct+'%). Written: '+x.wr.s+'/'+x.wr.max+' ('+x.wr.pct+'%). Please redo the '+x.redo.join(' and ')+' questions.';
+      if(!$('ff-'+id).value.includes('in both parts')) $('ff-'+id).value=note+($('ff-'+id).value.trim()?'\n'+$('ff-'+id).value.trim():''); }
+  }
+  return await window.mark(c,uid,m,outcome,{quiet:true, viaAI:true});
+}
+window.confirmAI = (c,uid,m)=>confirmAIOne(c,uid,m,false);
+function aiBulkItems(items){ return items.filter(({e,c,m,pm})=>{ const p=preFor(c,e.uid,m,pm); return !isOwnWork(e) && aiCanConfirm(p,pm) && !(p.warnings||[]).length && !(pm.testAtt && p.result.recommendation==='UNSURE'); }); }
+let MARK_ITEMS=[];
+function confirmAllRunning(){ return !!($('aiAllBtn') && $('aiAllBtn').disabled); }
+window.confirmAllAI = async ()=>{
+  const list=aiBulkItems(MARK_ITEMS);
+  if(!list.length){ toast('No AI results to confirm right now.'); return; }
+  if(!confirm('Confirm the AI result for '+list.length+' test'+(list.length>1?'s':'')+' as your own assessor decision?')) return;
+  $('aiAllBtn').disabled=true; let ok=0;
+  for(const {e,c,m} of list){ if(await confirmAIOne(c,e.uid,m,true)) ok++; }
+  toast('Confirmed '+ok+' of '+list.length+'. Check the rest yourself.');
+  if($('aiAllBtn')) $('aiAllBtn').disabled=false;
+};
 window.runPremark = async (c,uid,m)=>{
   toast('The AI is pre-marking it. This takes 1 to 3 minutes; you can carry on.');
   try{ const r=await httpsCallable(fns,'premarkNow',{timeout:560000})({cid:c, uid, mid:m}); if(r.data && r.data.status!=='done') toast('AI pre-mark: '+r.data.status.replace(/-/g,' ')+'.'); }
@@ -2274,7 +2298,7 @@ window.runPremark = async (c,uid,m)=>{
 };
 window.useAIMarks = (c,uid,m)=>{
   const id=c+'-'+uid+'-'+m, p=S.pre[c+'_'+uid+'_'+m]; if(!p||!p.result) return;
-  p.result.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el){ el.value=q.mark; window.MV[el.id]=el.value; } });
+  p.result.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el && el.dataset.w!=='0'){ el.value=Math.min(+el.max||q.mark,q.mark); window.MV[el.id]=el.value; } });
   sumMark(id); toast('AI marks filled in. Check them before you confirm.');
 };
 window.useAIFeedback = (c,uid,m)=>{
@@ -2313,14 +2337,18 @@ window.uploadMemos = async ()=>{
 };
 
 /* ---------- marking (all unit standards) ---------- */
+let MARK_JUMP='';   // email link #marking-<cid>-<uid>-<mid> scrolls to that test
 function renderMarking(){
   if(!isMentor) return;
   const items=[];
   courseIds(true).forEach(c=>S.enrol.forEach(e=>{ const x=stuSummary(e,c); x.waiting.forEach(m=>items.push({e, c, m, pm:(x.p.mods||{})[m]})); }));
   items.sort((a,b)=>ms(a.pm.submittedAt)-ms(b.pm.submittedAt));
+  MARK_ITEMS=items;
+  const nAI=aiBulkItems(items).length;
+  $('aiAll').innerHTML= nAI? '<div class="card"><p class="note">🤖 The AI has pre-marked <b>'+nAI+'</b> test'+(nAI>1?'s':'')+' with no problems found. You can accept all of its results as your decision in one click, or check them one by one below. Tests the AI was unsure about stay for you to check.</p><div class="btnrow"><button class="btn" id="aiAllBtn" onclick="confirmAllAI()">✔ Confirm all '+nAI+' AI results</button></div></div>' : '';
   keepInputs('markList', ()=>{ $('markList').innerHTML = items.length? items.map(({e,c,m,pm})=>{
     const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link), own=isOwnWork(e);
-    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
+    return '<div class="card sub-entry" id="card-'+id+'"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
       +(pm.testAtt? '<div id="mk-'+id+'" data-c="'+c+'" data-u="'+e.uid+'" data-m="'+m+'" data-a="'+pm.testAtt+'"><p class="note">Loading the online test…</p></div>' : '')
       +(()=>{ const sh=S.evidence.filter(v=>v.uid===e.uid && v.kind==='sheet' && v.mid===m && v.cid===c).sort((a,b)=>ms(a.at)-ms(b.at));
           return sh.length? '<p class="note" style="margin-top:8px;"><b>📤 Completed answer sheet'+(sh.length>1?'s':'')+'</b></p>'+sheetList(sh,true) : ''; })()
@@ -2336,6 +2364,7 @@ function renderMarking(){
   }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>'; });
   document.querySelectorAll('#markList [id^="mk-"]').forEach(b=>fillMark(b.dataset.c, b.dataset.u, b.dataset.m, +b.dataset.a));
   document.querySelectorAll('#markList [id^="ai-"] [id^="tot-"]').forEach(t=>sumMark(t.id.slice(4)));
+  if(MARK_JUMP && $('card-'+MARK_JUMP)){ $('card-'+MARK_JUMP).scrollIntoView({behavior:'smooth'}); MARK_JUMP=''; }
   renderMemos();
 }
 // Registered assessors: their name and CATHSSETA registration number fill in by themselves on
@@ -2348,7 +2377,8 @@ function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_asse
 window.saveAssessor = ()=>{ const v={name:val('asName'), reg:val('asReg')};
   try{ localStorage.setItem('lwec_assessor', JSON.stringify(v)); }catch(e){}
   if(me && isMentor){ profile.assessor=v; setDoc(doc(db,'users',me.uid), {assessor:v}, {merge:true}).catch(e=>console.warn('assessor save',e)); } };
-window.mark = async (c,uid,m,outcome)=>{
+window.mark = async (c,uid,m,outcome,opts)=>{
+  opts=opts||{};
   const id=c+'-'+uid+'-'+m;
   const good=(($('fg-'+id)||{}).value||'').trim(), fix=(($('ff-'+id)||{}).value||'').trim();
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
@@ -2358,7 +2388,7 @@ window.mark = async (c,uid,m,outcome)=>{
   const stu=S.enrol.find(x=>x.uid===uid);
   if(isOwnWork(stu)){ toast('This is your own work. Another assessor must mark it.'); return; }
   if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
-  if(!good && !fix && !confirm('Mark without any written feedback?')) return;
+  if(!good && !fix && !opts.quiet && !confirm('Mark without any written feedback?')) return;
   const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
   const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
@@ -2370,7 +2400,10 @@ window.mark = async (c,uid,m,outcome)=>{
     const qa=d.paper.questions.map(q=>{ const el=$('sc-'+id+'-'+q.n); const v=el&&el.value!==''? Math.min(q.marks,Math.max(0,+el.value)) : null; const a=d.answers[q.n];
       return {n:q.n, type:q.type, q:q.text, a: a==null? null : q.type==='MC'? a+') '+(q.options[LETTERS.indexOf(a)]||'') : a, s:v, max:q.marks, tags:q.tags||[]}; });
     const miss=qa.filter(x=>x.s==null).map(x=>x.n); if(miss.length){ toast('Give a mark for question '+miss.join(', ')+'.'); return; }
+    const tp=testParts(id);
+    if(outcome==='C' && tp.redo.length){ toast('Not competent yet: the '+tp.redo.join(' and ')+' part is below '+tp.pass+'%. Both parts must reach it.'); return; }
     const total=qa.reduce((a,x)=>a+x.s,0), max=qa.reduce((a,x)=>a+x.max,0), scores={}; qa.forEach(x=>scores[x.n]={s:x.s,max:x.max});
+    rec.parts={mc:tp.mc, wr:tp.wr, pass:tp.pass};
     Object.assign(rec,{att:pm.testAtt, ver:d.ver, qa, total, max, startedAt:d.attempt.startedAt||null, submittedAt:d.attempt.submittedAt||rec.submittedAt});
     mx={att:pm.testAtt, ver:d.ver, total, max, scores};
   }
@@ -2385,7 +2418,7 @@ window.mark = async (c,uid,m,outcome)=>{
       Object.assign(rec,{qa, total, max, ver:r.version||''}); mx={ver:r.version||'', total, max, scores};
     }
     const changed=r.questions.filter(q=>{ const x=(rec.qa||[]).find(y=>y.n===q.n); return x && x.s!==q.mark; }).length;
-    const ai={model:pre.model||'', at:pre.at||null, total:r.total, max:r.max_total, rec:r.recommendation, changed, agreed:r.recommendation===outcome};
+    const ai={model:pre.model||'', at:pre.at||null, total:r.total, max:r.max_total, rec:r.recommendation, changed, agreed:r.recommendation===outcome, oneClick:!!opts.viaAI};
     rec.ai=ai; mx.ai=ai;
   }
   try{
@@ -2393,8 +2426,10 @@ window.mark = async (c,uid,m,outcome)=>{
       passed: m.length>3? {[m]: outcome==='C', [baseOf(m)]: outcome==='C'} : {[m]: outcome==='C'},
       marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}, mx)},
       hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
-    toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
-  }catch(e){ toast('Could not save the mark: '+e.code); }
+    if(!opts.quiet) toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
+    else if(opts.viaAI && !confirmAllRunning()) toast(outcome==='C'?'AI result confirmed: competent. The next module is open.':'AI result confirmed: not yet competent.');
+    return true;
+  }catch(e){ toast('Could not save the mark: '+e.code); return false; }
 };
 
 // Work a long-term student completed before the online portal: mark this module and every

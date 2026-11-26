@@ -15,8 +15,8 @@ assessor changed.
 | --- | --- |
 | Cloud Functions `premarkOnHandIn` (on hand-in) and `premarkNow` (staff button) | `functions/index.js`, `functions/premark.js` |
 | Marking page: AI table, "Copy the AI feedback", "Run AI pre-mark again", memo upload, 🤖 count on the Marking tab | `LWECCourses.html` |
-| Student consent card (POPIA), "change" link on the course page | `LWECCourses.html`, `aiconsent/<uid>` |
-| Rules: `premarks` (staff read, server write), `memos` (staff), `aiconsent` (student's own), Storage `memos/` (nobody can read from a browser) | `firestore.rules`, `storage.rules` |
+| Student notice (learner agreement clause 7 and a line on the course page) | `LWECCourses.html` |
+| Rules: `premarks` (staff read, server write), `memos` (staff), `aiconsent` (old opt-in records, no longer used), Storage `memos/` (nobody can read from a browser) | `firestore.rules`, `storage.rules` |
 | Local tests with the Firebase emulator and a stand-in for Claude | `functions/test/` |
 
 ## One-time setup (Zeriah)
@@ -74,11 +74,12 @@ US 335802 is about 190 tests, **about USD 20 to 55 for the whole unit standard**
 answers are cheaper. Firebase (functions, email trigger) stays within the free allowance at this size.
 
 ## POPIA
-Students choose Yes or No on the "AI help with marking" card (stored in `aiconsent/<uid>` with
-the wording and time). If they say No, or have not answered, nothing is sent to the AI and the
-assessor gets an email to mark it by hand. Anthropic processes the work in the USA (cross-border
-transfer, POPIA s72, with consent), does not train on API data, and keeps it only for a limited
-time. Memos sit in Storage `memos/`, which no browser can read; only the function reads them.
+Every hand-in is pre-marked; students do not choose who marks. They are told in clause 7 of the
+learner agreement and in a line on their course page that an AI tool (Claude, by Anthropic) reads
+their hand-ins to suggest marks, that the assessor makes every decision, and that the work may be
+processed outside South Africa (POPIA s18 notice; s72 transfer needed for their training). Anthropic
+does not train on API data and keeps it only for a limited time. Memos sit in Storage `memos/`,
+which no browser can read; only the function reads them.
 
 ## Testing locally
 ```bash
