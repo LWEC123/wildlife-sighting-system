@@ -21,7 +21,7 @@ const { getStorage } = require('firebase-admin/storage');
 const Anthropic = require('@anthropic-ai/sdk');
 const sharp = require('sharp');
 const nodemailer = require('nodemailer');
-const { premark, newHandIns, callClaudeReal } = require('./premark');
+const { premark, newHandIns, callClaudeReal, onlineParts } = require('./premark');
 
 // Must match the Firestore database location (checked when deploying) and REGION in LWECCourses.html.
 const REGION = 'africa-south1';   // Johannesburg, same as the Firestore database
@@ -71,16 +71,27 @@ async function notify(cid, uid, mid) {
   const modName = 'Module ' + (parseInt(mid.slice(1, 3), 10) || mid) + mid.slice(3).toUpperCase() + (mt ? ': ' + mt : '');
   const r = p.result || {};
   let body = '<p><b>' + escH(name) + '</b> handed in <b>' + escH(code + ' · ' + modName) + '</b>.</p>';
+  const REC = { C: 'Competent', NYC: 'Not yet competent', UNSURE: 'unsure, check carefully' };
+  let parts = null;
   if (p.status === 'done') {
-    body += '<p>AI suggestion: <b>' + r.total + ' / ' + r.max_total + ' (' + r.percent + '%)</b>, recommendation <b>' + escH({ C: 'Competent', NYC: 'Not yet competent', UNSURE: 'unsure, check carefully' }[r.recommendation] || r.recommendation) + '</b>.</p>'
+    const pm = ((((await db.doc('progress/' + cid + '_' + uid).get()).data() || {}).mods) || {})[mid] || {};
+    if (pm.testAtt) { try { parts = await onlineParts(db, cid, uid, mid, pm.testAtt, r); } catch (e) { console.error('parts', e.message); } }
+  }
+  if (p.status === 'done' && parts) {
+    body += '<p>Multiple choice <b>' + parts.mc.s + ' / ' + parts.mc.max + ' (' + parts.mc.pct + '%)</b> · written (AI) <b>' + parts.wr.s + ' / ' + parts.wr.max + ' (' + parts.wr.pct + '%)</b> · pass mark ' + parts.pass + '% in each part.</p>'
+      + '<p>Suggested result: <b>' + REC[parts.outcome] + '</b>' + (parts.redo.length ? ' (redo the ' + parts.redo.join(' and ') + ' part)' : '') + (r.recommendation === 'UNSURE' ? '. The AI was unsure about the written answers: check them.' : '') + '</p>'
+      + (r.notes ? '<p>Check: ' + escH(r.notes) + '</p>' : '')
+      + '<p>Nothing counts until you confirm it. Open the test below and click <b>Confirm the AI result</b>, or change anything first.</p>';
+  } else if (p.status === 'done') {
+    body += '<p>AI suggestion: <b>' + r.total + ' / ' + r.max_total + ' (' + r.percent + '%)</b>, recommendation <b>' + escH(REC[r.recommendation] || r.recommendation) + '</b>.</p>'
       + (r.notes ? '<p>Check: ' + escH(r.notes) + '</p>' : '')
       + ((p.warnings || []).length ? '<p>' + p.warnings.map(escH).join('<br>') + '</p>' : '')
-      + '<p>Nothing counts until you confirm it. Open the Marking page, check the marks, change anything you disagree with, and click Competent or Not yet competent.</p>';
+      + '<p>Nothing counts until you confirm it. Open the test below and click <b>Confirm the AI result</b>, or change anything first.</p>';
   } else if (p.status === 'error') body += '<p>The AI could not pre-mark it (' + escH(p.error) + '). Please mark it yourself.</p>';
   else if (p.status === 'no-consent') body += '<p>The student has not agreed to AI pre-marking, so the AI did not read it. Please mark it yourself.</p>';
   else if (p.status === 'no-memo') body += '<p>There is no memo for this module for the AI yet. Upload it on the Marking page (Memos for AI pre-marking), then click "Run AI pre-mark" on the student\'s test.</p>';
   else body += '<p>' + ((p.warnings || []).map(escH).join('<br>') || 'The AI found no file it could read.') + '</p>';
-  body += '<p><a href="' + PORTAL + '">Open the Marking page</a></p><p style="color:#888;font-size:12px">LWEC Learning Portal · this email has no marks for the student; only your confirmed decision counts.</p>';
+  body += '<p><a href="' + PORTAL + '-' + cid + '-' + uid + '-' + mid + '">' + (p.status === 'done' ? 'Open this test and confirm' : 'Open the Marking page') + '</a></p><p style="color:#888;font-size:12px">LWEC Learning Portal · this email has no marks for the student; only your confirmed decision counts.</p>';
   const tr = nodemailer.createTransport({ service: 'gmail', auth: { user: NOTIFY_FROM, pass: pass.replace(/\s+/g, '') } });
   try {
     await tr.sendMail({ from: 'LWEC Learning Portal <' + NOTIFY_FROM + '>', to: NOTIFY_TO, subject: SUBJECT[p.status] + ': ' + name + ', ' + code + ' ' + modName.split(':')[0], html: body });
