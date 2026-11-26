@@ -16,15 +16,14 @@ async function waitFor(id, pred, s = 40) { for (let i = 0; i < s; i++) { const d
   await db.doc('evidence/e1').set({ uid, cid, mid, kind: 'sheet', name: 'sheet.docx', path: 'evidence/stu1/x/US335802/e1_sheet.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', at: new Date() });
   await db.doc('evidence/e2').set({ uid, cid, mid, kind: 'sheet', name: 'page.jpg', path: 'evidence/stu1/x/US335802/e2_page.jpg', type: 'image/jpeg', at: new Date() });
   const id = cid + '_' + uid + '_' + mid;
-  // 1) no consent yet
+  // 1) hand in with no aiconsent record: must still be pre-marked (no opt-in any more)
   await db.doc('progress/us335802_stu1').set({ uid, cid, mods: { m01: { sheets: ['e1', 'e2'], answers: '', submittedAt: Timestamp.fromMillis(Date.now()) } } });
   let p = await waitFor(id, d => d.status !== 'running');
-  console.log('1 no consent ->', p && p.status);
-  // 2) consent yes, hand in again
-  await db.doc('aiconsent/stu1').set({ uid, ok: true, at: new Date() });
+  console.log('1 no consent record ->', p && p.status, '(expect done)');
+  // 2) hand in again
   await db.doc('progress/us335802_stu1').set({ mods: { m01: { submittedAt: Timestamp.fromMillis(Date.now() + 5) } } }, { merge: true });
-  p = await waitFor(id, d => d.status !== 'running' && d.status !== 'no-consent');
-  console.log('2 consent ->', p && p.status, JSON.stringify(p && { files: p.files, memo: p.memo, warnings: p.warnings, total: p.result && p.result.total, max: p.result && p.result.max_total, pct: p.result && p.result.percent, q3: p.result && p.result.questions[2] }));
+  p = await waitFor(id, d => d.status !== 'running' && d.at.toMillis() > p.at.toMillis());
+  console.log('2 second hand-in ->', p && p.status, JSON.stringify(p && { files: p.files, memo: p.memo, warnings: p.warnings, total: p.result && p.result.total, max: p.result && p.result.max_total, pct: p.result && p.result.percent, q3: p.result && p.result.questions[2] }));
   console.log('   sent to AI:', fs.readFileSync('/tmp/premark-fake.json', 'utf8').slice(0, 1500));
   // 3) a watch-time write (no new hand-in) must not re-run
   const before = p.at.toMillis();

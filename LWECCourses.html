@@ -257,12 +257,6 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
     <div class="btnrow"><button class="btn" id="ag_btn" onclick="acceptAgreement()">I accept: open my courses</button></div>
     <div class="err" id="ag_err"></div>
   </div>
-  <div class="card" id="aiCard" hidden>
-    <h2>🤖 AI help with marking</h2>
-    <p class="note">To get your marks back faster, the college can use an AI tool (Claude, made by Anthropic) to <b>suggest</b> marks for the tests and answer sheets you hand in. Your assessor always checks every mark and makes the final decision: the AI never decides if you are competent.</p>
-    <p class="note">If you say yes, your answers and uploaded answer sheets (with your name on them) are sent securely to Anthropic, which may process them outside South Africa. Anthropic does not use them to train its AI and keeps them only for a limited time. The college uses this only for marking your work (POPIA, sections 18 and 72). You can change your mind at any time on this page. If you say no, your assessor marks everything by hand, and nothing else changes for you.</p>
-    <div class="btnrow"><button class="btn" onclick="setAIConsent(true)">Yes, the AI may help mark my work</button><button class="btn secondary" onclick="setAIConsent(false)">No, my assessor marks by hand</button></div>
-  </div>
   <div id="courseList" hidden>
     <div class="card">
       <h2>🎓 FETC: Tourist Guiding (SAQA 71549)</h2>
@@ -526,7 +520,8 @@ const AGREE_TEXT = [
   '4. Personal watermark. I understand that my name and email address are shown on everything I view, so any copy can be traced back to me.',
   '5. My own work. The answers and evidence I hand in are my own work.',
   '6. Records. I agree that the college records my sign-ins, the time I spend, what I watch and what I hand in, to confirm my learning for my Portfolio of Evidence and for CATHSSETA. The college keeps this information safely and uses it only for my training and accreditation (POPIA).',
-  '7. Breaking this agreement. If I break this agreement, the college may stop my access, and may take further action to protect its copyright.'
+  '7. Marking. My assessor marks my tests and makes every decision on whether I am competent. To help with this, the college uses an AI tool (Claude, made by Anthropic) that reads the answers and answer sheets I hand in and suggests marks to my assessor. My work may be processed outside South Africa for this; Anthropic does not use it to train its AI and keeps it only for a limited time. The college uses it only for marking my work (POPIA).',
+  '8. Breaking this agreement. If I break this agreement, the college may stop my access, and may take further action to protect its copyright.'
 ];
 
 /* ================= helpers ================= */
@@ -590,7 +585,6 @@ let openMid=null;
 let unsubs=[], resUnsubs={}, progUnsub=null, modUnsub=null;
 // staff
 let S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}};
-let myAI=undefined;   // student: their AI pre-marking consent doc (null = not answered yet)
 let curStu=null;
 let myEvidence=[];
 
@@ -671,7 +665,7 @@ onAuthStateChanged(auth, async user=>{
   stopAll(); me=user; closeViewer();
   if(!user){
     isMentor=false; enrol=null; agreed=null; resultsBy={}; modCache={}; CID=null; myEvidence=[];
-    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}}; myChoice={}; myAI=undefined;
+    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}}; myChoice={};
     $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
     authMode('login'); return;
   }
@@ -682,7 +676,7 @@ onAuthStateChanged(auth, async user=>{
   const tryGet=async ref=>{ for(let i=0;i<4;i++){ try{ return await getDoc(ref); }catch(e){ console.warn('retry',e); lastErr=(e&&e.code)||String(e); if(lastErr==='permission-denied') return null; await new Promise(r=>setTimeout(r,1500*(i+1))); } } return null; };
   const [p,m]=await Promise.all([tryGet(doc(db,'users',user.uid)), tryGet(doc(db,'mentors',user.uid))]);
   if(!p || !m){
-    ['claimCard','courseView','courseList','agreeCard','aiCard'].forEach(i=>$(i).hidden=true);
+    ['claimCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true);
     $('staffCourseNote').hidden=false;
     $('staffCourseNote').innerHTML= lastErr==='permission-denied'
       ? '<h2>⚠️ The college server refused access</h2><p class="note">The Firestore security rules in Firebase are blocking the portal (code: permission-denied). The rules need to be published again in Firebase → Firestore → Rules.</p>'
@@ -738,7 +732,6 @@ function startStudent(){
     myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); if(CID) renderCourse(); else renderStuPoe();
   }, e=>console.warn('evidence',e)));
   unsubs.push(onSnapshot(doc(db,'agree',me.uid), s=>{ agreed=s.exists()?s.data():false; renderCourse(); }, e=>{ console.warn('agree',e); agreed=false; renderCourse(); }));
-  unsubs.push(onSnapshot(doc(db,'aiconsent',me.uid), s=>{ myAI=s.exists()?s.data():null; renderCourse(); }, e=>{ console.warn('aiconsent',e); myAI=undefined; renderCourse(); }));
   unsubs.push(onSnapshot(doc(db,'enrol',PK+'_'+me.uid), async s=>{
     enrol=s.exists()?s.data():null;
     if(!enrol && pendingCode){ const c=pendingCode; pendingCode=null; await claim(c,'rg_err'); return; }
@@ -794,15 +787,6 @@ window.acceptAgreement = async ()=>{
   }catch(e){ console.warn(e); showErr('ag_err','Could not save ('+(e.code||e.message)+'). Check your connection and try again.'); }
   $('ag_btn').disabled=false;
 };
-// AI pre-marking consent (POPIA): the student's own choice, which they can change any time.
-const AI_CONSENT_TEXT='AI pre-marking: the college may send my answers and answer sheets to Anthropic (Claude) so the AI can suggest marks to my assessor, who makes the final decision. My work may be processed outside South Africa. I can change this at any time.';
-window.setAIConsent = async ok=>{
-  try{ await setDoc(doc(db,'aiconsent',me.uid), {uid:me.uid, ok, name:(enrol&&enrol.name)||profile.name||'', email:me.email||'', text:AI_CONSENT_TEXT, at:serverTimestamp()});
-    toast(ok? 'Thank you. The AI may now help your assessor mark your work.' : 'Saved. Your assessor will mark your work by hand.'); }
-  catch(e){ console.warn(e); toast('Could not save ('+(e.code||e.message)+'). Try again.'); }
-};
-window.changeAIConsent = ()=>{ $('aiCard').hidden=false; $('aiCard').scrollIntoView({behavior:'smooth'}); };
-
 function modStatus(mid){
   const prev=prevOf(mid);
   const unlocked = !prev || results.passed[prev]===true;
@@ -822,13 +806,12 @@ const STATUS_PILL={
 
 function renderCourse(){
   if(!me) return;
-  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard','aiCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
+  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
   $('staffCourseNote').hidden=true;
   const active=!!(enrol && enrol.active), ready=active && !!agreed;
   $('claimCard').hidden=!!enrol; $('pausedCard').hidden=!(enrol && !enrol.active);
   $('agreeCard').hidden=!(active && agreed===false);
-  $('aiCard').hidden=!(active && !!agreed && myAI===null);
-  $('aiLine').innerHTML= myAI? '🤖 AI help with marking: <b>'+(myAI.ok?'yes':'no')+'</b> · <a href="#" onclick="changeAIConsent();return false;">change</a>' : '';
+  $('aiLine').textContent='🤖 Your assessor marks every test. An AI tool (Claude, by Anthropic) reads your hand-ins first and suggests marks to help your assessor; your assessor makes every decision.';
   if(active && agreed===false && !$('ag_name').value) $('ag_name').value=enrol.name||profile.name||'';
   $('nav').hidden=!ready;
   $('courseList').hidden=!(ready && !CID);
@@ -1828,7 +1811,6 @@ function startStaff(){
   if(mentorLevel==='full'){
     unsubs.push(onSnapshot(collection(db,'premarks'), s=>{ S.pre={}; s.docs.forEach(d=>S.pre[d.id]=d.data()); renderMarking(); renderMonitor(); }, e=>console.warn('premarks',e)));
     unsubs.push(onSnapshot(collection(db,'memos'), s=>{ S.memos={}; s.docs.forEach(d=>S.memos[d.id]=d.data()); renderMemos(); }, e=>console.warn('memos',e)));
-    unsubs.push(onSnapshot(collection(db,'aiconsent'), s=>{ S.aic={}; s.docs.forEach(d=>S.aic[d.id]=d.data()); renderMarking(); }, e=>console.warn('aiconsent',e)));
   }
   if(location.hash==='#marking') showTab('marking');
   unsubs.push(()=>clearInterval(monTimer));
@@ -2191,11 +2173,10 @@ const AI_CONF={high:'', medium:' <span class="pill wait">check</span>', low:' <s
 function aiBox(c,uid,m,pm,id){
   const p=preFor(c,uid,m,pm), again='<button class="btn small ghost" onclick="runPremark(\''+c+'\',\''+uid+'\',\''+m+'\')">🔄 Run AI pre-mark'+(p.status==='none'?'':' again')+'</button>';
   const head='<p class="note" style="margin-top:8px;"><b>🤖 AI pre-mark</b> <span class="sm">(a suggestion only: you make the decision)</span></p>';
-  const aic=S.aic[uid];
   if(p.status==='not-needed') return '';
-  if(p.status==='none' || p.status==='old') return head+'<p class="sm">'+(aic&&aic.ok===false? 'The student said no to AI pre-marking: please mark this one yourself.' : !aic? 'The student has not answered the AI consent question yet, so the AI cannot read this work.' : p.status==='old'? 'The AI result is for an earlier hand-in.' : 'Not pre-marked yet.')+'</p>'+(aic&&aic.ok? '<div class="btnrow">'+again+'</div>':'');
+  if(p.status==='none' || p.status==='old') return head+'<p class="sm">'+(p.status==='old'? 'The AI result is for an earlier hand-in.' : 'Not pre-marked yet.')+'</p><div class="btnrow">'+again+'</div>';
   if(p.status==='running') return head+'<p class="sm">⏳ The AI is reading the work and the memo (usually 1 to 3 minutes)…</p>';
-  if(p.status==='no-consent') return head+'<p class="sm">The student has not agreed to AI pre-marking, so the AI did not read this work. Please mark it yourself.</p>'+(aic&&aic.ok? '<div class="btnrow">'+again+'</div>':'');
+  if(p.status==='no-consent') return head+'<p class="sm">This hand-in was skipped under the old opt-in. Click below to let the AI pre-mark it now.</p><div class="btnrow">'+again+'</div>';
   if(p.status==='no-memo') return head+'<p class="sm">There is no memo for this module yet. Upload it under <b>Memos for AI pre-marking</b> at the bottom of this page, then run it.</p><div class="btnrow">'+again+'</div>';
   if(p.status==='nothing-to-read') return head+'<p class="sm">The AI found nothing it could read. '+(p.warnings||[]).map(esc).join(' ')+'</p><div class="btnrow">'+again+'</div>';
   if(p.status==='error') return head+'<p class="sm" style="color:var(--danger)">The AI could not pre-mark this: '+esc(p.error||'')+'</p><div class="btnrow">'+again+'</div>';

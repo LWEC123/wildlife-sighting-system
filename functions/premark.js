@@ -218,11 +218,7 @@ async function premark(deps, cid, uid, mid, opts = {}) {
   });
   if (!go) return { status: 'skipped' };
 
-  const consent = await db.doc('aiconsent/' + uid).get();
-  if (!consent.exists || consent.data().ok !== true) {
-    await put({ forSub: sub, status: 'no-consent' });
-    return { status: 'no-consent' };
-  }
+  // Every hand-in is pre-marked (students are told in the learner agreement); the assessor decides.
 
   const warnings = [];
   try {
