@@ -598,7 +598,10 @@ onAuthStateChanged(auth, async user=>{
   if(!p.exists() && !pendingCode){
     try{ await setDoc(doc(db,'users',user.uid), {name:'',email:user.email||'',role:'student',sno:'',idno:'',mentor:'',prog:'',saqa:'',createdAt:serverTimestamp()}); }catch(e){}
   }
-  isMentor=m.exists(); mentorLevel=isMentor?(m.data().level||'full'):null;
+  // Only FULL mentors are course staff. A 'signer' mentor signs Field Logbook entries but
+  // is a student here, and never sees the staff tabs (the database rules agree).
+  mentorLevel=m.exists()?(m.data().level||'full'):null;
+  isMentor=mentorLevel==='full';
   if(isMentor && profile.role!=='mentor') updateDoc(doc(db,'users',user.uid), {role:'mentor', mlevel:mentorLevel}).catch(()=>{});
   $('whoName').textContent=(profile.name||user.email||'')+(isMentor?' · staff':'');
   listenCourses();
