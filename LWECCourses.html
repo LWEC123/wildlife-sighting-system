@@ -89,6 +89,10 @@ table.t tr.click:hover td{background:#fbf8f0;}
 .sub-entry{border:1px solid #e3ddcc; border-radius:10px; padding:12px 14px; margin-bottom:10px;}
 .af-head{background:var(--sand); border-radius:8px; padding:10px 12px; margin:6px 0;}
 .af-part{font-weight:700; margin:14px 0 4px;}
+.afstaff{display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:8px;}
+.afstaff label{margin:0; font-weight:700;}
+.afstaff select{width:auto; flex:0 1 230px; margin:0;}
+.afas{font-size:.9rem;}
 .afq{display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:6px 0; border-bottom:1px dashed #e8e0cd;}
 .afn{display:inline-block; min-width:2.2em; font-weight:700;}
 .afo{display:inline-flex; margin:0; cursor:pointer;}
@@ -1001,6 +1005,9 @@ window.uploadSheet = async mid=>{
    Headings, labels, the learner's name and the assessor are drawn by the portal, so a student
    can't change them. A draft is saved as the student goes (progress.mods[mid].draft); on hand-in
    the answers are saved as progress.mods[mid].form (per question) and .answers (plain text). */
+// The assessor on every answer sheet is fixed; the student picks the facilitator from this list.
+const FORM_ASSESSOR={name:'Zeriah Wessels', reg:'613/A/00337/2020'};
+const FACILITATORS=['D.P.J. Steyn','Johann Roos'];
 const AF={};          // cid/mid -> {L: layout, vals:{mc:{}, w:{}, decl}} | {none:true} | {loading:true}
 const WNS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 async function zipText(blob, want){
@@ -1062,7 +1069,7 @@ async function loadForm(mid){
     const u=await getMedia(s.path), L=parseSheet(await zipText(await (await fetch(u)).blob(), 'word/document.xml'));
     if(!L.items.length) throw new Error('no questions found');
     const p=(progress.mods||{})[mid]||{}, src=p.draft || p.form || {};
-    AF[key]={L, vals:{mc:Object.assign({},src.mc), w:Object.assign({},src.written||src.w), decl:false}};
+    AF[key]={L, vals:{mc:Object.assign({},src.mc), w:Object.assign({},src.written||src.w), decl:false, fac:FACILITATORS.includes(src.fac)? src.fac : ''}};
   }catch(e){ console.warn('answer form', e); AF[key]={none:true}; }
   drawFormBox(mid);
 }
@@ -1075,7 +1082,10 @@ function formHTML(mid){
   const L=f.L, v=f.vals, mc=L.items.filter(x=>x.type==='MC'), w=L.items.filter(x=>x.type==='W'), id=x=>mid+'-'+x.n;
   const nm=(enrol&&enrol.name)||profile.name||(me&&me.email)||'';
   let h='<h3>✍️ Answer the test here</h3>'
-    +'<div class="af-head"><b>'+esc(L.title)+'</b><br><span class="sm">Learner: <b>'+esc(nm)+'</b>'+(profile.idno?' · ID '+esc(profile.idno):'')+' · '+esc(course.code||'')+' · Assessor: filled in by the college when marked</span></div>'
+    +'<div class="af-head"><b>'+esc(L.title)+'</b><br><span class="sm">Learner: <b>'+esc(nm)+'</b>'+(profile.idno?' · ID '+esc(profile.idno):'')+' · '+esc(course.code||'')+'</span>'
+      +'<div class="afstaff"><label for="aff-'+mid+'">Facilitator</label><select id="aff-'+mid+'" onchange="afFac(\''+mid+'\',this.value)"><option value="">Choose your facilitator…</option>'
+      +FACILITATORS.map(x=>'<option'+(v.fac===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>'
+      +'<span class="afas">Assessor: <b>'+esc(FORM_ASSESSOR.name)+'</b> <span class="sm">('+esc(FORM_ASSESSOR.reg)+')</span></span></div></div>'
     +'<p class="note">Open the test with <b>👁 View</b> above, then answer each question here. Your answers are saved as you go, so you can stop and come back later.</p>';
   if(mc.length) h+='<p class="af-part">Part A: tap the correct answer</p>'+mc.map(x=>'<div class="afq" id="afq-'+id(x)+'"><span class="afn">'+x.n+'</span>'
       +x.opts.map(o=>'<label class="afo"><input type="radio" name="afr-'+id(x)+'" id="afr-'+id(x)+'-'+o+'" value="'+o+'"'+(v.mc[x.n]===o?' checked':'')+' onchange="afSet(\''+mid+'\','+x.n+',this.value,\'mc\')"><span>'+o+'</span></label>').join('')
@@ -1097,9 +1107,10 @@ window.afSet = (mid,n,val,kind)=>{
   clearTimeout(afTimers[mid]); afTimers[mid]=setTimeout(()=>afSave(mid), kind==='mc'? 300 : 2500);
 };
 window.afDecl = (mid,c)=>{ const f=formOf(mid); if(f) f.vals.decl=c; };
+window.afFac = (mid,v)=>{ const f=formOf(mid); if(!f) return; f.vals.fac=FACILITATORS.includes(v)? v : ''; afSave(mid); };
 function afSave(mid){ const f=formOf(mid); if(!f) return; clearTimeout(afTimers[mid]);
   if(['passed','waiting'].includes(modStatus(mid))) return;
-  saveProg({mods:{[mid]:{draft:{mc:f.vals.mc, w:f.vals.w, at:serverTimestamp()}}}}); }
+  saveProg({mods:{[mid]:{draft:{mc:f.vals.mc, w:f.vals.w, fac:f.vals.fac||'', at:serverTimestamp()}}}}); }
 window.addEventListener('pagehide', ()=>Object.keys(afTimers).forEach(afSave));
 // The answers as saved on hand-in: per question (for marking, the PoE and pre-marking) and as plain text.
 function afRecord(mid){
@@ -1108,14 +1119,15 @@ function afRecord(mid){
     if(x.type==='MC') mc[x.n]=a; else written[x.n]=a;
     return {n:x.n, type:x.type, q:x.q||'', marks:x.marks, a}; });
   const text=items.map(x=>x.n+'. '+(x.a||'(not answered)')).join('\n');
-  return {form:{title:f.L.title, items, mc, written, decl:{name:(enrol&&enrol.name)||profile.name||'', at:Timestamp.now()}}, text,
+  return {form:{title:f.L.title, items, mc, written, facilitator:f.vals.fac||'', assessor:FORM_ASSESSOR.name, assessorReg:FORM_ASSESSOR.reg, decl:{name:(enrol&&enrol.name)||profile.name||'', at:Timestamp.now()}}, text,
     missing:items.filter(x=>!x.a).map(x=>x.n)};
 }
 // Staff and PoE: a handed-in on-screen form as a table.
 function formTable(fm, print){
   if(!fm || !(fm.items||[]).length) return '';
   const cls=print? 'pr' : 'aft';
-  return '<table class="'+cls+'"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th></tr>'
+  return (fm.facilitator||fm.assessor? '<p class="sm" style="margin:6px 0;">Facilitator: <b>'+esc(fm.facilitator||'not chosen')+'</b> · Assessor: <b>'+esc(fm.assessor||'')+'</b>'+(fm.assessorReg?' ('+esc(fm.assessorReg)+')':'')+'</p>' : '')
+    +'<table class="'+cls+'"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th></tr>'
     +fm.items.map(x=>'<tr><td>'+x.n+'</td><td style="white-space:pre-wrap;">'+(x.type==='MC'? 'Multiple choice' : esc(x.q||'See the test'))+(x.marks?' <span class="sm">('+x.marks+')</span>':'')+'</td><td style="white-space:pre-wrap;">'+(x.a? '<b>'+esc(x.a)+'</b>' : '<i>(not answered)</i>')+'</td></tr>').join('')
     +'</table>'+(fm.decl? '<p class="sm">Learner declaration accepted on screen by '+esc(fm.decl.name||'')+(fm.decl.at?' on '+fmtDT(fm.decl.at):'')+'.</p>' : '');
 }
@@ -1129,6 +1141,7 @@ window.submitTest = async mid=>{
   const sheets=mySheets(mid).map(e=>e.id), rec=afRecord(mid);
   if(rec){
     const f=formOf(mid);
+    if(!f.vals.fac){ toast('Choose your facilitator at the top of the answer form first.'); const d=$('aff-'+mid); if(d) d.focus(); return; }
     if(!f.vals.decl){ toast('Tick the declaration (that these answers are your own work) first.'); const d=$('afd-'+mid); if(d) d.focus(); return; }
     if(rec.missing.length===rec.form.items.length && !sheets.length){ toast('Answer the questions first.'); return; }
     if(rec.missing.length && !confirm('You have not answered question '+rec.missing.join(', ')+'. Hand in anyway?')) return;
