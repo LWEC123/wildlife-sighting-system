@@ -44,5 +44,8 @@ async function waitFor(id, pred, s = 40) { for (let i = 0; i < s; i++) { const d
   p = await waitFor(cid + '_' + uid + '_m03', d => d.status !== 'running');
   console.log('5 online test ->', p && p.status, p && p.memo);
   console.log('   sent to AI:', fs.readFileSync('/tmp/premark-fake.json', 'utf8').slice(0, 900));
+  // 6) both parts must reach the pass mark (multiple choice unanswered here)
+  const x = await require('../premark').onlineParts(db, cid, uid, 'm03', 1, p.result);
+  console.log('6 parts ->', JSON.stringify({ mc: x.mc, wr: x.wr, outcome: x.outcome, redo: x.redo }));
   process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

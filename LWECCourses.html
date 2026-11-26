@@ -1576,15 +1576,24 @@ async function fillMark(c, uid, m, att){
         const shown= a==null? '<i class="sm">not answered</i>' : q.type==='MC'? esc(a)+') '+esc(q.options[LETTERS.indexOf(a)]||'') : '<span style="white-space:pre-wrap">'+esc(a)+'</span>';
         const key= q.type==='MC'? esc(k.answer||'')+') '+esc(q.options[LETTERS.indexOf(k.answer)]||'') : q.type==='TF'? esc(k.answer||'') : '';
         return '<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;max-width:260px;">'+esc(q.text)+'</td><td>'+shown+(au!=null?(au?' ✔':' ✘'):'')+'</td><td class="sm" style="white-space:pre-wrap;">'+key+(k.memo?(key?'<br>':'')+'Memo: '+esc(k.memo):'')+'</td>'
-          +'<td style="white-space:nowrap;"><input id="sc-'+id+'-'+q.n+'" type="number" min="0" max="'+q.marks+'" step="0.5" value="'+(MV['sc-'+id+'-'+q.n]!=null? MV['sc-'+id+'-'+q.n] : au!=null?au:'')+'" style="width:70px;" oninput="window.MV[this.id]=this.value;sumMark(\''+id+'\')"> / '+q.marks+'</td></tr>'; }).join('')
-      +'</table></div><p class="note" style="margin-top:6px;"><b>Total: <span id="tot-'+id+'"></span></b>'+(d.paper.pass?' · pass mark '+d.paper.pass+'%':'')+'</p>'; });
+          +'<td style="white-space:nowrap;"><input id="sc-'+id+'-'+q.n+'" data-w="'+(q.type==='WRITTEN'?1:0)+'" type="number" min="0" max="'+q.marks+'" step="0.5" value="'+(MV['sc-'+id+'-'+q.n]!=null? MV['sc-'+id+'-'+q.n] : au!=null?au:'')+'" style="width:70px;" oninput="window.MV[this.id]=this.value;sumMark(\''+id+'\')"> / '+q.marks+'</td></tr>'; }).join('')
+      +'</table></div><p class="note" style="margin-top:6px;" data-pass="'+(d.paper.pass||70)+'" id="pass-'+id+'"><b>Total: <span id="tot-'+id+'"></span></b> · pass mark '+(d.paper.pass||70)+'% in <b>each</b> part<br><span id="parts-'+id+'"></span></p>'; });
     sumMark(id);
   }catch(e){ console.warn(e); box.innerHTML='<p class="note">Could not load the online test ('+esc(e.code||e.message)+').</p>'; }
 }
 window.sumMark = id=>{
   let t=0, mx=0; document.querySelectorAll('[id^="sc-'+id+'-"]').forEach(i=>{ t+=+i.value||0; mx+=+i.max||0; });
   const el=$('tot-'+id); if(el) el.textContent=t+' / '+mx+(mx?' ('+Math.round(t/mx*100)+'%)':'');
+  const pe=$('parts-'+id); if(pe){ const x=testParts(id); pe.innerHTML=[['Multiple choice',x.mc],['Written',x.wr]].filter(r=>r[1].max).map(r=>r[0]+': <b>'+r[1].s+' / '+r[1].max+' ('+r[1].pct+'%)</b> '+(r[1].pct>=x.pass?'✔':'<span class="pill bad">below '+x.pass+'%</span>')).join(' · '); }
 };
+// Online test: competence is needed in BOTH parts (multiple choice and written), each at the pass mark.
+function testParts(id){
+  const pass=+(($('pass-'+id)||{}).dataset||{}).pass||70, mc={s:0,max:0}, wr={s:0,max:0};
+  document.querySelectorAll('[id^="sc-'+id+'-"][data-w]').forEach(i=>{ const o=i.dataset.w==='1'?wr:mc; o.s+=+i.value||0; o.max+=+i.max||0; });
+  [mc,wr].forEach(o=>o.pct= o.max? Math.round(o.s/o.max*1000)/10 : 100);
+  const redo=[mc.pct<pass&&'multiple-choice', wr.pct<pass&&'written'].filter(Boolean);
+  return {mc, wr, pass, redo, outcome: redo.length?'NYC':'C'};
+}
 
 /* ---------- video tracking (no skipping ahead, real watching time only) ---------- */
 const MEDIA=['slides','video'];   // a presentation saved as a video (.mp4) is tracked the same way
@@ -2204,11 +2213,11 @@ async function confirmAIOne(c,uid,m,quiet){
   let outcome=r.recommendation;
   if(pm.testAtt){
     if(!$('mk-'+id) || !document.querySelector('[id^="sc-'+id+'-"]')){ if(!quiet) toast('The online test is still loading. Try again in a moment.'); return false; }
-    r.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el){ el.value=q.mark; window.MV[el.id]=el.value; } });
+    r.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el && el.dataset.w==='1'){ el.value=Math.min(+el.max||q.mark,q.mark); window.MV[el.id]=el.value; } });
     sumMark(id);
-    let t=0, mx=0; document.querySelectorAll('[id^="sc-'+id+'-"]').forEach(i=>{ t+=+i.value||0; mx+=+i.max||0; });
-    let pass=70; try{ const d=await loadMarkData(c,uid,m,pm.testAtt); pass=d.paper.pass||70; }catch(e){}
-    outcome= mx && t/mx*100>=pass ? 'C' : 'NYC';
+    const x=testParts(id); outcome=x.outcome;
+    if(x.redo.length && $('ff-'+id)){ const note='To be competent you need '+x.pass+'% in both parts. Multiple choice: '+x.mc.s+'/'+x.mc.max+' ('+x.mc.pct+'%). Written: '+x.wr.s+'/'+x.wr.max+' ('+x.wr.pct+'%). Please redo the '+x.redo.join(' and ')+' questions.';
+      if(!$('ff-'+id).value.includes('in both parts')) $('ff-'+id).value=note+($('ff-'+id).value.trim()?'\n'+$('ff-'+id).value.trim():''); }
   }
   return await window.mark(c,uid,m,outcome,{quiet:true, viaAI:true});
 }
@@ -2232,7 +2241,7 @@ window.runPremark = async (c,uid,m)=>{
 };
 window.useAIMarks = (c,uid,m)=>{
   const id=c+'-'+uid+'-'+m, p=S.pre[c+'_'+uid+'_'+m]; if(!p||!p.result) return;
-  p.result.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el){ el.value=q.mark; window.MV[el.id]=el.value; } });
+  p.result.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el && el.dataset.w!=='0'){ el.value=Math.min(+el.max||q.mark,q.mark); window.MV[el.id]=el.value; } });
   sumMark(id); toast('AI marks filled in. Check them before you confirm.');
 };
 window.useAIFeedback = (c,uid,m)=>{
@@ -2334,7 +2343,10 @@ window.mark = async (c,uid,m,outcome,opts)=>{
     const qa=d.paper.questions.map(q=>{ const el=$('sc-'+id+'-'+q.n); const v=el&&el.value!==''? Math.min(q.marks,Math.max(0,+el.value)) : null; const a=d.answers[q.n];
       return {n:q.n, type:q.type, q:q.text, a: a==null? null : q.type==='MC'? a+') '+(q.options[LETTERS.indexOf(a)]||'') : a, s:v, max:q.marks, tags:q.tags||[]}; });
     const miss=qa.filter(x=>x.s==null).map(x=>x.n); if(miss.length){ toast('Give a mark for question '+miss.join(', ')+'.'); return; }
+    const tp=testParts(id);
+    if(outcome==='C' && tp.redo.length){ toast('Not competent yet: the '+tp.redo.join(' and ')+' part is below '+tp.pass+'%. Both parts must reach it.'); return; }
     const total=qa.reduce((a,x)=>a+x.s,0), max=qa.reduce((a,x)=>a+x.max,0), scores={}; qa.forEach(x=>scores[x.n]={s:x.s,max:x.max});
+    rec.parts={mc:tp.mc, wr:tp.wr, pass:tp.pass};
     Object.assign(rec,{att:pm.testAtt, ver:d.ver, qa, total, max, startedAt:d.attempt.startedAt||null, submittedAt:d.attempt.submittedAt||rec.submittedAt});
     mx={att:pm.testAtt, ver:d.ver, total, max, scores};
   }

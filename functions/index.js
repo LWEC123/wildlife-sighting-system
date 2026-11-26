@@ -20,7 +20,7 @@ const { getStorage } = require('firebase-admin/storage');
 const Anthropic = require('@anthropic-ai/sdk');
 const sharp = require('sharp');
 const nodemailer = require('nodemailer');
-const { premark, newHandIns, callClaudeReal } = require('./premark');
+const { premark, newHandIns, callClaudeReal, onlineParts } = require('./premark');
 
 // Must match the Firestore database location (checked when deploying) and REGION in LWECCourses.html.
 const REGION = 'africa-south1';   // Johannesburg, same as the Firestore database
@@ -70,8 +70,19 @@ async function notify(cid, uid, mid) {
   const modName = 'Module ' + (parseInt(mid.slice(1, 3), 10) || mid) + mid.slice(3).toUpperCase() + (mt ? ': ' + mt : '');
   const r = p.result || {};
   let body = '<p><b>' + escH(name) + '</b> handed in <b>' + escH(code + ' · ' + modName) + '</b>.</p>';
+  const REC = { C: 'Competent', NYC: 'Not yet competent', UNSURE: 'unsure, check carefully' };
+  let parts = null;
   if (p.status === 'done') {
-    body += '<p>AI suggestion: <b>' + r.total + ' / ' + r.max_total + ' (' + r.percent + '%)</b>, recommendation <b>' + escH({ C: 'Competent', NYC: 'Not yet competent', UNSURE: 'unsure, check carefully' }[r.recommendation] || r.recommendation) + '</b>.</p>'
+    const pm = ((((await db.doc('progress/' + cid + '_' + uid).get()).data() || {}).mods) || {})[mid] || {};
+    if (pm.testAtt) { try { parts = await onlineParts(db, cid, uid, mid, pm.testAtt, r); } catch (e) { console.error('parts', e.message); } }
+  }
+  if (p.status === 'done' && parts) {
+    body += '<p>Multiple choice <b>' + parts.mc.s + ' / ' + parts.mc.max + ' (' + parts.mc.pct + '%)</b> · written (AI) <b>' + parts.wr.s + ' / ' + parts.wr.max + ' (' + parts.wr.pct + '%)</b> · pass mark ' + parts.pass + '% in each part.</p>'
+      + '<p>Suggested result: <b>' + REC[parts.outcome] + '</b>' + (parts.redo.length ? ' (redo the ' + parts.redo.join(' and ') + ' part)' : '') + (r.recommendation === 'UNSURE' ? '. The AI was unsure about the written answers: check them.' : '') + '</p>'
+      + (r.notes ? '<p>Check: ' + escH(r.notes) + '</p>' : '')
+      + '<p>Nothing counts until you confirm it. Open the test below and click <b>Confirm the AI result</b>, or change anything first.</p>';
+  } else if (p.status === 'done') {
+    body += '<p>AI suggestion: <b>' + r.total + ' / ' + r.max_total + ' (' + r.percent + '%)</b>, recommendation <b>' + escH(REC[r.recommendation] || r.recommendation) + '</b>.</p>'
       + (r.notes ? '<p>Check: ' + escH(r.notes) + '</p>' : '')
       + ((p.warnings || []).length ? '<p>' + p.warnings.map(escH).join('<br>') + '</p>' : '')
       + '<p>Nothing counts until you confirm it. Open the test below and click <b>Confirm the AI result</b>, or change anything first.</p>';
