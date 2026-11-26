@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/lwec-192.png">
+<title>LWEC Feedback</title>
+<meta name="theme-color" content="#1e3a2a">
+<style>
+:root{ --green-deep:#1e3a2a; --green:#2d5741; --sand:#f4efe4; --gold:#e9c87b; --ink:#25301f; --muted:#5c6653; --danger:#a03c2e; }
+*{box-sizing:border-box; margin:0; padding:0;}
+[hidden]{display:none !important;}
+body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif; background:var(--sand); color:var(--ink); min-height:100vh;}
+header{background:var(--green-deep); color:#fff; padding:12px 16px; display:flex; align-items:center; gap:12px;}
+header img{height:42px;} header b{display:block;} header span{font-size:.75rem; color:var(--gold);}
+main{max-width:640px; margin:0 auto; padding:16px 16px 60px;}
+.card{background:#fff; border-radius:12px; box-shadow:0 2px 10px rgba(30,58,42,.10); padding:18px 16px; margin-bottom:16px;}
+h1{color:var(--green-deep); font-size:1.2rem; margin-bottom:8px;}
+.note{font-size:.88rem; color:var(--muted); line-height:1.5;}
+.who{background:var(--sand); border-radius:10px; padding:10px 12px; margin:10px 0; font-size:.9rem;}
+label{display:block; font-size:.86rem; font-weight:600; color:var(--green-deep); margin:14px 0 5px;}
+label .req{color:var(--danger);}
+input,select,textarea{width:100%; padding:11px; border:1px solid #cfd8cc; border-radius:8px; font-size:1rem; background:#fff; color:var(--ink); font-family:inherit;}
+textarea{min-height:80px;}
+.stars{display:flex; gap:6px; flex-wrap:wrap;}
+.stars button{flex:1 1 0; min-width:44px; padding:10px 0; border:1.5px solid #cfd8cc; background:#fff; border-radius:8px; font-size:1rem; cursor:pointer;}
+.stars button.on{background:var(--gold); border-color:#c4a054; font-weight:700;}
+.scale{display:flex; justify-content:space-between; font-size:.72rem; color:var(--muted); margin-top:2px;}
+canvas{width:100%; height:150px; border:1.5px dashed var(--green); border-radius:8px; background:#fff; touch-action:none;}
+.btn{display:inline-block; border:none; border-radius:999px; padding:13px 24px; font-weight:700; font-size:1rem; cursor:pointer; background:var(--gold); color:var(--green-deep); width:100%; margin-top:18px;}
+.btn.ghost{background:transparent; border:1.5px solid var(--green); color:var(--green);}
+.btn:disabled{opacity:.5;}
+.err{background:#fbeae7; color:var(--danger); border-radius:8px; padding:10px 12px; font-size:.88rem; margin-top:12px;}
+.sm{font-size:.78rem; color:var(--muted);}
+</style>
+</head>
+<body>
+<header><img src="icons/lwec-logo.png" alt="LWEC"><div><b>Limpopo Wildlife Eco College</b><span>Learner assessment feedback</span></div></header>
+<main>
+  <div class="card" id="loading"><p class="note">Opening the form…</p></div>
+  <div class="card" id="bad" hidden><h1>This link does not work</h1><p class="note" id="badTxt">The link may be incomplete or closed. Please ask the learner to send it again.</p></div>
+  <form class="card" id="form" hidden onsubmit="send(event)">
+    <h1 id="fTitle"></h1>
+    <p class="note" id="fIntro"></p>
+    <div class="who">Learner: <b id="fStudent"></b><br>Course: <span id="fUs"></span></div>
+    <div id="fFields"></div>
+    <div id="sigBox"><label>Your full name <span class="req">*</span></label><input id="sname" autocomplete="name"><label>Sign with your finger or mouse <span class="req">*</span></label><canvas id="pad"></canvas><p class="sm"><a href="#" onclick="clearPad();return false;">Clear</a></p></div>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-weight:400;"><input type="checkbox" id="agree" style="width:auto;margin-top:3px;" required> <span id="fSign"></span></label>
+    <p class="sm" style="margin-top:8px;">The college keeps your answers safely for the learner's assessment records (CATHSSETA), as required by law, and uses them for nothing else.</p>
+    <button class="btn" id="sendBtn">Send</button>
+    <div class="err" id="err" hidden></div>
+  </form>
+  <div class="card" id="done" hidden><h1>Thank you! ✔</h1><p class="note">Your feedback has been sent to the college and added to the learner's Portfolio of Evidence.</p>
+    <button class="btn ghost" id="again" hidden onclick="location.reload()">Another person on the same tour? Fill it in again</button></div>
+</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getFirestore, doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { FB_FORMS, RATE5 } from "./poe-defs.js";
+const app = initializeApp({
+  apiKey: "AIzaSyCBM6qjgvMZcpQDj_ZyIEFrWp5fzJjmNiY", authDomain: "lwec-field-logbook.firebaseapp.com", projectId: "lwec-field-logbook",
+  storageBucket: "lwec-field-logbook.firebasestorage.app", messagingSenderId: "67985548748", appId: "1:67985548748:web:a541ff7e7dba59ae7a6969" });
+const db = getFirestore(app);
+const $ = id=>document.getElementById(id);
+const esc = s=>String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tok = (new URLSearchParams(location.search).get('t')||'').replace(/[^a-z0-9]/g,'');
+let FB=null, FD=null, rates={};
+function bad(t){ $('loading').hidden=true; $('bad').hidden=false; if(t) $('badTxt').textContent=t; }
+(async ()=>{
+  if(tok.length<16){ bad(); return; }
+  try{ const s=await getDoc(doc(db,'fb',tok)); if(!s.exists()){ bad(); return; } FB=s.data(); }
+  catch(e){ bad('The form could not be opened ('+(e.code||'no connection')+'). Check your internet connection and try again.'); return; }
+  if(!FB.open){ bad('This link has been closed by the college. Thank you.'); return; }
+  FD=FB_FORMS[FB.type]; if(!FD){ bad(); return; }
+  $('fTitle').textContent=FD.title; $('fIntro').textContent=FD.intro; $('fStudent').textContent=FB.student||''; $('fUs').textContent=FB.us||'';
+  $('fSign').textContent=FD.sign; document.title=FD.title;
+  $('fFields').innerHTML=FD.fields.map(f=>'<label>'+esc(f.l)+(f.req?' <span class="req">*</span>':'')+'</label>'+input(f)).join('');
+  if(FB.type==='client') $('sigBox').hidden=true;
+  $('loading').hidden=true; $('form').hidden=false; initPad();
+})();
+function input(f){
+  if(f.t==='area') return '<textarea id="q-'+f.k+'" maxlength="3000"></textarea>';
+  if(f.t==='sel') return '<select id="q-'+f.k+'"><option value=""></option>'+f.o.map(o=>'<option>'+esc(o)+'</option>').join('')+'</select>';
+  if(f.t==='rate') return '<div class="stars" id="q-'+f.k+'">'+[1,2,3,4,5].map(n=>'<button type="button" onclick="rate(\''+f.k+'\','+n+')">'+n+'</button>').join('')+'</div><div class="scale"><span>1 poor</span><span>5 excellent</span></div>';
+  return '<input id="q-'+f.k+'" type="'+(f.t==='date'?'date':'text')+'" maxlength="300">';
+}
+window.rate=(k,n)=>{ rates[k]=n; [...$('q-'+k).children].forEach((b,i)=>b.classList.toggle('on', i<n)); };
+let pad, ctx, drawing=false, ink=false;
+function initPad(){
+  pad=$('pad'); const r=pad.getBoundingClientRect(); pad.width=r.width*2; pad.height=r.height*2; ctx=pad.getContext('2d'); ctx.setTransform(2,0,0,2,0,0); ctx.lineWidth=2.2; ctx.lineCap='round'; ctx.strokeStyle='#1e3a2a';
+  const pos=e=>{ const b=pad.getBoundingClientRect(), t=e.touches?e.touches[0]:e; return {x:t.clientX-b.left, y:t.clientY-b.top}; };
+  const st=e=>{ e.preventDefault(); drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); };
+  const mv=e=>{ if(!drawing) return; e.preventDefault(); const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); ink=true; };
+  pad.addEventListener('mousedown',st); pad.addEventListener('mousemove',mv); window.addEventListener('mouseup',()=>drawing=false);
+  pad.addEventListener('touchstart',st,{passive:false}); pad.addEventListener('touchmove',mv,{passive:false}); pad.addEventListener('touchend',()=>drawing=false);
+}
+window.clearPad=()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,pad.width,pad.height); ctx.setTransform(2,0,0,2,0,0); ink=false; };
+window.send=async ev=>{
+  ev.preventDefault(); $('err').hidden=true;
+  const v={};
+  for(const f of FD.fields){
+    const val= f.t==='rate'? (rates[f.k]? String(rates[f.k]) : '') : $('q-'+f.k).value.trim();
+    if(f.req && !val){ $('err').textContent='Please answer: '+f.l; $('err').hidden=false; return; }
+    if(val) v[f.k]=val.slice(0,3000);
+  }
+  const sname= FB.type==='mentor'? $('sname').value.trim().slice(0,120) : (v.name||'').slice(0,120);
+  let png='';
+  if(FB.type==='mentor'){
+    if(sname.length<4){ $('err').textContent='Please type your full name.'; $('err').hidden=false; return; }
+    if(!ink){ $('err').textContent='Please sign in the box.'; $('err').hidden=false; return; }
+    const c=document.createElement('canvas'); c.width=360; c.height=120; c.getContext('2d').drawImage(pad,0,0,360,120); png=c.toDataURL('image/png');
+  }
+  if(!$('agree').checked){ $('err').textContent='Please tick the box to confirm.'; $('err').hidden=false; return; }
+  $('sendBtn').disabled=true;
+  try{
+    await addDoc(collection(db,'fb',tok,'resp'), {type:FB.type, v, png, sname, at:serverTimestamp()});
+    $('form').hidden=true; $('done').hidden=false; $('again').hidden=FB.type!=='client'; window.scrollTo(0,0);
+  }catch(e){ $('err').textContent='Could not send ('+(e.code||e.message)+'). Check your connection and try again.'; $('err').hidden=false; $('sendBtn').disabled=false; }
+};
+</script>
+</body>
+</html>

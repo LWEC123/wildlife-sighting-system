@@ -260,6 +260,72 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---------- Portfolio of Evidence (online forms and e-signatures) ----------
+    // poeL/<cid>_<uid>: forms the learner fills and signs. poeL/prog_<uid>: once for the
+    // qualification (POPIA, code of conduct, learner profile). The learner writes their own
+    // until the assessor closes the PoE (locked); staff may read and close or re-open it.
+    match /poeL/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff();
+      allow create: if isCourseStaff()
+        || (ownsKey(key)
+            && key == request.resource.data.cid + '_' + request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && progActive()
+            && !('locked' in request.resource.data));
+      allow update: if isCourseStaff()
+        || (ownsKey(key)
+            && progActive()
+            && resource.data.get('locked', false) != true
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.cid == resource.data.cid
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['locked', 'lockedBy', 'lockedAt']));
+      allow delete: if false;
+    }
+    // poeA/<cid>_<uid> and poeA/prog_<uid>: assessor and moderator forms. The learner may
+    // read their own (assessment plan, progress reviews, report), never write.
+    match /poeA/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list, create, update: if isCourseStaff();
+      allow delete: if false;
+    }
+    // A person's saved signature (drawn once, reused when signing forms).
+    match /sig/{uid} {
+      allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.png is string && request.resource.data.png.size() < 120000;
+      allow delete: if false;
+    }
+    // Third-party feedback through a link with an unguessable token (mentor or employer
+    // report, tourist feedback). Anyone holding the link may read its header and add a
+    // response while it is open; nobody can list links, or change or delete a response.
+    match /fb/{tok} {
+      allow get: if true;
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if tok.size() >= 16
+        && request.resource.data.open == true
+        && request.resource.data.type in ['mentor', 'client']
+        && (isCourseStaff()
+            || (signedIn() && request.resource.data.uid == request.auth.uid && progActive()));
+      allow update: if isCourseStaff()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['open']));
+      allow delete: if false;
+      match /resp/{rid} {
+        allow create: if get(/databases/$(database)/documents/fb/$(tok)).data.open == true
+          && request.resource.data.keys().hasOnly(['type', 'v', 'png', 'sname', 'at'])
+          && request.resource.data.type == get(/databases/$(database)/documents/fb/$(tok)).data.type
+          && request.resource.data.at == request.time
+          && request.resource.data.v is map && request.resource.data.v.keys().size() <= 30
+          && request.resource.data.sname is string && request.resource.data.sname.size() <= 120
+          && request.resource.data.png is string && request.resource.data.png.size() < 120000;
+        allow get, list: if isCourseStaff()
+          || (signedIn() && get(/databases/$(database)/documents/fb/$(tok)).data.uid == request.auth.uid);
+        allow update, delete: if false;
+      }
+    }
+
     // Learner agreement (copyright and conduct), accepted once before starting.
     match /agree/{uid} {
       allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
