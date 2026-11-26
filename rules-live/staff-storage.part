@@ -1,0 +1,21 @@
+    // Staff resources: view-only PDF copies of guides, memos and assessment tools.
+    // staff/<cid>/fac/… = all staff; staff/<cid>/conf/… = assessors and moderators only.
+    // Nobody who is also enrolled as a student can open them. (Two documents read: the
+    // staff record and the enrolment.)
+    function staffRec() {
+      return firestore.get(/databases/(default)/documents/mentors/$(request.auth.uid));
+    }
+    function staffOk(m) {
+      return m != null && m.data.get('level', 'full') == 'full'
+        && !firestore.exists(/databases/(default)/documents/enrol/$('us335815_' + request.auth.uid));
+    }
+    function confRole(m) { return m.data.get('role', 'facilitator') in ['assessor', 'moderator']; }
+    match /staff/{cid}/{tier}/{file} {
+      allow read: if signedIn() && (tier == 'fac' || tier == 'conf')
+        && staffOk(staffRec()) && (tier == 'fac' || confRole(staffRec()));
+      allow create, update: if signedIn() && (tier == 'fac' || tier == 'conf')
+        && staffOk(staffRec()) && confRole(staffRec())
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+      allow delete: if signedIn() && staffOk(staffRec()) && confRole(staffRec());
+    }
