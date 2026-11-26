@@ -831,6 +831,7 @@ function modBody(mid, st){
   if(otOf(m)){
     const fin=baseOf(mid)===midsOf(CID).slice(-1)[0];
     h+='<h3>'+(fin? '🎓 Final assessment' : '📝 Module quiz')+'</h3>';
+    h+=HELP_BTN;
     if(st==='passed') h+='<p class="note">Your assessor marked this '+(fin?'assessment':'module')+' <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+scoreBox(mk)+feedbackBox(mk);
     else if(st==='waiting') h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon.'+(fin?'':' The next module opens once it is marked competent.')+'</p>';
     else {
@@ -841,6 +842,7 @@ function modBody(mid, st){
     return h;
   }
   h+='<h3>Hand in your test</h3>';
+  h+=HELP_BTN;
   if(st==='passed'){
     h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk)+sheetBox(mid, st);
   } else if(st==='waiting'){
@@ -856,6 +858,8 @@ function modBody(mid, st){
   }
   return h;
 }
+// picture guide for students: what to do after the module test, and when (help/after-the-test.jpg)
+const HELP_BTN='<div class="btnrow" style="margin-top:4px;"><a class="btn small ghost" href="help/after-the-test.jpg" target="_blank" rel="noopener">❓ How do I hand in? (picture guide)</a></div>';
 function feedbackBox(mk){
   if(!mk) return '';
   const g=mk.good||'', f=mk.fix||mk.comment||'';
