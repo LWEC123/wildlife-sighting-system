@@ -2081,8 +2081,15 @@ function renderMarking(){
   document.querySelectorAll('#markList [id^="ai-"] [id^="tot-"]').forEach(t=>sumMark(t.id.slice(4)));
   renderMemos();
 }
-function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){} return {name:a.name||profile.name||'', reg:a.reg||''}; }
-window.saveAssessor = ()=>{ try{ localStorage.setItem('lwec_assessor', JSON.stringify({name:val('asName'), reg:val('asReg')})); }catch(e){} };
+// Registered assessors: their name and CATHSSETA registration number fill in by themselves on
+// every device. Others type theirs once on the Marking page; it is kept on their staff profile.
+const ASSESSORS={'limpopowt@gmail.com':{name:'Zeriah Wessels', reg:'613/A/00337/2020'}};
+function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){}
+  const k=ASSESSORS[String((me&&me.email)||'').toLowerCase()]||{}, pa=profile.assessor||{};
+  return {name:a.name||pa.name||k.name||profile.name||'', reg:a.reg||pa.reg||k.reg||''}; }
+window.saveAssessor = ()=>{ const v={name:val('asName'), reg:val('asReg')};
+  try{ localStorage.setItem('lwec_assessor', JSON.stringify(v)); }catch(e){}
+  if(me && isMentor){ profile.assessor=v; setDoc(doc(db,'users',me.uid), {assessor:v}, {merge:true}).catch(e=>console.warn('assessor save',e)); } };
 window.mark = async (c,uid,m,outcome)=>{
   const id=c+'-'+uid+'-'+m;
   const good=(($('fg-'+id)||{}).value||'').trim(), fix=(($('ff-'+id)||{}).value||'').trim();
