@@ -1,0 +1,20 @@
+{
+  "name": "lwec-portal-functions",
+  "private": true,
+  "description": "LWEC Learning Portal: AI pre-marking of answer sheets and written test answers (suggestions for the assessor only).",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node test/premark.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.14.0",
+    "firebase-admin": "14.5.1",
+    "firebase-functions": "7.4.0",
+    "mammoth": "1.13.0",
+    "nodemailer": "10.6.1",
+    "sharp": "0.35.5"
+  }
+}

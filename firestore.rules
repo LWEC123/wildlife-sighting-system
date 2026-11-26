@@ -289,5 +289,29 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid
         && !('review' in resource.data);
     }
+
+    // ---------- AI pre-marking (suggestions for the assessor only) ----------
+    // premarks/<cid>_<uid>_<mid>: written only by the server (Cloud Function), read by staff.
+    // Never readable by students: it is a draft, not a mark.
+    match /premarks/{id} {
+      allow read: if isCourseStaff();
+      allow write: if false;
+    }
+    // memos/<cid>_<mid>: which assessor memo file is in the locked memos/ storage folder
+    // (name and date only; nobody can read the file itself from a browser).
+    match /memos/{id} {
+      allow read, write: if isCourseStaff();
+    }
+    // aiconsent/<uid>: the student's own yes or no to AI pre-marking (POPIA). They may
+    // change their mind at any time; staff read it.
+    match /aiconsent/{uid} {
+      allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow list: if isCourseStaff();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.ok is bool
+        && request.resource.data.at == request.time;
+      allow delete: if false;
+    }
   }
 }

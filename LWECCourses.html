@@ -226,6 +226,12 @@ table.t tr.click:hover td{background:#fbf8f0;}
     <div class="btnrow"><button class="btn" id="ag_btn" onclick="acceptAgreement()">I accept: open my courses</button></div>
     <div class="err" id="ag_err"></div>
   </div>
+  <div class="card" id="aiCard" hidden>
+    <h2>🤖 AI help with marking</h2>
+    <p class="note">To get your marks back faster, the college can use an AI tool (Claude, made by Anthropic) to <b>suggest</b> marks for the tests and answer sheets you hand in. Your assessor always checks every mark and makes the final decision: the AI never decides if you are competent.</p>
+    <p class="note">If you say yes, your answers and uploaded answer sheets (with your name on them) are sent securely to Anthropic, which may process them outside South Africa. Anthropic does not use them to train its AI and keeps them only for a limited time. The college uses this only for marking your work (POPIA, sections 18 and 72). You can change your mind at any time on this page. If you say no, your assessor marks everything by hand, and nothing else changes for you.</p>
+    <div class="btnrow"><button class="btn" onclick="setAIConsent(true)">Yes, the AI may help mark my work</button><button class="btn secondary" onclick="setAIConsent(false)">No, my assessor marks by hand</button></div>
+  </div>
   <div id="courseList" hidden>
     <div class="card">
       <h2>🎓 FETC: Tourist Guiding (SAQA 71549)</h2>
@@ -240,6 +246,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
       <div class="tline note" id="cProgTxt"></div>
       <div class="bar"><i id="cProgBar" style="width:0%"></i></div>
       <p class="note" style="margin-top:10px;">Work through the modules in order. The next module opens once your assessor marks your test as <b>competent</b>.</p>
+      <p class="sm" id="aiLine" style="margin-top:6px;"></p>
     </div>
     <div id="modList"></div>
   </div>
@@ -291,13 +298,22 @@ table.t tr.click:hover td{background:#fbf8f0;}
 <section id="tab-marking" hidden>
   <div class="card">
     <h2>✍️ Tests waiting to be marked</h2>
-    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo, which never goes on this website. Every mark is kept, with the student's answers, for their PoE pack.</p>
+    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo. When the AI has pre-marked a test (🤖), check its suggested marks and comments, change what you disagree with, then confirm with your own decision; the AI never decides. Memos you give the AI go into a locked folder that no browser can open. Every mark is kept, with the student's answers, for their PoE pack.</p>
     <div class="row">
       <div><label>Assessor name (as on your registration)</label><input id="asName" onchange="saveAssessor()"></div>
       <div><label>Assessor registration number</label><input id="asReg" onchange="saveAssessor()"></div>
     </div>
   </div>
   <div id="markList"></div>
+  <details class="card" id="memoCard">
+    <summary><b>🤖 Memos for AI pre-marking</b> <span class="sm">(answer sheets)</span></summary>
+    <p class="note" style="margin-top:8px;">When a student hands in a test, the AI reads their work and the memo, and suggests marks, comments and Competent or Not yet competent. You get an email, then you check it here and confirm. Nothing counts until you click Competent or Not yet competent.</p>
+    <p class="note"><b>Online tests</b> already use the memo lines you imported with the test. <b>Answer sheets</b> (Word, PDF, photos) need the assessor memo: choose the memo files from <i>05 Answers › Assessor CONF</i> (e.g. <i>M01_Culture_and_Heritage_Memo.docx</i>). They go into a locked folder: no browser can open them again, not even yours; only the marking server reads them. If a module has no memo here, the AI uses the online-test memo for that module when there is one.</p>
+    <div class="row"><div><label>Unit standard</label><select id="memoCid" onchange="renderMemos()"></select></div>
+      <div><label>Memo files (.docx or .pdf, named M01…, M02…)</label><input type="file" id="memoFiles" multiple accept=".docx,.pdf,.txt"></div></div>
+    <div class="btnrow"><button class="btn small" id="memoBtn" onclick="uploadMemos()">⬆️ Upload memos</button><span class="sm" id="memoProg"></span></div>
+    <div id="memoList" class="sm" style="margin-top:8px;"></div>
+  </details>
 </section>
 
 <!-- ================= STAFF: ACCESS CODES ================= -->
@@ -373,6 +389,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDo
 
 import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCBM6qjgvMZcpQDj_ZyIEFrWp5fzJjmNiY",
@@ -386,6 +403,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+// AI pre-marking runs in a Cloud Function (functions/ in the repo). Region must match functions/index.js.
+const FN_REGION = 'africa-south1';
+const fns = getFunctions(app, FN_REGION);
 const STORE_HOST = 'https://firebasestorage.googleapis.com';
 const BUCKET = firebaseConfig.storageBucket;
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
@@ -496,7 +516,8 @@ let modCache={};          // cid/mid -> module doc data
 let openMid=null;
 let unsubs=[], resUnsubs={}, progUnsub=null, modUnsub=null;
 // staff
-let S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}};
+let S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}};
+let myAI=undefined;   // student: their AI pre-marking consent doc (null = not answered yet)
 let curStu=null;
 let myEvidence=[];
 
@@ -576,7 +597,7 @@ onAuthStateChanged(auth, async user=>{
   stopAll(); me=user; closeViewer();
   if(!user){
     isMentor=false; enrol=null; agreed=null; resultsBy={}; modCache={}; CID=null; myEvidence=[];
-    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}}; myChoice={};
+    S={enrol:[], prog:{}, res:{}, sessions:[], invites:[], modules:{}, evidence:[], agree:{}, choice:{}, pre:{}, memos:{}, aic:{}}; myChoice={}; myAI=undefined;
     $('authView').hidden=false; $('nav').hidden=true; $('appMain').hidden=true; $('whoBox').hidden=true;
     authMode('login'); return;
   }
@@ -587,7 +608,7 @@ onAuthStateChanged(auth, async user=>{
   const tryGet=async ref=>{ for(let i=0;i<4;i++){ try{ return await getDoc(ref); }catch(e){ console.warn('retry',e); lastErr=(e&&e.code)||String(e); if(lastErr==='permission-denied') return null; await new Promise(r=>setTimeout(r,1500*(i+1))); } } return null; };
   const [p,m]=await Promise.all([tryGet(doc(db,'users',user.uid)), tryGet(doc(db,'mentors',user.uid))]);
   if(!p || !m){
-    ['claimCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true);
+    ['claimCard','courseView','courseList','agreeCard','aiCard'].forEach(i=>$(i).hidden=true);
     $('staffCourseNote').hidden=false;
     $('staffCourseNote').innerHTML= lastErr==='permission-denied'
       ? '<h2>⚠️ The college server refused access</h2><p class="note">The Firestore security rules in Firebase are blocking the portal (code: permission-denied). The rules need to be published again in Firebase → Firestore → Rules.</p>'
@@ -639,6 +660,7 @@ function startStudent(){
     myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); if(CID) renderCourse();
   }, e=>console.warn('evidence',e)));
   unsubs.push(onSnapshot(doc(db,'agree',me.uid), s=>{ agreed=s.exists()?s.data():false; renderCourse(); }, e=>{ console.warn('agree',e); agreed=false; renderCourse(); }));
+  unsubs.push(onSnapshot(doc(db,'aiconsent',me.uid), s=>{ myAI=s.exists()?s.data():null; renderCourse(); }, e=>{ console.warn('aiconsent',e); myAI=undefined; renderCourse(); }));
   unsubs.push(onSnapshot(doc(db,'enrol',PK+'_'+me.uid), async s=>{
     enrol=s.exists()?s.data():null;
     if(!enrol && pendingCode){ const c=pendingCode; pendingCode=null; await claim(c,'rg_err'); return; }
@@ -694,6 +716,14 @@ window.acceptAgreement = async ()=>{
   }catch(e){ console.warn(e); showErr('ag_err','Could not save ('+(e.code||e.message)+'). Check your connection and try again.'); }
   $('ag_btn').disabled=false;
 };
+// AI pre-marking consent (POPIA): the student's own choice, which they can change any time.
+const AI_CONSENT_TEXT='AI pre-marking: the college may send my answers and answer sheets to Anthropic (Claude) so the AI can suggest marks to my assessor, who makes the final decision. My work may be processed outside South Africa. I can change this at any time.';
+window.setAIConsent = async ok=>{
+  try{ await setDoc(doc(db,'aiconsent',me.uid), {uid:me.uid, ok, name:(enrol&&enrol.name)||profile.name||'', email:me.email||'', text:AI_CONSENT_TEXT, at:serverTimestamp()});
+    toast(ok? 'Thank you. The AI may now help your assessor mark your work.' : 'Saved. Your assessor will mark your work by hand.'); }
+  catch(e){ console.warn(e); toast('Could not save ('+(e.code||e.message)+'). Try again.'); }
+};
+window.changeAIConsent = ()=>{ $('aiCard').hidden=false; $('aiCard').scrollIntoView({behavior:'smooth'}); };
 
 function modStatus(mid){
   const prev=prevOf(mid);
@@ -714,11 +744,13 @@ const STATUS_PILL={
 
 function renderCourse(){
   if(!me) return;
-  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
+  if(isMentor){ ['claimCard','pausedCard','courseView','courseList','agreeCard','aiCard'].forEach(i=>$(i).hidden=true); $('staffCourseNote').hidden=false; return; }
   $('staffCourseNote').hidden=true;
   const active=!!(enrol && enrol.active), ready=active && !!agreed;
   $('claimCard').hidden=!!enrol; $('pausedCard').hidden=!(enrol && !enrol.active);
   $('agreeCard').hidden=!(active && agreed===false);
+  $('aiCard').hidden=!(active && !!agreed && myAI===null);
+  $('aiLine').innerHTML= myAI? '🤖 AI help with marking: <b>'+(myAI.ok?'yes':'no')+'</b> · <a href="#" onclick="changeAIConsent();return false;">change</a>' : '';
   if(active && agreed===false && !$('ag_name').value) $('ag_name').value=enrol.name||profile.name||'';
   $('nav').hidden=!ready;
   $('courseList').hidden=!(ready && !CID);
@@ -1547,6 +1579,12 @@ function startStaff(){
     S.sessions=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor();
   }, e=>console.warn('sessions',e)));
   unsubs.push(onSnapshot(collection(db,'evidence'), s=>{ S.evidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor(); renderMarking(); }, e=>console.warn('evidence',e)));
+  if(mentorLevel==='full'){
+    unsubs.push(onSnapshot(collection(db,'premarks'), s=>{ S.pre={}; s.docs.forEach(d=>S.pre[d.id]=d.data()); renderMarking(); renderMonitor(); }, e=>console.warn('premarks',e)));
+    unsubs.push(onSnapshot(collection(db,'memos'), s=>{ S.memos={}; s.docs.forEach(d=>S.memos[d.id]=d.data()); renderMemos(); }, e=>console.warn('memos',e)));
+    unsubs.push(onSnapshot(collection(db,'aiconsent'), s=>{ S.aic={}; s.docs.forEach(d=>S.aic[d.id]=d.data()); renderMarking(); }, e=>console.warn('aiconsent',e)));
+  }
+  if(location.hash==='#marking') showTab('marking');
   unsubs.push(()=>clearInterval(monTimer));
   monTimer=setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
 }
@@ -1611,7 +1649,8 @@ function renderMonitor(){
   $('monStats').innerHTML=[
     [S.enrol.filter(e=>e.active).length,'students with access'],[online,'online now'],[active7,'active this week'],[waiting,'tests to mark (all unit standards)'],[finished,'finished '+esc(course.code||'')]
   ].map(([b,s])=>'<div class="stat"><b>'+b+'</b><span>'+s+'</span></div>').join('');
-  $('markBadge').hidden=!waiting; $('markBadge').textContent=waiting;
+  const aiReady=courseIds(true).reduce((a,c)=>a+S.enrol.reduce((b,e)=>{ const x=stuSummary(e,c); return b+x.waiting.filter(m=>preFor(c,e.uid,m,(x.p.mods||{})[m]).status==='done').length; },0),0);
+  $('markBadge').hidden=!waiting; $('markBadge').textContent=waiting+(aiReady?' · 🤖'+aiReady:''); $('markBadge').title=waiting+' to mark'+(aiReady?', '+aiReady+' pre-marked by AI and ready to check':'');
   if(!rows.length){ $('monTable').innerHTML='<tr><td class="note">No students yet. Create access codes under <b>Access codes</b> and give each student theirs.</td></tr>'; return; }
   $('monTable').innerHTML='<tr><th>Student</th><th>Last on</th><th>Busy with ('+esc(course.code||'')+')</th><th>Progress</th><th>This week</th><th>Time on '+esc(course.code||'')+'</th><th>Sessions</th></tr>'
     +rows.map(r=>'<tr class="click" onclick="openStu(\''+r.e.uid+'\')">'
@@ -1757,6 +1796,77 @@ window.staffUpload = async uid=>{
   $('su_btn').disabled=false;
 };
 
+/* ---------- AI pre-marking (suggestions only; the assessor decides) ---------- */
+function preFor(c,uid,m,pm){ const p=S.pre[c+'_'+uid+'_'+m]; if(!p) return {status:'none'}; if(pm && p.forSub!==ms(pm.submittedAt)) return Object.assign({},p,{status:'old'}); return p; }
+const AI_REC={C:'<span class="pill ok">AI suggests: Competent</span>', NYC:'<span class="pill bad">AI suggests: Not yet competent</span>', UNSURE:'<span class="pill wait">AI is unsure: check carefully</span>'};
+const AI_CONF={high:'', medium:' <span class="pill wait">check</span>', low:' <span class="pill bad">check carefully</span>'};
+function aiBox(c,uid,m,pm,id){
+  const p=preFor(c,uid,m,pm), again='<button class="btn small ghost" onclick="runPremark(\''+c+'\',\''+uid+'\',\''+m+'\')">🔄 Run AI pre-mark'+(p.status==='none'?'':' again')+'</button>';
+  const head='<p class="note" style="margin-top:8px;"><b>🤖 AI pre-mark</b> <span class="sm">(a suggestion only: you make the decision)</span></p>';
+  const aic=S.aic[uid];
+  if(p.status==='not-needed') return '';
+  if(p.status==='none' || p.status==='old') return head+'<p class="sm">'+(aic&&aic.ok===false? 'The student said no to AI pre-marking: please mark this one yourself.' : !aic? 'The student has not answered the AI consent question yet, so the AI cannot read this work.' : p.status==='old'? 'The AI result is for an earlier hand-in.' : 'Not pre-marked yet.')+'</p>'+(aic&&aic.ok? '<div class="btnrow">'+again+'</div>':'');
+  if(p.status==='running') return head+'<p class="sm">⏳ The AI is reading the work and the memo (usually 1 to 3 minutes)…</p>';
+  if(p.status==='no-consent') return head+'<p class="sm">The student has not agreed to AI pre-marking, so the AI did not read this work. Please mark it yourself.</p>'+(aic&&aic.ok? '<div class="btnrow">'+again+'</div>':'');
+  if(p.status==='no-memo') return head+'<p class="sm">There is no memo for this module yet. Upload it under <b>Memos for AI pre-marking</b> at the bottom of this page, then run it.</p><div class="btnrow">'+again+'</div>';
+  if(p.status==='nothing-to-read') return head+'<p class="sm">The AI found nothing it could read. '+(p.warnings||[]).map(esc).join(' ')+'</p><div class="btnrow">'+again+'</div>';
+  if(p.status==='error') return head+'<p class="sm" style="color:var(--danger)">The AI could not pre-mark this: '+esc(p.error||'')+'</p><div class="btnrow">'+again+'</div>';
+  const r=p.result||{questions:[]}, sheet=!pm.testAtt;
+  return head+'<div class="tablewrap"><table class="t"><tr><th>#</th><th>What the student wrote</th><th>AI comment</th><th>'+(sheet?'Your mark':'AI mark')+'</th></tr>'
+    +r.questions.map(q=>'<tr><td>'+q.n+'</td><td class="sm" style="white-space:pre-wrap;max-width:280px;">'+esc(q.student_answer||'')+'</td><td class="sm">'+esc(q.comment||'')+AI_CONF[q.confidence||'low']+'</td>'
+      +'<td style="white-space:nowrap;">'+(sheet? '<input id="sc-'+id+'-'+q.n+'" type="number" min="0" max="'+q.max+'" step="0.5" value="'+q.mark+'" style="width:70px;" oninput="sumMark(\''+id+'\')"> / '+q.max : q.mark+' / '+q.max)+'</td></tr>').join('')
+    +'</table></div>'
+    +'<p class="note" style="margin-top:6px;">AI total: <b>'+r.total+' / '+r.max_total+' ('+r.percent+'%)</b>'+(sheet?' · your total: <b id="tot-'+id+'"></b>':'')+' · version '+esc(r.version||'?')+' '+(AI_REC[r.recommendation]||'')+'</p>'
+    +(r.notes?'<p class="sm">⚠️ '+esc(r.notes)+'</p>':'')+((p.warnings||[]).length?'<p class="sm">⚠️ '+p.warnings.map(esc).join('<br>⚠️ ')+'</p>':'')
+    +'<div class="btnrow">'+(sheet?'':'<button class="btn small secondary" onclick="useAIMarks(\''+c+'\',\''+uid+'\',\''+m+'\')">Use the AI marks for the written questions</button>')
+    +'<button class="btn small secondary" onclick="useAIFeedback(\''+c+'\',\''+uid+'\',\''+m+'\')">✍️ Copy the AI feedback into the boxes</button>'+again+'</div>'
+    +'<p class="sm">Read '+esc((p.files||[]).join(', '))+' against '+esc(p.memo||'the memo')+' · '+fmtDT(p.at)+'. Check the marks, change anything you disagree with, then click <b>Competent</b> or <b>Not yet competent</b> to confirm.</p>';
+}
+window.runPremark = async (c,uid,m)=>{
+  toast('The AI is pre-marking it. This takes 1 to 3 minutes; you can carry on.');
+  try{ const r=await httpsCallable(fns,'premarkNow',{timeout:560000})({cid:c, uid, mid:m}); if(r.data && r.data.status!=='done') toast('AI pre-mark: '+r.data.status.replace(/-/g,' ')+'.'); }
+  catch(e){ console.warn(e); toast('AI pre-mark could not run ('+(e.code||e.message)+').'); }
+};
+window.useAIMarks = (c,uid,m)=>{
+  const id=c+'-'+uid+'-'+m, p=S.pre[c+'_'+uid+'_'+m]; if(!p||!p.result) return;
+  p.result.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el){ el.value=q.mark; window.MV[el.id]=el.value; } });
+  sumMark(id); toast('AI marks filled in. Check them before you confirm.');
+};
+window.useAIFeedback = (c,uid,m)=>{
+  const id=c+'-'+uid+'-'+m, p=S.pre[c+'_'+uid+'_'+m]; if(!p||!p.result) return;
+  if($('fg-'+id)) $('fg-'+id).value=p.result.good||''; if($('ff-'+id)) $('ff-'+id).value=p.result.fix||'';
+  toast('Feedback copied. Edit it as you like before you confirm.');
+};
+function renderMemos(){
+  if(!$('memoCid')) return;
+  const sel=$('memoCid'), cur=sel.value||CID||PK;
+  sel.innerHTML=courseIds(true).map(c=>'<option value="'+c+'"'+(c===cur?' selected':'')+'>'+esc(cdef(c).code||c)+'</option>').join('');
+  const c=sel.value, mids=[...midsOf(c)];
+  Object.keys(S.memos).forEach(k=>{ const d=S.memos[k]; if(d.cid===c && !mids.includes(d.mid)) mids.push(d.mid); });
+  mids.sort();
+  $('memoList').innerHTML='<table class="t"><tr><th>Module</th><th>Memo for AI</th></tr>'+mids.map(m=>{ const d=S.memos[c+'_'+m];
+    return '<tr><td>'+esc(m.toUpperCase())+'</td><td>'+(d? '✔ '+esc(d.name)+' <span class="sm">· '+fmtDT(d.at)+'</span>' : '<span class="sm">none (uses the online-test memo if there is one)</span>')+'</td></tr>'; }).join('')+'</table>';
+}
+window.uploadMemos = async ()=>{
+  const c=$('memoCid').value, files=[...$('memoFiles').files], out=$('memoProg'), msgs=[];
+  if(!files.length){ toast('Choose the memo files first.'); return; }
+  $('memoBtn').disabled=true;
+  for(const f of files){
+    const mm=f.name.match(/^M(\d{2})([A-J])?(?=[_ .-])/i), ext=(f.name.split('.').pop()||'').toLowerCase();
+    if(!mm || !['docx','pdf','txt'].includes(ext)){ msgs.push('⚠️ '+esc(f.name)+': name must start with M01, M02… and be .docx or .pdf'); continue; }
+    const m='m'+mm[1]+(mm[2]||'').toLowerCase(), path='memos/'+c+'/'+m+'.'+ext;
+    const ct= ext==='pdf'?'application/pdf' : ext==='txt'?'text/plain' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    try{
+      out.textContent='Uploading '+f.name+'…';
+      const task=uploadBytesResumable(sref(storage,path), f, {contentType:ct});
+      await new Promise((res,rej)=>task.on('state_changed', null, rej, res));
+      await setDoc(doc(db,'memos',c+'_'+m), {cid:c, mid:m, name:f.name, path, size:f.size, at:serverTimestamp(), by:val('asName')||assessor().name||profile.name||''});
+      msgs.push('✔ '+esc(f.name)+' → '+m.toUpperCase());
+    }catch(e){ console.warn(e); msgs.push('⚠️ '+esc(f.name)+': '+esc(e.code||e.message)); }
+  }
+  $('memoFiles').value=''; out.innerHTML=msgs.join('<br>'); $('memoBtn').disabled=false;
+};
+
 /* ---------- marking (all unit standards) ---------- */
 function renderMarking(){
   if(!isMentor) return;
@@ -1772,11 +1882,14 @@ function renderMarking(){
       +(pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
       +(link?'<p style="margin-top:8px;"><a href="'+esc(link)+'" target="_blank" rel="noopener">📎 Open completed answer sheet</a></p>':'')
       +(pm.paper?'<p class="note" style="margin-top:6px;">📄 Student says the answer sheet was handed in on paper.</p>':'')
+      +'<div id="ai-'+id+'">'+aiBox(c,e.uid,m,pm,id)+'</div>'
       +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
       +'<label>Assessor feedback: what needs correction</label><textarea id="ff-'+id+'" placeholder="e.g. Question 7: explain the role of fire in the grassland biome. Resubmit by ..."></textarea>'
       +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
   }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>'; });
   document.querySelectorAll('#markList [id^="mk-"]').forEach(b=>fillMark(b.dataset.c, b.dataset.u, b.dataset.m, +b.dataset.a));
+  document.querySelectorAll('#markList [id^="ai-"] [id^="tot-"]').forEach(t=>sumMark(t.id.slice(4)));
+  renderMemos();
 }
 function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){} return {name:a.name||profile.name||'', reg:a.reg||''}; }
 window.saveAssessor = ()=>{ try{ localStorage.setItem('lwec_assessor', JSON.stringify({name:val('asName'), reg:val('asReg')})); }catch(e){} };
@@ -1799,6 +1912,20 @@ window.mark = async (c,uid,m,outcome)=>{
     const total=qa.reduce((a,x)=>a+x.s,0), max=qa.reduce((a,x)=>a+x.max,0), scores={}; qa.forEach(x=>scores[x.n]={s:x.s,max:x.max});
     Object.assign(rec,{att:pm.testAtt, ver:d.ver, qa, total, max, startedAt:d.attempt.startedAt||null, submittedAt:d.attempt.submittedAt||rec.submittedAt});
     mx={att:pm.testAtt, ver:d.ver, total, max, scores};
+  }
+  // AI pre-mark: an answer sheet's marks are the assessor's (edited) marks in the AI table.
+  const pre=preFor(c,uid,m,pm);
+  if(pre.status==='done' && pre.result){
+    const r=pre.result;
+    if(!pm.testAtt){
+      const qa=r.questions.map(q=>{ const el=$('sc-'+id+'-'+q.n); const v=el&&el.value!==''? Math.min(q.max,Math.max(0,+el.value)) : null; return {n:q.n, type:'SHEET', q:'', a:q.student_answer||'', s:v, max:q.max, tags:[]}; });
+      const miss=qa.filter(x=>x.s==null).map(x=>x.n); if(miss.length){ toast('Give a mark for question '+miss.join(', ')+'.'); return; }
+      const total=qa.reduce((a,x)=>a+x.s,0), max=qa.reduce((a,x)=>a+x.max,0), scores={}; qa.forEach(x=>scores[x.n]={s:x.s,max:x.max});
+      Object.assign(rec,{qa, total, max, ver:r.version||''}); mx={ver:r.version||'', total, max, scores};
+    }
+    const changed=r.questions.filter(q=>{ const x=(rec.qa||[]).find(y=>y.n===q.n); return x && x.s!==q.mark; }).length;
+    const ai={model:pre.model||'', at:pre.at||null, total:r.total, max:r.max_total, rec:r.recommendation, changed, agreed:r.recommendation===outcome};
+    rec.ai=ai; mx.ai=ai;
   }
   try{
     await setDoc(doc(db,'results',c+'_'+uid), {uid, cid:c,
