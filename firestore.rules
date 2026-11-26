@@ -379,5 +379,39 @@ service cloud.firestore {
         && request.resource.data.at == request.time;
       allow delete: if false;
     }
+
+    // ---------- Staff resources (Staff resources tab) ----------
+    // Role from mentors/<uid>.role, set by the college in the Firebase console:
+    // 'facilitator' (also when missing), 'assessor' or 'moderator'. Anyone who is also
+    // enrolled as a student (enrol/us335815_<uid>) sees no staff resources at all.
+    function staffRole() {
+      return get(/databases/$(database)/documents/mentors/$(request.auth.uid)).data.get('role', 'facilitator');
+    }
+    function resStaff() {
+      return isCourseStaff()
+        && !exists(/databases/$(database)/documents/enrol/$('us335815_' + request.auth.uid));
+    }
+    function confStaff() { return resStaff() && staffRole() in ['assessor', 'moderator']; }
+    // staffdocs/<cid>_<tier>_<name>: list of view-only staff files. tier 'fac' = all staff,
+    // tier 'conf' = assessors and moderators only (memos, oral questions, PoE toolkit).
+    match /staffdocs/{id} {
+      allow read: if resStaff() && (resource.data.tier == 'fac' || confStaff());
+      allow create, update: if confStaff()
+        && request.resource.data.tier in ['fac', 'conf']
+        && request.resource.data.path.matches('staff/[a-z0-9]+/' + request.resource.data.tier + '/[^/]+[.]pdf')
+        && id == request.resource.data.cid + '_' + request.resource.data.tier + '_'
+                 + request.resource.data.path.split('/')[3].split('[.]pdf')[0];
+      allow delete: if confStaff();
+    }
+    // staffviews/<auto>: who opened which staff file, when (for CATHSSETA). Written once by
+    // the viewer, read by assessors and moderators, never changed or deleted.
+    match /staffviews/{id} {
+      allow create: if resStaff()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'cid', 'tier', 'title', 'path', 'at']);
+      allow read: if confStaff();
+      allow update, delete: if false;
+    }
   }
 }

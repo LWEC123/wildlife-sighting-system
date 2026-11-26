@@ -191,6 +191,7 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   <button data-tab="marking" id="navMarking" hidden>✍️ Marking <span class="badge" id="markBadge" hidden></span></button>
   <button data-tab="codes" id="navCodes" hidden>🔑 Access codes</button>
   <button data-tab="setup" id="navSetup" hidden>🛠️ Course setup</button>
+  <button data-tab="staffres" id="navStaffRes" hidden>📚 Staff resources</button>
 </nav>
 
 <!-- ================= SIGN IN ================= -->
@@ -403,6 +404,26 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
     <div class="btnrow"><button class="btn" id="setSave" onclick="saveSetup()">Save course</button><span class="sm" id="setNote"></span></div>
   </div>
 </section>
+<!-- ================= STAFF: STAFF RESOURCES ================= -->
+<section id="tab-staffres" hidden>
+  <div class="card">
+    <h2>📚 Staff resources</h2>
+    <p class="note" id="srRole"></p>
+    <div class="row"><div><label>Unit standard</label><select id="srCourse" onchange="renderStaffRes()"></select></div></div>
+  </div>
+  <div id="srBody"></div>
+  <div class="card" id="srUploadCard" hidden>
+    <h2>⬆️ Add or replace staff files</h2>
+    <p class="note">Click the button, open <i>Electives</i>, click the folder <b>Staff resources upload</b> once, then click <b>Upload</b> (and <b>Upload</b> again if the browser asks). PDF files only. Files in an <i>Assessor CONF</i> folder are shown only to assessors and moderators; everything else is shown to all staff. The course is read from the folder name (e.g. <i>US 335815</i>). A file with the same name replaces the old one.</p>
+    <div class="btnrow"><label class="btn" style="margin:0;cursor:pointer;">📂 Upload the Staff resources upload folder<input type="file" id="srPick" webkitdirectory multiple hidden onchange="staffResUpload(this)"></label><span class="sm" id="srProg"></span></div>
+  </div>
+  <div class="card" id="srLogCard" hidden>
+    <h2>🧾 Who opened what (access log)</h2>
+    <p class="note">Every time a staff member opens a file on this page it is recorded here, with their name, email and the date and time. Nobody can change or delete these records. Use <b>Download the log</b> for CATHSSETA.</p>
+    <div class="btnrow"><button class="btn small secondary" onclick="staffLogCsv()">⬇️ Download the log (spreadsheet)</button><span class="sm" id="srLogNote"></span></div>
+    <div class="tablewrap" id="srLog" style="margin-top:8px;"></div>
+  </div>
+</section>
 </main>
 
 <div id="viewer" hidden oncontextmenu="return false">
@@ -435,7 +456,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          sendPasswordResetEmail, signOut, onAuthStateChanged
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
-         onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion, deleteField
+         onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion, deleteField, orderBy, limit
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { POE_SECTIONS, POE_UNITS, POE_FORMS, FB_FORMS, RATE5 } from "./poe-defs.js";
 
@@ -560,7 +581,7 @@ function ytId(u){ const m=String(u).match(/(?:v=|youtu\.be\/|embed\/|shorts\/|li
 function trackable(v){ const s=srcOf(v); if(!s) return false; if(isVideoExt(extOf(v))) return true; return s.kind==='url' && isYouTube(s.url) && !!ytId(s.url); }
 
 /* ================= state ================= */
-let me=null, profile={}, isMentor=false, mentorLevel=null;
+let me=null, profile={}, isMentor=false, mentorLevel=null, staffRole='facilitator', staffIsStudent=false;
 let courses={};                         // cid -> course doc
 let CID=null, course={}, MIDS=[], NMODS=0;   // the course being looked at
 let enrol=null, agreed=null, resultsBy={}, results={passed:{},marks:{}}, progress={mods:{}};
@@ -676,6 +697,9 @@ onAuthStateChanged(auth, async user=>{
   // is a student here, and never sees the staff tabs (the database rules agree).
   mentorLevel=m.exists()?(m.data().level||'full'):null;
   isMentor=mentorLevel==='full';
+  // Staff role for the Staff resources tab (mentors/<uid>.role, set by the college; the
+  // database rules check the same field). No role = facilitator.
+  staffRole=(m.exists() && m.data().role)||'facilitator';
   if(isMentor && profile.role!=='mentor') updateDoc(doc(db,'users',user.uid), {role:'mentor', mlevel:mentorLevel}).catch(()=>{});
   $('whoName').textContent=(profile.name||user.email||'')+(isMentor?' · staff':'');
   listenCourses();
@@ -692,7 +716,7 @@ function listenCourses(){
 }
 
 /* ================= tabs ================= */
-const TABS=['course','evidence','monitor','marking','codes','setup'];
+const TABS=['course','evidence','monitor','marking','codes','setup','staffres'];
 $('nav').addEventListener('click', e=>{
   const b=e.target.closest('button'); if(!b) return; showTab(b.dataset.tab);
 });
@@ -701,6 +725,7 @@ function showTab(t){
   TABS.forEach(x=>{ $('tab-'+x).hidden=(x!==t); });
   $('staffBar').hidden=!(isMentor && (t==='monitor'||t==='setup'));
   if(t==='setup') renderSetup();
+  if(t==='staffres') openStaffRes();
 }
 
 /* =========================================================
@@ -1192,15 +1217,16 @@ async function fetchStore(path, onProg){
   return new Blob(parts,{type});
 }
 async function cachedBlob(path){ try{ const c=await caches.open(CACHE); const r=await c.match(cacheKey(path)); return r? await r.blob() : null; }catch(e){ return null; } }
-function getMedia(path, onProg){
+function getMedia(path, onProg, noStore){
   if(MEM[path]) return Promise.resolve(MEM[path]);
   if(INFLIGHT[path]){ if(onProg) INFLIGHT[path].cbs.push(onProg); return INFLIGHT[path].p; }
   const cbs=onProg?[onProg]:[];
   const p=(async()=>{
-    let b=await cachedBlob(path);
+    let b=noStore? null : await cachedBlob(path);
     if(!b){
       b=await fetchStore(path,(g,t)=>cbs.forEach(f=>{ try{ f(g,t); }catch(e){} }));
-      try{ const c=await caches.open(CACHE); await c.put(cacheKey(path), new Response(b,{headers:{'content-type':b.type}})); }catch(e){}
+      // Confidential staff files are never kept in the browser's offline store.
+      if(!noStore){ try{ const c=await caches.open(CACHE); await c.put(cacheKey(path), new Response(b,{headers:{'content-type':b.type}})); }catch(e){} }
     }
     return MEM[path]=URL.createObjectURL(b);
   })();
@@ -1242,13 +1268,13 @@ function loadPdfJs(){
     s.onerror=()=>{ pdfjsP=null; rej(new Error('viewer could not load')); }; document.head.appendChild(s);
   }));
 }
-let viewTok=0, viewIO=null;
-async function showPdf(path, title, onOpen){
+let viewTok=0, viewIO=null, viewConf=false;
+async function showPdf(path, title, onOpen, noStore){
   const tok=++viewTok; $('viewer').hidden=false; document.body.style.overflow='hidden';
   $('vTitle').textContent=title; $('vNote').textContent='View only · your name is shown on every page';
   $('vBody').innerHTML='<div class="loadbox" style="max-width:500px;margin:30px auto;">Opening… <span id="vProg"></span><div class="bar"><i id="vBar" style="width:0%"></i></div></div>';
   try{
-    const [lib,u]=await Promise.all([loadPdfJs(), getMedia(path,(g,t)=>{ const el=$('vProg'); if(el) el.textContent=t? Math.round(g/t*100)+'%' : fmtSize(g); const b=$('vBar'); if(b&&t) b.style.width=Math.round(g/t*100)+'%'; })]);
+    const [lib,u]=await Promise.all([loadPdfJs(), getMedia(path,(g,t)=>{ const el=$('vProg'); if(el) el.textContent=t? Math.round(g/t*100)+'%' : fmtSize(g); const b=$('vBar'); if(b&&t) b.style.width=Math.round(g/t*100)+'%'; }, noStore)]);
     if(tok!==viewTok) return;
     const buf=await (await fetch(u)).arrayBuffer();
     const pdf=await lib.getDocument({data:buf}).promise;
@@ -1281,7 +1307,7 @@ async function showVideo(path, title){
     $('vBody').innerHTML='<div style="max-width:1000px;margin:0 auto;">'+videoHTML(u)+'</div>';
   }catch(e){ if(tok===viewTok) $('vBody').innerHTML='<div class="loadbox" style="max-width:500px;margin:30px auto;">'+mediaErr(e)+'</div>'; }
 }
-function closeViewer(){ viewTok++; if(viewIO){ viewIO.disconnect(); viewIO=null; } const vb=$('vBody'); if(vb) vb.innerHTML=''; $('viewer').hidden=true; document.body.style.overflow=''; }
+function closeViewer(){ viewTok++; viewConf=false; if(viewIO){ viewIO.disconnect(); viewIO=null; } const vb=$('vBody'); if(vb) vb.innerHTML=''; $('viewer').hidden=true; document.body.style.overflow=''; }
 window.closeViewer=closeViewer;
 window.viewDoc = (mid,k)=>{
   const s=srcOf((curMod(mid)||{})[k]); if(!s||s.kind!=='store') return;
@@ -1297,7 +1323,7 @@ window.downloadItem = async (mid,k)=>{
   }catch(e){ toast(mediaErr(e)); }
 };
 document.addEventListener('keydown', e=>{
-  if(isMentor || !(e.ctrlKey||e.metaKey)) return;
+  if((isMentor && !viewConf) || !(e.ctrlKey||e.metaKey)) return;
   const k=(e.key||'').toLowerCase();
   if(k==='s' || (k==='p' && !$('viewer').hidden)){ e.preventDefault(); toast('Course material can only be viewed here.'); }
 });
@@ -1784,6 +1810,7 @@ window.deleteEvidence = async id=>{
 function startStaff(){
   $('nav').hidden=false; ['navMonitor','navMarking','navCodes'].forEach(i=>$(i).hidden=false);
   $('navSetup').hidden = mentorLevel!=='full';
+  $('navStaffRes').hidden = false;
   useCourse(PK); fillStaffCourses(); listenModules();
   showTab('monitor');
   const a=assessor(); $('asName').value=a.name; $('asReg').value=a.reg;
@@ -1982,6 +2009,136 @@ window.toggleCourse = async (uid,cid,pause)=>{
   if(pause && !confirm('Pause '+cdef(cid).title+' for this student? Their other unit standards stay open.')) return;
   try{ await updateDoc(doc(db,'enrol',PK+'_'+uid), {['paused.'+cid]:pause}); toast(pause?'Paused for this student.':'Open again for this student.'); }
   catch(e){ toast('Could not change access: '+e.code); }
+};
+
+/* ---------- STAFF RESOURCES ----------
+   A staff-only library per unit standard, opened view-only with the viewer's name stamped on
+   every page. Role comes from mentors/<uid>.role (set by the college in Firebase):
+   facilitator  = course material + Facilitator documents (staff/<cid>/fac/…)
+   assessor / moderator = also the confidential Assessor CONF files (staff/<cid>/conf/…)
+   Anyone who is also enrolled as a student sees none of it (the rules enforce all of this).
+   Data: staffdocs/<cid>_<tier>_<slug> {cid, tier, title, name, path, size, at, by}
+         staffviews/<auto> {uid, name, email, cid, tier, title, path, at}  (never changed or deleted)
+   The AI pre-marking memos stay in the locked memos/ folder; these are separate view copies. */
+const CONF_ROLES=['assessor','moderator'];
+function isConfStaff(){ return isMentor && CONF_ROLES.includes(staffRole) && !staffIsStudent; }
+const SR={docs:[], log:[], cid:null, mods:{}, ready:false};
+let srUnsubs=[];
+async function openStaffRes(){
+  if(!isMentor) return;
+  if(!SR.ready){
+    SR.ready=true;
+    try{ const e=await getDoc(doc(db,'enrol',PK+'_'+me.uid)); staffIsStudent=e.exists(); }catch(e){ staffIsStudent=false; }
+    if(!staffIsStudent){
+      const q= isConfStaff()? collection(db,'staffdocs') : query(collection(db,'staffdocs'), where('tier','==','fac'));
+      srUnsubs.push(onSnapshot(q, s=>{ SR.docs=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderStaffRes(); }, e=>{ console.warn('staffdocs',e); SR.err=e.code||e.message; renderStaffRes(); }));
+      if(isConfStaff()) srUnsubs.push(onSnapshot(query(collection(db,'staffviews'), orderBy('at','desc'), limit(500)), s=>{ SR.log=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderStaffLog(); }, e=>console.warn('staffviews',e)));
+      unsubs.push(()=>{ srUnsubs.forEach(u=>{try{u();}catch(e){}}); srUnsubs=[]; SR.ready=false; SR.docs=[]; SR.log=[]; SR.mods={}; });
+    }
+  }
+  const sel=$('srCourse'), ids=courseIds(true), cur=sel.value||SR.cid||PK;
+  sel.innerHTML=ids.map(c=>'<option value="'+c+'"'+(c===cur?' selected':'')+'>'+esc(cdef(c).title)+'</option>').join('');
+  renderStaffRes();
+}
+const ROLE_LABEL={facilitator:'Facilitator', assessor:'Assessor', moderator:'Moderator'};
+window.renderStaffRes = async ()=>{
+  const cid=$('srCourse').value||PK, conf=isConfStaff();
+  SR.cid=cid;
+  $('srRole').innerHTML= staffIsStudent
+    ? '⛔ This login is also enrolled as a <b>student</b> in SAQA 71549, so staff guides, memos and assessment tools are closed to it. Please use a separate staff login.'
+    : 'You are signed in as <b>'+esc(ROLE_LABEL[staffRole]||staffRole)+'</b>. '+(conf
+      ? 'You see the facilitator material and the confidential <b>assessor and moderator</b> files.'
+      : 'You see the course material and facilitator documents. Memos and assessment tools are for assessors and moderators only.')
+      +' Everything opens view only, with your name on every page, and each opening is recorded.';
+  $('srUploadCard').hidden=!conf; $('srLogCard').hidden=!conf;
+  if(staffIsStudent){ $('srBody').innerHTML=''; return; }
+  if(!SR.mods[cid]){
+    SR.mods[cid]='loading'; $('srBody').innerHTML='<div class="card"><p class="note">Loading…</p></div>';
+    try{ const s=await getDocs(collection(db,'courses',cid,'modules')); SR.mods[cid]={}; s.docs.forEach(d=>SR.mods[cid][d.id]=d.data()); }
+    catch(e){ console.warn(e); SR.mods[cid]={}; }
+    if(SR.cid!==cid) return;
+  }
+  if(SR.mods[cid]==='loading') return;
+  const mods=SR.mods[cid], list=t=>SR.docs.filter(d=>d.cid===cid && d.tier===t).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const fileRow=d=>'<div class="item"><div style="flex:1 1 240px;"><div class="lbl">📄 '+esc(d.title||d.name)+'</div><div class="sm">'+fmtSize(d.size||0)+' · added '+fmtDT(d.at)+(d.by?' by '+esc(d.by):'')+'</div></div>'
+    +'<div><button class="btn small" onclick="openStaffDoc(\''+esc(d.id)+'\')">👁️ View</button></div></div>';
+  let h='<div class="card"><h2>📘 Course material (as the students see it)</h2><p class="note">Learner guide, presentations, videos, visual tests and blank answer sheets from Course setup.</p>';
+  const mids=setupMids(cid).filter(m=>mods[m]);
+  if(!mids.length) h+='<p class="sm">No module files are loaded for this unit standard yet. They come from <b>Course setup</b>.</p>';
+  mids.forEach(mid=>{ const m=mods[mid];
+    const btns=ITEMS.map(it=>{ const s=srcOf(m[it.k]); if(!s) return ''; return '<button class="btn small secondary" onclick="openStaffMod(\''+cid+'\',\''+mid+'\',\''+it.k+'\')">'+it.label+'</button>'; }).join('');
+    if(btns) h+='<div class="item"><div class="lbl" style="flex:1 1 200px;">'+esc(modTitle(mid,cid))+'</div><div class="btnrow" style="margin:0;">'+btns+'</div></div>'; });
+  h+='</div>';
+  const fac=list('fac');
+  h+='<div class="card"><h2>🧑‍🏫 Facilitator documents</h2><p class="note">For all staff. The Facilitator and Assessor Guide is confidential: it holds answer keys. Never share it with learners.</p>'
+    +(fac.length? fac.map(fileRow).join('') : '<p class="sm">Nothing added yet.'+(conf?' Use <b>Add or replace staff files</b> below.':'')+'</p>')+'</div>';
+  if(conf){ const cf=list('conf');
+    h+='<div class="card" style="border-left:5px solid #a33;"><h2>🔒 Assessors and moderators only (CONFIDENTIAL)</h2><p class="note">Module memos, oral questions and the PoE assessor toolkit. Facilitators and students cannot open these.</p>'
+      +(cf.length? cf.map(fileRow).join('') : '<p class="sm">Nothing added yet. Use <b>Add or replace staff files</b> below.</p>')+'</div>'; }
+  if(SR.err) h+='<div class="card"><p class="note">⚠️ The staff file list could not be read ('+esc(SR.err)+'). The new database rules may not be published yet.</p></div>';
+  $('srBody').innerHTML=h;
+};
+async function logStaffView(cid, tier, title, path){
+  try{ await addDoc(collection(db,'staffviews'), {uid:me.uid, name:profile.name||'', email:me.email||'', cid, tier, title:String(title).slice(0,200), path:String(path).slice(0,300), at:serverTimestamp()}); }
+  catch(e){ console.warn('staffviews',e); }
+}
+window.openStaffDoc = id=>{
+  const d=SR.docs.find(x=>x.id===id); if(!d) return;
+  logStaffView(d.cid, d.tier, d.title||d.name, d.path);
+  showPdf(d.path, cdef(d.cid).code.replace(/^US/,'US ')+' · '+(d.title||d.name)+(d.tier==='conf'?' · CONFIDENTIAL':''), null, true);
+  viewConf=true;
+};
+window.openStaffMod = (cid, mid, k)=>{
+  const m=(SR.mods[cid]||{})[mid]||{}, s=srcOf(m[k]); if(!s) return;
+  const title=modTitle(mid,cid)+' · '+itemLabel(k);
+  logStaffView(cid, 'course', title, s.path||s.url);
+  if(s.kind==='url'){ window.open(s.url,'_blank','noopener'); return; }
+  const e=extOf(m[k]);
+  if(isVideoExt(e)) showVideo(s.path, title);
+  else if(e==='pdf') showPdf(s.path, title);
+  else getMedia(s.path).then(u=>{ const a=document.createElement('a'); a.href=u; a.download=title.replace(/[^A-Za-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim()+'.'+(e||'docx'); a.click(); }).catch(er=>toast(mediaErr(er)));
+};
+// Folder upload: "Staff resources upload/US 335815/Facilitator/x.pdf", ".../Assessor CONF/x.pdf".
+function srTarget(f){
+  const rel=(f.webkitRelativePath||f.name), name=f.name;
+  if(!/\.pdf$/i.test(name)) return {skip:'not a PDF'};
+  const m=rel.match(/US\s*_?(\d{6})/i); if(!m) return {skip:'no unit standard number in the folder name'};
+  const cid='us'+m[1], tier=/assessor\s*conf|[\/\\]conf[\/\\]|memo/i.test(rel)? 'conf' : 'fac';
+  const slug=name.replace(/\.pdf$/i,'').replace(/[^A-Za-z0-9-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,90);
+  const title=name.replace(/\.pdf$/i,'').replace(/_/g,' ').replace(/\s+/g,' ').trim();
+  return {cid, tier, slug, title, path:'staff/'+cid+'/'+tier+'/'+slug+'.pdf'};
+}
+window.staffResUpload = async inp=>{
+  if(!isConfStaff()){ toast('Only assessors and moderators can add staff files.'); return; }
+  const files=[...inp.files]; inp.value=''; if(!files.length) return;
+  const todo=[], skipped=[];
+  files.forEach(f=>{ const t=srTarget(f); if(t.skip){ if(!/readme|\.txt$/i.test(f.name)) skipped.push(f.name+' ('+t.skip+')'); } else todo.push([f,t]); });
+  if(!todo.length){ toast('No PDF files found in that folder.'); return; }
+  const by=assessor().name||profile.name||me.email||'';
+  let done=0, failed=[];
+  for(const [f,t] of todo){
+    $('srProg').textContent='Uploading '+(done+1)+' of '+todo.length+': '+f.name;
+    try{
+      await new Promise((res,rej)=>{ const task=uploadBytesResumable(sref(storage,t.path), f, {contentType:'application/pdf'}); task.on('state_changed',null,rej,res); });
+      await setDoc(doc(db,'staffdocs',t.cid+'_'+t.tier+'_'+t.slug), {cid:t.cid, tier:t.tier, title:t.title, name:f.name, path:t.path, size:f.size, at:serverTimestamp(), by, byUid:me.uid});
+      delete MEM[t.path];
+      done++;
+    }catch(e){ console.warn(e); failed.push(f.name+' ('+(e.code||e.message)+')'); }
+  }
+  $('srProg').textContent='✔ '+done+' file'+(done===1?'':'s')+' added.'+(failed.length?' ⚠️ Not added: '+failed.join(', ')+'.':'')+(skipped.length?' Skipped: '+skipped.join(', ')+'.':'');
+};
+function renderStaffLog(){
+  const rows=SR.log;
+  $('srLogNote').textContent=rows.length? 'Showing the last '+rows.length+' opening'+(rows.length===1?'':'s')+'.' : '';
+  $('srLog').innerHTML= rows.length? '<table class="t"><tr><th>When</th><th>Who</th><th>Unit standard</th><th>File</th><th>Section</th></tr>'
+    +rows.map(r=>'<tr><td>'+fmtDT(r.at)+'</td><td>'+esc(r.name||'')+'<br><span class="sm">'+esc(r.email||'')+'</span></td><td>'+esc(cdef(r.cid||PK).code)+'</td><td>'+esc(r.title||'')+'</td><td>'+(r.tier==='conf'?'🔒 Confidential':r.tier==='fac'?'Facilitator':'Course material')+'</td></tr>').join('')+'</table>'
+    : '<p class="sm">Nobody has opened a staff file yet.</p>';
+}
+window.staffLogCsv = ()=>{
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const lines=[['Date and time','Name','Email','Unit standard','File','Section'].map(q).join(',')]
+    .concat(SR.log.map(r=>[ms(r.at)? new Date(ms(r.at)).toLocaleString('en-ZA'):'', r.name, r.email, cdef(r.cid||PK).code, r.title, r.tier==='conf'?'Confidential':r.tier==='fac'?'Facilitator':'Course material'].map(q).join(',')));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'})); a.download='LWEC staff resources access log '+new Date().toISOString().slice(0,10)+'.csv'; a.click();
 };
 
 /* ---------- staff: upload earlier work into a student's evidence file ---------- */
