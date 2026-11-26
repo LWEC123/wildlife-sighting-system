@@ -1,5 +1,5 @@
 // Emulator UI check: seed a staff user and a pre-marked hand-in, open a TEST COPY of the
-// portal wired to the emulators, and screenshot the Marking page and the student consent card.
+// portal wired to the emulators, confirm the AI result in one click, and check the student notice.
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
@@ -14,7 +14,6 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   await db.doc('users/' + stu.uid).set({ name: 'Thandi Test', role: 'student' });
   await db.doc('enrol/us335815_' + stu.uid).set({ uid: stu.uid, cid: 'us335815', name: 'Thandi Test', email: 'stu@test.local', active: true, code: 'X' });
   await db.doc('agree/' + stu.uid).set({ uid: stu.uid, name: 'Thandi Test', at: Timestamp.now() });
-  await db.doc('aiconsent/' + stu.uid).set({ uid: stu.uid, ok: true, at: Timestamp.now() });
   const sub = Timestamp.fromMillis(Date.now() - 3600e3);
   await db.doc('progress/us335815_' + stu.uid).set({ uid: stu.uid, cid: 'us335815', mods: { m01: { sheets: ['ev1'], answers: '', submittedAt: sub } } });
   await db.doc('evidence/ev1').set({ uid: stu.uid, cid: 'us335815', mid: 'm01', kind: 'sheet', name: 'M01 answer sheet.docx', path: 'evidence/' + stu.uid + '/a.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 24000, at: sub, us: 'US335815' });
@@ -36,22 +35,20 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   await pg.screenshot({ path: OUT + '/marking.png', fullPage: true });
   console.log('feedback box:', await pg.$eval('[id^="ff-"]', e => e.value).catch(() => 'none'));
   console.log('total:', await pg.$eval('[id^="tot-"]', e => e.textContent).catch(() => 'none'));
-  await pg.fill('[id^="sc-"][id$="-9"]', '4');
-  await pg.click('text=Competent: open next module');
+  await pg.fill('#asName', 'Zee Staff'); await pg.fill('#asReg', '613/A/TEST');
+  pg.on('dialog', d => { console.log('dialog:', d.message()); d.accept(); });
+  console.log('bulk box:', (await pg.textContent('#aiAll')).trim().slice(0, 120));
+  await pg.click('#aiAllBtn');
   await pg.waitForTimeout(2500);
   const res = (await db.doc('results/us335815_' + stu.uid).get()).data() || {};
   console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed));
-  // student: consent card
-  await db.doc('aiconsent/' + stu.uid).delete();
+  // student: no consent card, just the notice
   const c2 = await b.newContext({ viewport: { width: 420, height: 900 } }); await route(c2); const p2 = await c2.newPage();
   await p2.goto('http://127.0.0.1:8765/LWECCourses.html');
   await p2.waitForSelector('#li_email', { state: 'visible', timeout: 30000 });
   await p2.fill('#li_email', 'stu@test.local'); await p2.fill('#li_pass', 'secret123'); await p2.click('#li_btn');
   await p2.waitForTimeout(5000);
-  console.log('aiCard visible:', await p2.isVisible('#aiCard'));
-  await p2.screenshot({ path: OUT + '/consent.png', fullPage: true });
-  await p2.click('text=Yes, the AI may help mark my work').catch(e => console.log('no yes', e.message));
-  await p2.waitForTimeout(2000);
-  console.log('consent saved:', JSON.stringify((await db.doc('aiconsent/' + stu.uid).get()).data()?.ok), 'card hidden now:', !(await p2.isVisible('#aiCard')));
+  console.log('aiCard exists:', !!(await p2.$('#aiCard')), 'agreement has clause 7:', (await db.doc('agree/' + stu.uid).get()).exists);
+  await p2.screenshot({ path: OUT + '/student.png', fullPage: true });
   await b.close(); process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });

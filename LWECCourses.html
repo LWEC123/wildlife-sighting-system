@@ -326,12 +326,13 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
 <section id="tab-marking" hidden>
   <div class="card">
     <h2>✍️ Tests waiting to be marked</h2>
-    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo. When the AI has pre-marked a test (🤖), check its suggested marks and comments, change what you disagree with, then confirm with your own decision; the AI never decides. Memos you give the AI go into a locked folder that no browser can open. Every mark is kept, with the student's answers, for their PoE pack.</p>
+    <p class="note">Marking a test <b>competent</b> opens the next module for that student. <b>Not yet competent</b> lets them try again. Mark against your assessor memo. When the AI has pre-marked a test (🤖), click <b>Confirm the AI result</b> (or <b>Confirm all</b>) to accept its marks and feedback as your decision, or change anything first. Nothing counts until you confirm. Memos you give the AI go into a locked folder that no browser can open. Every mark is kept, with the student's answers, for their PoE pack.</p>
     <div class="row">
       <div><label>Assessor name (as on your registration)</label><input id="asName" onchange="saveAssessor()"></div>
       <div><label>Assessor registration number</label><input id="asReg" onchange="saveAssessor()"></div>
     </div>
   </div>
+  <div id="aiAll"></div>
   <div id="markList"></div>
   <details class="card" id="memoCard">
     <summary><b>🤖 Memos for AI pre-marking</b> <span class="sm">(answer sheets)</span></summary>
@@ -1812,7 +1813,7 @@ function startStaff(){
     unsubs.push(onSnapshot(collection(db,'premarks'), s=>{ S.pre={}; s.docs.forEach(d=>S.pre[d.id]=d.data()); renderMarking(); renderMonitor(); }, e=>console.warn('premarks',e)));
     unsubs.push(onSnapshot(collection(db,'memos'), s=>{ S.memos={}; s.docs.forEach(d=>S.memos[d.id]=d.data()); renderMemos(); }, e=>console.warn('memos',e)));
   }
-  if(location.hash==='#marking') showTab('marking');
+  if(location.hash.startsWith('#marking')){ MARK_JUMP=location.hash.slice(9); showTab('marking'); }
   unsubs.push(()=>clearInterval(monTimer));
   monTimer=setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
 }
@@ -2187,10 +2188,43 @@ function aiBox(c,uid,m,pm,id){
     +'</table></div>'
     +'<p class="note" style="margin-top:6px;">AI total: <b>'+r.total+' / '+r.max_total+' ('+r.percent+'%)</b>'+(sheet?' · your total: <b id="tot-'+id+'"></b>':'')+' · version '+esc(r.version||'?')+' '+(AI_REC[r.recommendation]||'')+'</p>'
     +(r.notes?'<p class="sm">⚠️ '+esc(r.notes)+'</p>':'')+((p.warnings||[]).length?'<p class="sm">⚠️ '+p.warnings.map(esc).join('<br>⚠️ ')+'</p>':'')
+    +(aiCanConfirm(p,pm)? '<div class="btnrow"><button class="btn small" onclick="confirmAI(\''+c+'\',\''+uid+'\',\''+m+'\')">✔ Confirm the AI result'+(sheet? ': '+(r.recommendation==='C'?'Competent':'Not yet competent') : '')+'</button></div>' : '')
     +'<div class="btnrow">'+(sheet?'':'<button class="btn small secondary" onclick="useAIMarks(\''+c+'\',\''+uid+'\',\''+m+'\')">Use the AI marks for the written questions</button>')
     +'<button class="btn small secondary" onclick="useAIFeedback(\''+c+'\',\''+uid+'\',\''+m+'\')">✍️ Copy the AI feedback into the boxes</button>'+again+'</div>'
-    +'<p class="sm">Read '+esc((p.files||[]).join(', '))+' against '+esc(p.memo||'the memo')+' · '+fmtDT(p.at)+'. Check the marks, change anything you disagree with, then click <b>Competent</b> or <b>Not yet competent</b> to confirm.</p>';
+    +'<p class="sm">Read '+esc((p.files||[]).join(', '))+' against '+esc(p.memo||'the memo')+' · '+fmtDT(p.at)+'. If you agree, click <b>Confirm the AI result</b>. Otherwise change the marks or feedback and click <b>Competent</b> or <b>Not yet competent</b>.</p>';
 }
+// One-click sign-off: the assessor accepts the AI's marks, feedback and recommendation as their own decision.
+function aiCanConfirm(p,pm){ return p && p.status==='done' && p.result && (pm.testAtt || ['C','NYC'].includes(p.result.recommendation)); }
+async function confirmAIOne(c,uid,m,quiet){
+  const id=c+'-'+uid+'-'+m, pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{}, p=preFor(c,uid,m,pm);
+  if(!aiCanConfirm(p,pm)) return false;
+  const r=p.result;
+  if($('fg-'+id) && !$('fg-'+id).value.trim()) $('fg-'+id).value=r.good||'';
+  if($('ff-'+id) && !$('ff-'+id).value.trim()) $('ff-'+id).value=r.fix||'';
+  let outcome=r.recommendation;
+  if(pm.testAtt){
+    if(!$('mk-'+id) || !document.querySelector('[id^="sc-'+id+'-"]')){ if(!quiet) toast('The online test is still loading. Try again in a moment.'); return false; }
+    r.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el){ el.value=q.mark; window.MV[el.id]=el.value; } });
+    sumMark(id);
+    let t=0, mx=0; document.querySelectorAll('[id^="sc-'+id+'-"]').forEach(i=>{ t+=+i.value||0; mx+=+i.max||0; });
+    let pass=70; try{ const d=await loadMarkData(c,uid,m,pm.testAtt); pass=d.paper.pass||70; }catch(e){}
+    outcome= mx && t/mx*100>=pass ? 'C' : 'NYC';
+  }
+  return await window.mark(c,uid,m,outcome,{quiet:true, viaAI:true});
+}
+window.confirmAI = (c,uid,m)=>confirmAIOne(c,uid,m,false);
+function aiBulkItems(items){ return items.filter(({e,c,m,pm})=>{ const p=preFor(c,e.uid,m,pm); return !isOwnWork(e) && aiCanConfirm(p,pm) && !(p.warnings||[]).length && !(pm.testAtt && p.result.recommendation==='UNSURE'); }); }
+let MARK_ITEMS=[];
+function confirmAllRunning(){ return !!($('aiAllBtn') && $('aiAllBtn').disabled); }
+window.confirmAllAI = async ()=>{
+  const list=aiBulkItems(MARK_ITEMS);
+  if(!list.length){ toast('No AI results to confirm right now.'); return; }
+  if(!confirm('Confirm the AI result for '+list.length+' test'+(list.length>1?'s':'')+' as your own assessor decision?')) return;
+  $('aiAllBtn').disabled=true; let ok=0;
+  for(const {e,c,m} of list){ if(await confirmAIOne(c,e.uid,m,true)) ok++; }
+  toast('Confirmed '+ok+' of '+list.length+'. Check the rest yourself.');
+  if($('aiAllBtn')) $('aiAllBtn').disabled=false;
+};
 window.runPremark = async (c,uid,m)=>{
   toast('The AI is pre-marking it. This takes 1 to 3 minutes; you can carry on.');
   try{ const r=await httpsCallable(fns,'premarkNow',{timeout:560000})({cid:c, uid, mid:m}); if(r.data && r.data.status!=='done') toast('AI pre-mark: '+r.data.status.replace(/-/g,' ')+'.'); }
@@ -2237,14 +2271,18 @@ window.uploadMemos = async ()=>{
 };
 
 /* ---------- marking (all unit standards) ---------- */
+let MARK_JUMP='';   // email link #marking-<cid>-<uid>-<mid> scrolls to that test
 function renderMarking(){
   if(!isMentor) return;
   const items=[];
   courseIds(true).forEach(c=>S.enrol.forEach(e=>{ const x=stuSummary(e,c); x.waiting.forEach(m=>items.push({e, c, m, pm:(x.p.mods||{})[m]})); }));
   items.sort((a,b)=>ms(a.pm.submittedAt)-ms(b.pm.submittedAt));
+  MARK_ITEMS=items;
+  const nAI=aiBulkItems(items).length;
+  $('aiAll').innerHTML= nAI? '<div class="card"><p class="note">🤖 The AI has pre-marked <b>'+nAI+'</b> test'+(nAI>1?'s':'')+' with no problems found. You can accept all of its results as your decision in one click, or check them one by one below. Tests the AI was unsure about stay for you to check.</p><div class="btnrow"><button class="btn" id="aiAllBtn" onclick="confirmAllAI()">✔ Confirm all '+nAI+' AI results</button></div></div>' : '';
   keepInputs('markList', ()=>{ $('markList').innerHTML = items.length? items.map(({e,c,m,pm})=>{
     const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link), own=isOwnWork(e);
-    return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
+    return '<div class="card sub-entry" id="card-'+id+'"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
       +(pm.testAtt? '<div id="mk-'+id+'" data-c="'+c+'" data-u="'+e.uid+'" data-m="'+m+'" data-a="'+pm.testAtt+'"><p class="note">Loading the online test…</p></div>' : '')
       +(()=>{ const sh=S.evidence.filter(v=>v.uid===e.uid && v.kind==='sheet' && v.mid===m && v.cid===c).sort((a,b)=>ms(a.at)-ms(b.at));
           return sh.length? '<p class="note" style="margin-top:8px;"><b>📤 Completed answer sheet'+(sh.length>1?'s':'')+'</b></p>'+sheetList(sh,true) : ''; })()
@@ -2260,6 +2298,7 @@ function renderMarking(){
   }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>'; });
   document.querySelectorAll('#markList [id^="mk-"]').forEach(b=>fillMark(b.dataset.c, b.dataset.u, b.dataset.m, +b.dataset.a));
   document.querySelectorAll('#markList [id^="ai-"] [id^="tot-"]').forEach(t=>sumMark(t.id.slice(4)));
+  if(MARK_JUMP && $('card-'+MARK_JUMP)){ $('card-'+MARK_JUMP).scrollIntoView({behavior:'smooth'}); MARK_JUMP=''; }
   renderMemos();
 }
 // Registered assessors: their name and CATHSSETA registration number fill in by themselves on
@@ -2272,7 +2311,8 @@ function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_asse
 window.saveAssessor = ()=>{ const v={name:val('asName'), reg:val('asReg')};
   try{ localStorage.setItem('lwec_assessor', JSON.stringify(v)); }catch(e){}
   if(me && isMentor){ profile.assessor=v; setDoc(doc(db,'users',me.uid), {assessor:v}, {merge:true}).catch(e=>console.warn('assessor save',e)); } };
-window.mark = async (c,uid,m,outcome)=>{
+window.mark = async (c,uid,m,outcome,opts)=>{
+  opts=opts||{};
   const id=c+'-'+uid+'-'+m;
   const good=(($('fg-'+id)||{}).value||'').trim(), fix=(($('ff-'+id)||{}).value||'').trim();
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
@@ -2282,7 +2322,7 @@ window.mark = async (c,uid,m,outcome)=>{
   const stu=S.enrol.find(x=>x.uid===uid);
   if(isOwnWork(stu)){ toast('This is your own work. Another assessor must mark it.'); return; }
   if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
-  if(!good && !fix && !confirm('Mark without any written feedback?')) return;
+  if(!good && !fix && !opts.quiet && !confirm('Mark without any written feedback?')) return;
   const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
   const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
@@ -2309,7 +2349,7 @@ window.mark = async (c,uid,m,outcome)=>{
       Object.assign(rec,{qa, total, max, ver:r.version||''}); mx={ver:r.version||'', total, max, scores};
     }
     const changed=r.questions.filter(q=>{ const x=(rec.qa||[]).find(y=>y.n===q.n); return x && x.s!==q.mark; }).length;
-    const ai={model:pre.model||'', at:pre.at||null, total:r.total, max:r.max_total, rec:r.recommendation, changed, agreed:r.recommendation===outcome};
+    const ai={model:pre.model||'', at:pre.at||null, total:r.total, max:r.max_total, rec:r.recommendation, changed, agreed:r.recommendation===outcome, oneClick:!!opts.viaAI};
     rec.ai=ai; mx.ai=ai;
   }
   try{
@@ -2317,8 +2357,10 @@ window.mark = async (c,uid,m,outcome)=>{
       passed: m.length>3? {[m]: outcome==='C', [baseOf(m)]: outcome==='C'} : {[m]: outcome==='C'},
       marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}, mx)},
       hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
-    toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
-  }catch(e){ toast('Could not save the mark: '+e.code); }
+    if(!opts.quiet) toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
+    else if(opts.viaAI && !confirmAllRunning()) toast(outcome==='C'?'AI result confirmed: competent. The next module is open.':'AI result confirmed: not yet competent.');
+    return true;
+  }catch(e){ toast('Could not save the mark: '+e.code); return false; }
 };
 
 // Work a long-term student completed before the online portal: mark this module and every
