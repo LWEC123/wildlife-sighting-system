@@ -2,7 +2,8 @@
 //
 //  premarkOnHandIn  runs when a student hands in a module test (progress/<cid>_<uid> changes)
 //  premarkNow       the staff button "Run AI pre-mark again" on the Marking page
-//  dailySummary     07:00 every day: one read-only summary email to the assessor (daily.js)
+//  dailySummary     07:00 every day: summary email + Student monitor spreadsheet (daily.js)
+//  monitorReports   lets the college computer download the saved spreadsheets (key-protected)
 //
 // Both write SUGGESTED marks to premarks/<cid>_<uid>_<mid> (staff only) and email the
 // assessor. The assessor's own decision on the Marking page is the only result that counts.
@@ -125,18 +126,65 @@ exports.premarkNow = onCall(OPTS, async req => {
   return r;
 });
 
-// ---------- daily summary email, 07:00 South African time ----------
+// ---------- daily summary email + Student monitor spreadsheet, 07:00 South African time ----------
 // Cloud Scheduler is not offered in africa-south1, so this one function runs in europe-west1.
-// It only reads Firestore (see daily.js) and sends one email to the assessor.
+// It reads Firestore (see daily.js), saves the day's Student monitor spreadsheet and the staff
+// resources access log in Storage reports/ (no browser can read that folder) and sends one
+// email to the assessor with both attached.
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { buildSummary, loadData } = require('./daily');
+const { onRequest } = require('firebase-functions/v2/https');
+const crypto = require('crypto');
+const { buildSummary, loadData, buildMonitorCsv, monitorCids, buildStaffLogCsv } = require('./daily');
+const REPORTS = 'reports/';
+// <folder>/<file>.csv as saved below; the only names the download endpoint serves.
+const REPORT_NAME = /^(student-monitor\/US\d+\/LWEC-student-monitor-US\d+|staff-access-log\/LWEC-staff-access-log)-\d{4}-\d{2}-\d{2}\.csv$/;
 
 exports.dailySummary = onSchedule({ schedule: '0 7 * * *', timeZone: 'Africa/Johannesburg', region: 'europe-west1', secrets: [GMAIL_APP_PASSWORD], timeoutSeconds: 120, memory: '512MiB', retryCount: 1 }, async () => {
   const now = Date.now();
-  const s = buildSummary(await loadData(db, now), now);
-  console.log('daily summary', JSON.stringify(s.counts));
+  const data = await loadData(db, now);
+  const s = buildSummary(data, now);
+  const sheets = monitorCids(data.courses).map(cid => buildMonitorCsv(data, cid, now)).map(f => Object.assign({ dir: 'student-monitor/' + f.code + '/' }, f));
+  try { sheets.push(Object.assign({ dir: 'staff-access-log/', code: 'staff access log' }, buildStaffLogCsv((await db.collection('staffviews').get()).docs.map(d => d.data()), data.courses, now))); }
+  catch (e) { console.error('staff access log failed', e.message); }
+  for (const f of sheets) {
+    try { await bucket.file(REPORTS + f.dir + f.name).save(f.csv, { contentType: 'text/csv; charset=utf-8', resumable: false }); }
+    catch (e) { console.error('saving spreadsheet failed', f.name, e.message); }
+  }
+  console.log('daily summary', JSON.stringify(s.counts), sheets.map(f => f.name).join(', '));
   const pass = GMAIL_APP_PASSWORD.value();
   if (!pass || pass === 'none') { console.warn('no GMAIL_APP_PASSWORD, email not sent'); return; }
   const tr = nodemailer.createTransport({ service: 'gmail', auth: { user: NOTIFY_FROM, pass: pass.replace(/\s+/g, '') } });
-  await tr.sendMail({ from: 'LWEC Learning Portal <' + NOTIFY_FROM + '>', to: NOTIFY_TO, subject: s.subject, html: s.html, text: s.text });
+  await tr.sendMail({ from: 'LWEC Learning Portal <' + NOTIFY_FROM + '>', to: NOTIFY_TO, subject: s.subject,
+    html: s.html + '<p style="color:#888;font-size:12px;font-family:Arial,sans-serif">Attached for your records: today\'s Student monitor spreadsheet and the staff resources access log (who opened what), the same as the download buttons in the portal.</p>',
+    text: s.text + '\n\nAttached: today\'s Student monitor spreadsheet and the staff resources access log.',
+    attachments: sheets.map(f => ({ filename: f.name, content: f.csv, contentType: 'text/csv; charset=utf-8' })) });
+});
+
+// ---------- the college computer fetches the saved spreadsheets into its OneDrive folder ----------
+// Used only by the small Windows task "LWEC student monitor download" (tools/student-monitor/).
+// The key lives only in that script on the college computer; here is only its SHA-256.
+//   GET ?list=1          -> ["student-monitor/US335815/LWEC-student-monitor-US335815-2026-11-27.csv",
+//                            "staff-access-log/LWEC-staff-access-log-2026-11-27.csv", ...] (last 60 days)
+//   GET ?file=<one of those> -> the CSV
+const MONITOR_KEY_SHA256 = '04a16154d8e4620a7b1c31e61670ca84fc7884c6466e73bc55349bdb9acc43d6';
+function keyOk(k) {
+  const h = crypto.createHash('sha256').update(String(k || '')).digest();
+  return crypto.timingSafeEqual(h, Buffer.from(MONITOR_KEY_SHA256, 'hex'));
+}
+exports.monitorReports = onRequest({ timeoutSeconds: 60, memory: '256MiB', maxInstances: 1 }, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (req.method !== 'GET' || !keyOk(req.get('x-lwec-key'))) { res.status(403).send('Forbidden'); return; }
+  if (req.query.list) {
+    const [files] = await bucket.getFiles({ prefix: REPORTS });
+    const cut = Date.now() - 60 * 86400000;
+    res.json(files.map(f => f.name.slice(REPORTS.length)).filter(n => REPORT_NAME.test(n) && Date.parse(n.slice(-14, -4)) >= cut).sort());
+    return;
+  }
+  const name = String(req.query.file || '');
+  if (!REPORT_NAME.test(name)) { res.status(400).send('Bad file'); return; }
+  const f = bucket.file(REPORTS + name);
+  const [ok] = await f.exists();
+  if (!ok) { res.status(404).send('Not found'); return; }
+  const [buf] = await f.download();
+  res.set('Content-Type', 'text/csv; charset=utf-8').send(buf);
 });

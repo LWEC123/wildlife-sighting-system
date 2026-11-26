@@ -137,11 +137,11 @@ function buildSummary(data, now) {
 // Reads everything the summary needs. Read-only: only .get() calls.
 async function loadData(db, now) {
   const all = async c => (await db.collection(c).get()).docs;
-  const [enrol, progress, results, premarks, evidence, sessions, courses] = await Promise.all([
+  const [enrol, progress, results, premarks, evidence, sessions, courses, agree, choice] = await Promise.all([
     db.collection('enrol').where('cid', '==', PK).get().then(s => s.docs),
     all('progress'), all('results'), all('premarks'), all('evidence'),
-    db.collection('sessions').where('start', '>=', new Date(now - 30 * DAY)).get().then(s => s.docs),
-    all('courses')
+    db.collection('sessions').where('start', '>=', new Date(now - 90 * DAY)).get().then(s => s.docs),
+    all('courses'), all('agree'), all('choice')
   ]);
   const map = docs => Object.fromEntries(docs.map(d => [d.id, d.data()]));
   const list = docs => docs.map(d => d.data());
@@ -151,13 +151,79 @@ async function loadData(db, now) {
   const res = {};
   results.forEach(d => { const r = d.data(); res[d.id] = { passed: r.passed || {}, marks: Object.fromEntries(Object.entries(r.marks || {}).map(([m, v]) => [m, { at: v && v.at }])) }; });
   return {
-    enrol: list(enrol).map(e => ({ uid: e.uid, name: e.name, email: e.email, active: e.active })),
-    progress: Object.fromEntries(progress.map(d => { const p = d.data(); return [d.id, { lastSeen: p.lastSeen, totalSec: p.totalSec, mods: Object.fromEntries(Object.entries(p.mods || {}).map(([m, v]) => [m, { submittedAt: v && v.submittedAt }])) }]; })),
+    enrol: list(enrol).map(e => ({ uid: e.uid, name: e.name, email: e.email, active: e.active, paused: e.paused || {} })),
+    progress: Object.fromEntries(progress.map(d => { const p = d.data(); return [d.id, { lastSeen: p.lastSeen, totalSec: p.totalSec, current: p.current ? { mid: p.current.mid, item: p.current.item, at: p.current.at } : null, mods: Object.fromEntries(Object.entries(p.mods || {}).map(([m, v]) => [m, { submittedAt: v && v.submittedAt, opened: Object.fromEntries(Object.keys((v && v.opened) || {}).map(k => [k, 1])) }])) }]; })),
     results: res, premarks: pre,
     evidence: list(evidence).map(v => ({ uid: v.uid, us: v.us, at: v.at, review: v.review ? { status: v.review.status } : null })),
     sessions: list(sessions).map(s => ({ uid: s.uid, last: s.last, start: s.start, sec: s.sec })),
-    courses: map(courses)
+    courses: map(courses),
+    agree: Object.fromEntries(agree.map(d => [d.id, { at: d.data().at }])),
+    choice: Object.fromEntries(choice.map(d => [d.id, { opt: d.data().opt }]))
   };
 }
 
 module.exports = { buildSummary, loadData, REMINDERS };
+
+// ---------- Student monitor spreadsheet (same columns as "Download as spreadsheet (CSV)") ----------
+const ITEM_LABELS = { guide: 'Learner guide', slides: 'Presentation', video: 'Module video', test: 'Visual test', sheet: 'Answer sheet', module: 'module overview' };
+const TZ = 'Africa/Johannesburg';
+function csvDate(t) { return new Date(t).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: TZ }); }
+function csvDateTime(t) { return new Date(t).toLocaleString('en-ZA', { timeZone: TZ }); }
+function csvAgo(t, now) { const x = ms(t); if (!x) return 'never'; const d = (now - x) / 1000; if (d < 90) return 'just now'; if (d < 3600) return Math.round(d / 60) + ' min ago'; if (d < 86400) return Math.round(d / 3600) + ' h ago'; return Math.round(d / 86400) + ' days ago'; }
+function ymd(t) { return sast(t).toISOString().slice(0, 10); }
+
+// Unit standards to export: US 335815 and every course switched to published.
+function monitorCids(courses) {
+  return [...new Set([PK, ...Object.keys(courses || {})])].filter(c => courseInfo(courses, c).published).sort();
+}
+
+function buildMonitorCsv(data, cid, now) {
+  const courses = data.courses || {}, info = courseInfo(courses, cid), cdoc = courses[cid] || {};
+  const ch = cdoc.choice && cdoc.choice.slot && (cdoc.choice.options || []).length ? cdoc.choice : null;
+  const base = Array.from({ length: info.nmods }, (_, i) => 'm' + String(i + 1).padStart(2, '0'));
+  const head = ['Student', 'Email', 'Access', 'Agreement signed', 'Last on', 'Busy with', 'Modules competent', 'Tests to mark', 'Time this week (min)', 'Time on unit standard (min)', 'Sessions (90 days)'].concat(base.map((m, i) => 'Module ' + (i + 1)));
+  const lines = [head];
+  const enrol = (data.enrol || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const allCids = [...new Set([PK, ...Object.keys(courses)])];
+  enrol.forEach(e => {
+    const key = cid + '_' + e.uid, p = (data.progress || {})[key] || {}, r = (data.results || {})[key] || {};
+    const passed = r.passed || {}, marks = r.marks || {};
+    const opt = ((data.choice || {})[key] || {}).opt;
+    const mids = base.map(m => ch && m === ch.slot && opt ? m + opt : m);
+    const sess = (data.sessions || []).filter(s => s.uid === e.uid && ms(s.start) >= now - 90 * DAY);
+    const lastSeen = Math.max(0, ...sess.map(s => ms(s.last)), ...allCids.map(c => ms(((data.progress || {})[c + '_' + e.uid] || {}).lastSeen)));
+    const weekSec = sess.filter(s => ms(s.start) >= now - 7 * DAY).reduce((a, s) => a + (s.sec || 0), 0);
+    const done = mids.filter(m => passed[m] === true).length;
+    const waiting = mids.filter(m => { const pm = (p.mods || {})[m] || {}; return pm.submittedAt && passed[m] !== true && (!marks[m] || ms(marks[m].at) < ms(pm.submittedAt)); }).length;
+    let busy;
+    if (done === mids.length) busy = 'Finished this unit standard 🎉';
+    else if (!p.current || !p.current.mid) busy = 'Not started yet';
+    else {
+      const cm = p.current.mid, n = parseInt(cm.slice(1, 3), 10) || '', on = ch && cm.length > 3 ? (ch.options || [])['abcdefghij'.indexOf(cm[3])] || '' : '';
+      const what = p.current.item === 'test-submitted' ? 'handed in the test' : (ITEM_LABELS[p.current.item] || p.current.item);
+      busy = 'Module ' + n + (on ? ' (' + on + ')' : '') + ' · ' + what + ' (' + csvAgo(p.current.at, now) + ')';
+    }
+    const agree = (data.agree || {})[e.uid];
+    lines.push([e.name || '', e.email || '', e.active === false ? 'paused' : (e.paused || {})[cid] ? 'unit standard paused' : 'on',
+      agree && ms(agree.at) ? csvDate(ms(agree.at)) : 'no', lastSeen ? csvDateTime(lastSeen) : 'never', busy, done, waiting,
+      Math.round(weekSec / 60), Math.round((p.totalSec || 0) / 60), sess.length]
+      .concat(mids.map(m => { const pm = (p.mods || {})[m] || {}; return passed[m] === true ? 'Competent' : pm.submittedAt ? 'Handed in' : (pm.opened && Object.keys(pm.opened).length) ? 'Started' : ''; })));
+  });
+  const csv = '﻿' + lines.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  return { code: info.code, name: 'LWEC-student-monitor-' + info.code + '-' + ymd(now) + '.csv', csv };
+}
+
+module.exports.buildMonitorCsv = buildMonitorCsv;
+module.exports.monitorCids = monitorCids;
+module.exports.ymd = ymd;
+
+// ---------- Staff resources access log (same columns as "Download the log (spreadsheet)") ----------
+function buildStaffLogCsv(views, courses, now) {
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = (views || []).slice().sort((a, b) => ms(b.at) - ms(a.at));
+  const lines = [['Date and time', 'Name', 'Email', 'Unit standard', 'File', 'Section'].map(q).join(',')]
+    .concat(rows.map(r => [ms(r.at) ? csvDateTime(ms(r.at)) : '', r.name, r.email, courseInfo(courses || {}, r.cid || PK).code, r.title,
+      r.tier === 'conf' ? 'Confidential' : r.tier === 'fac' ? 'Facilitator' : 'Course material'].map(q).join(',')));
+  return { name: 'LWEC-staff-access-log-' + ymd(now) + '.csv', csv: '﻿' + lines.join('\r\n'), count: rows.length };
+}
+module.exports.buildStaffLogCsv = buildStaffLogCsv;
