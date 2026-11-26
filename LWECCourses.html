@@ -1009,12 +1009,16 @@ window.uploadSheet = async mid=>{
 // signed-in staff member's name matches; add D.P.J. Steyn's and Johann Roos's when they are known.
 const STAFF=[
   {name:'E.Z. Wessels', areg:'613/A/00337/2020'},
-  {name:'D.P.J. Steyn'},
-  {name:'Johann Roos'},
+  {name:'D.P.J. Steyn', pending:'assessor and moderator registration awaited from CATHSSETA'},
+  {name:'Johann Roos', pending:'CATHSSETA assessor registration not received yet (has the 115753 assessor training certificate)'},
   {name:'C.S. Wessels', areg:'613/A/00345/2020', aTo:'2028-10-27', mreg:'613/M/00771/2023', mTo:'2029-05-04'}
 ];
 const STAFF_NAMES=STAFF.map(x=>x.name);
 function staffOf(name){ return STAFF.find(x=>samePerson(x.name,name))||null; }
+// Can this staff member sign as assessor / moderator? Facilitators without a registration can't.
+function regBlock(name, role){ const st=staffOf(name); if(!st) return '';
+  if(role==='mod'? !st.mreg : !st.areg) return st.name+' has no CATHSSETA '+(role==='mod'?'moderator':'assessor')+' registration on file yet'+(st.pending?' ('+st.pending+')':'')+', so cannot sign as '+(role==='mod'?'moderator':'assessor')+'.';
+  return ''; }
 // Same person? Surname matches and the first-name initials overlap ("Zeriah Wessels" = "E.Z. Wessels",
 // but not "C.S. Wessels"). Used so nobody assesses or moderates their own work.
 function personKey(n){ const t=String(n||'').toLowerCase().replace(/[^a-z .'-]/g,' ').split(/[\s.]+/).filter(Boolean); if(!t.length) return null;
@@ -2136,6 +2140,7 @@ window.mark = async (c,uid,m,outcome)=>{
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
   if(!as.name){ toast('Type your assessor name at the top of this page first.'); $('asName').focus(); return; }
   if(!as.reg){ toast('Type your assessor registration number at the top of this page first.'); $('asReg').focus(); return; }
+  const rb=regBlock(as.name,'ass'); if(rb){ toast(rb); return; }
   const stu=S.enrol.find(x=>x.uid===uid);
   if(isOwnWork(stu)){ toast('This is your own work. Another assessor must mark it.'); return; }
   if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
@@ -2185,6 +2190,7 @@ window.priorCompetent = async (uid,m)=>{
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
   if(!as.name){ toast('Type your assessor name on the Marking page first (it is saved for next time).'); return; }
   if(isOwnWork(e)){ toast('This is your own work. Another assessor must record it.'); return; }
+  const rb=regBlock(as.name,'ass'); if(rb){ toast(rb); return; }
   const x=stuSummary(e), passed=(x.r.passed||{}), upto=x.mids.indexOf(m);
   const todo=x.mids.slice(0,upto+1).filter(k=>passed[k]!==true);
   if(!todo.length){ toast('Already competent.'); return; }
@@ -2653,6 +2659,8 @@ window.savePoeForm = async sign=>{
   if(sign && isMentor){
     const stu=S.enrol.find(x=>x.uid===uid);
     if(isOwnWork(stu)){ toast('This is your own work. Another assessor or moderator must sign it.'); return; }
+    const rb= F==='mod'? regBlock(assessor().name||profile.name,'mod') : ['plan','oral','obs','log','rep','appealDec'].includes(F)? regBlock(assessor().name||profile.name,'ass') : '';
+    if(rb){ toast(rb); return; }
     if(F==='mod'){
       const hist=(S.res[cid+'_'+uid]||{}).hist||{}, mine=assessor().name||profile.name||'';
       const assessed=Object.values(hist).some(hs=>(hs||[]).some(h=>h.byUid===me.uid || samePerson(h.by, mine)));
