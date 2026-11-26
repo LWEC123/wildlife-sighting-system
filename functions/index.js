@@ -2,6 +2,7 @@
 //
 //  premarkOnHandIn  runs when a student hands in a module test (progress/<cid>_<uid> changes)
 //  premarkNow       the staff button "Run AI pre-mark again" on the Marking page
+//  dailySummary     07:00 every day: one read-only summary email to the assessor (daily.js)
 //
 // Both write SUGGESTED marks to premarks/<cid>_<uid>_<mid> (staff only) and email the
 // assessor. The assessor's own decision on the Marking page is the only result that counts.
@@ -111,4 +112,20 @@ exports.premarkNow = onCall(OPTS, async req => {
   if (!/^[a-z0-9]+$/.test(cid || '') || !/^[A-Za-z0-9]+$/.test(uid || '') || !/^m\d\d[a-j]?$/.test(mid || '')) throw new HttpsError('invalid-argument', 'Bad module.');
   const r = await premark(deps(), cid, uid, mid, { force: true });
   return r;
+});
+
+// ---------- daily summary email, 07:00 South African time ----------
+// Cloud Scheduler is not offered in africa-south1, so this one function runs in europe-west1.
+// It only reads Firestore (see daily.js) and sends one email to the assessor.
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { buildSummary, loadData } = require('./daily');
+
+exports.dailySummary = onSchedule({ schedule: '0 7 * * *', timeZone: 'Africa/Johannesburg', region: 'europe-west1', secrets: [GMAIL_APP_PASSWORD], timeoutSeconds: 120, memory: '512MiB', retryCount: 1 }, async () => {
+  const now = Date.now();
+  const s = buildSummary(await loadData(db, now), now);
+  console.log('daily summary', JSON.stringify(s.counts));
+  const pass = GMAIL_APP_PASSWORD.value();
+  if (!pass || pass === 'none') { console.warn('no GMAIL_APP_PASSWORD, email not sent'); return; }
+  const tr = nodemailer.createTransport({ service: 'gmail', auth: { user: NOTIFY_FROM, pass: pass.replace(/\s+/g, '') } });
+  await tr.sendMail({ from: 'LWEC Learning Portal <' + NOTIFY_FROM + '>', to: NOTIFY_TO, subject: s.subject, html: s.html, text: s.text });
 });
