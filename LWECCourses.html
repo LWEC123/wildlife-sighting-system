@@ -87,6 +87,21 @@ table.t tr.click:hover td{background:#fbf8f0;}
 .sm{font-size:.76rem; color:var(--muted);}
 .answer{white-space:pre-wrap; background:var(--sand); border-radius:8px; padding:10px; font-size:.88rem; margin-top:6px;}
 .sub-entry{border:1px solid #e3ddcc; border-radius:10px; padding:12px 14px; margin-bottom:10px;}
+.af-head{background:var(--sand); border-radius:8px; padding:10px 12px; margin:6px 0;}
+.af-part{font-weight:700; margin:14px 0 4px;}
+.afq{display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:6px 0; border-bottom:1px dashed #e8e0cd;}
+.afn{display:inline-block; min-width:2.2em; font-weight:700;}
+.afo{display:inline-flex; margin:0; cursor:pointer;}
+.afo input{position:absolute; opacity:0; width:1px; height:1px;}
+.afo span{display:inline-flex; align-items:center; justify-content:center; width:44px; height:40px; border:2px solid #cfc6ae; border-radius:8px; font-weight:700; background:#fff;}
+.afo input:checked+span{background:var(--green,#2f5d3a); border-color:var(--green,#2f5d3a); color:#fff;}
+.afo input:focus-visible+span{outline:3px solid #e0b24a;}
+.afw{margin-top:12px;}
+.afqt{white-space:pre-wrap; font-size:.92rem; margin:4px 0 6px;}
+.afdecl{display:flex; gap:8px; align-items:flex-start; font-weight:400; margin-top:14px;}
+.afdecl input{width:auto; margin-top:4px;}
+table.aft{width:100%; border-collapse:collapse; font-size:.88rem; margin-top:6px;}
+table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align:left; vertical-align:top;}
 .codechip{font-family:Consolas,monospace; font-weight:700; letter-spacing:1.5px; background:var(--sand); padding:3px 8px; border-radius:6px;}
 .modset{border:1px solid #e3ddcc; border-radius:10px; padding:10px 12px; margin-bottom:10px;}
 .modset summary{cursor:pointer; font-weight:700; color:var(--green-deep);}
@@ -738,7 +753,7 @@ function renderCourse(){
   }).join('');
   // keep a playing video alive: only re-render the list when nothing is playing
   if(!anyPlaying()) { flushVideo(); players={}; keepInputs('modList', ()=>{ $('modList').innerHTML=html; });
-    if(openMid){ mountPlayer(openMid); if($('ot-'+openMid)){ if(OT[CID+'/'+openMid]) drawTest(openMid); else loadTest(openMid); } } }
+    if(openMid){ mountPlayer(openMid); if($('af-'+openMid) && !AF[CID+'/'+openMid]) loadForm(openMid); if($('ot-'+openMid)){ if(OT[CID+'/'+openMid]) drawTest(openMid); else loadTest(openMid); } } }
 }
 function renderLanding(){
   const ids=courseIds();
@@ -824,7 +839,8 @@ function modBody(mid, st){
       h+=itemRow(it.label+op, '<a class="btn small secondary" href="'+esc(s.url)+'" target="_blank" rel="noopener" onclick="openedItem(\''+mid+'\',\''+it.k+'\')">Open</a>'); return;
     }
     const e=extOf(m[it.k]);
-    if(it.k==='sheet') h+=itemRow(it.label+op, '<button class="btn small secondary" onclick="downloadItem(\''+mid+'\',\''+it.k+'\')">⬇️ Download to fill in</button>');
+    if(it.k==='sheet') h+= formOf(mid) && !otOf(m)? itemRow(it.label+' <span class="sm">(Word copy, only if you can\'t answer on screen)</span>', '<button class="btn small ghost" onclick="downloadItem(\''+mid+'\',\''+it.k+'\')">⬇️ Download</button>')
+      : itemRow(it.label+op, '<button class="btn small secondary" onclick="downloadItem(\''+mid+'\',\''+it.k+'\')">⬇️ Download to fill in</button>');
     else if(e==='pdf') h+=itemRow(it.label+op, '<button class="btn small secondary" onclick="viewDoc(\''+mid+'\',\''+it.k+'\')">👁 View</button>');
     else h+=itemRow(it.label, '<span class="sm">Being prepared for viewing. Ask your assessor.</span>');
   });
@@ -844,16 +860,17 @@ function modBody(mid, st){
   h+='<h3>Hand in your test</h3>';
   h+=HELP_BTN;
   if(st==='passed'){
-    h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk)+sheetBox(mid, st);
+    h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk)+(p.form?'<h3>✍️ Your answers</h3>'+formTable(p.form):'')+sheetBox(mid, st, !!p.form);
   } else if(st==='waiting'){
-    h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon. The next module opens once it is marked competent.</p>'+sheetBox(mid, st);
+    h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon. The next module opens once it is marked competent.</p>'+(p.form?'<h3>✍️ Your answers</h3>'+formTable(p.form):'')+sheetBox(mid, st, !!p.form);
   } else {
     if(st==='nyc') h+='<div class="callout">Your assessor marked this <b>not yet competent</b>. Please make the corrections below and hand in again.</div>'+feedbackBox(mk);
-    h+=sheetBox(mid, st)
-      +'<label>Or type your answers here (optional)</label><textarea id="ans-'+mid+'" placeholder="Type your answers here, numbered as on the answer sheet.">'+esc(p.answers||'')+'</textarea>'
-      +'<label>Link to your completed answer sheet (optional)</label><input id="lnk-'+mid+'" placeholder="https://… (OneDrive, Google Drive, etc.)" value="'+esc(p.link||'')+'">'
-      +'<label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="pap-'+mid+'" style="width:auto;"'+(p.paper?' checked':'')+'> I handed my answer sheet in on paper</label>'
-      +(canHandIn(mid)? '<div class="btnrow"><button class="btn" onclick="submitTest(\''+mid+'\')">Hand in for marking</button></div>'
+    const af=AF[CID+'/'+mid];
+    if(!af) setTimeout(()=>loadForm(mid),0);
+    if(!af || !af.none) h+='<div id="af-'+mid+'" class="afbox">'+formHTML(mid)+'</div>'+sheetBox(mid, st, true);
+    else h+=sheetBox(mid, st)
+      +'<label>Or type your answers here (optional)</label><textarea id="ans-'+mid+'" placeholder="Type your answers here, numbered as on the answer sheet.">'+esc(p.answers||'')+'</textarea>';
+    h+=(canHandIn(mid)? '<div class="btnrow"><button class="btn" onclick="submitTest(\''+mid+'\')">Hand in for marking</button></div>'
         : '<div class="callout">Watch the module video'+(trackable(m.slides)?' and the presentation':'')+' through (at least '+NEED_PCT+'%) before you hand in.</div><div class="btnrow"><button class="btn" disabled>Hand in for marking</button></div>');
   }
   return h;
@@ -878,45 +895,179 @@ function sheetList(list, staff){
   return list.map(e=>'<div class="item"><span class="lbl">'+fileIcon(e.type)+' '+esc(e.name)+' <span class="sm">· '+fmtSize(e.size||0)+' · uploaded '+fmtDT(e.at)+'</span>'
     +(staff?'':' '+evReviewPill(e))+'</span>'+(e.url?'<a class="btn small secondary" href="'+esc(e.url)+'" target="_blank" rel="noopener">Open</a>':'')+'</div>').join('');
 }
-function sheetBox(mid, st){
+function sheetBox(mid, st, withForm){
   const list=mySheets(mid), canAdd=st!=='passed';
-  let h='<h3>📤 Your completed answer sheet</h3>';
-  h+= list.length? sheetList(list,false) : '<p class="note">Fill in the answer sheet you downloaded above, save it, then upload it here. Word, PDF or a clear photo of each page.</p>';
-  if(canAdd) h+='<div class="btnrow"><input type="file" id="sh-'+mid+'" data-fresh="1" multiple accept=".doc,.docx,.pdf,image/*" style="flex:1 1 220px;width:auto;">'
+  let h= withForm? '<h3>📎 Add photos, videos or files (optional)</h3>' : '<h3>📤 Your completed answer sheet</h3>';
+  h+= list.length? sheetList(list,false) : withForm? '<p class="note">If the test asks for photos or a video, or you could not answer on screen, upload it here before you hand in.</p>'
+    : '<p class="note">Fill in the answer sheet you downloaded above, save it, then upload it here. Word, PDF, a clear photo of each page, or a video.</p>';
+  if(canAdd) h+='<div class="btnrow"><input type="file" id="sh-'+mid+'" data-fresh="1" multiple accept=".doc,.docx,.pdf,image/*,video/*" style="flex:1 1 220px;width:auto;">'
     +'<button class="btn small" id="shb-'+mid+'" onclick="uploadSheet(\''+mid+'\')">⬆️ Upload my answer sheet</button><span class="sm" id="shp-'+mid+'"></span></div>';
   return h;
 }
 window.uploadSheet = async mid=>{
   const inp=$('sh-'+mid), files=[...((inp&&inp.files)||[])];
   if(!files.length){ toast('Choose your completed answer sheet first.'); return; }
-  const odd=files.find(f=>!/^(application\/(msword|pdf)|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|image\/)/.test(evType(f)));
-  if(odd){ toast(odd.name+': upload a Word document, a PDF or a photo.'); return; }
+  const odd=files.find(f=>!/^(application\/(msword|pdf)|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|image\/|video\/)/.test(evType(f)));
+  if(odd){ toast(odd.name+': upload a Word document, a PDF, a photo or a video.'); return; }
   const big=files.find(f=>f.size>EV_MAX); if(big){ toast(big.name+' is larger than 500 MB.'); return; }
   $('shb-'+mid).disabled=true;
   try{
     for(let i=0;i<files.length;i++){
-      await putEvidence(me.uid, files[i], {title:modTitle(mid)+': completed answer sheet'+(files.length>1?' ('+(i+1)+')':''), note:'', us:course.code, cid:CID, mid, kind:'sheet',
+      await putEvidence(me.uid, files[i], {title:modTitle(mid)+(formOf(mid)? ': test evidence' : ': completed answer sheet')+(files.length>1?' ('+(i+1)+')':''), note:'', us:course.code, cid:CID, mid, kind:'sheet',
         studentName:(enrol&&enrol.name)||profile.name||''},
         (g,t)=>{ const el=$('shp-'+mid); if(el) el.textContent='Uploading '+(i+1)+' of '+files.length+': '+Math.round(g/t*100)+'%. Keep this page open.'; });
     }
     const handInNext=!otOf(curMod(mid)) && ['open','nyc'].includes(modStatus(mid));
-    toast(handInNext? 'Answer sheet uploaded. Now press "Hand in for marking".' : 'Answer sheet uploaded. Your assessor can see it now.');
+    toast(handInNext? 'Uploaded. Press "Hand in for marking" when all your answers are done.' : 'Uploaded. Your assessor can see it now.');
     setCurrent(mid,'sheet-uploaded');
   }catch(e){ console.warn(e); toast('Upload failed: '+(e.code||e.message)+'. Check your connection and try again.'); }
   const b=$('shb-'+mid); if(b) b.disabled=false; const pr=$('shp-'+mid); if(pr) pr.textContent='';
 };
+
+/* ---------- on-screen answer form ----------
+   Built in the browser from the module's Word answer sheet (05 Answers/Learner): Part A
+   multiple-choice rows become A–D buttons, every "Question N (x marks)" becomes a typing box.
+   Headings, labels, the learner's name and the assessor are drawn by the portal, so a student
+   can't change them. A draft is saved as the student goes (progress.mods[mid].draft); on hand-in
+   the answers are saved as progress.mods[mid].form (per question) and .answers (plain text). */
+const AF={};          // cid/mid -> {L: layout, vals:{mc:{}, w:{}, decl}} | {none:true} | {loading:true}
+const WNS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+async function zipText(blob, want){
+  const buf=new Uint8Array(await blob.arrayBuffer()), dv=new DataView(buf.buffer);
+  let e=buf.length-22; while(e>=0 && dv.getUint32(e,true)!==0x06054b50) e--;
+  if(e<0) throw new Error('not a zip');
+  let p=dv.getUint32(e+16,true); const n=dv.getUint16(e+10,true), td=new TextDecoder();
+  for(let i=0;i<n;i++){
+    const meth=dv.getUint16(p+10,true), csz=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), off=dv.getUint32(p+42,true);
+    if(td.decode(buf.subarray(p+46,p+46+nl))===want){
+      const st=off+30+dv.getUint16(off+26,true)+dv.getUint16(off+28,true), data=buf.subarray(st,st+csz);
+      if(meth===0) return td.decode(data);
+      return await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    }
+    p+=46+nl+xl+cl;
+  }
+  throw new Error('no '+want);
+}
+// Text of a Word element, leaving out content controls (the answer boxes of a locked sheet).
+function wText(el){ let s=''; (function walk(n){ for(const c of n.childNodes){ if(c.nodeType!==1) continue; const l=c.localName;
+  if(l==='sdt') continue; if(l==='t') s+=c.textContent; else if(l==='tab') s+=' '; else if(l==='br') s+='\n'; else walk(c); } })(el); return s.replace(/ /g,' ').trim(); }
+function parseSheet(xml){
+  const d=new DOMParser().parseFromString(xml,'application/xml'), body=d.getElementsByTagNameNS(WNS,'body')[0];
+  if(!body) throw new Error('no body');
+  const blocks=[];
+  (function walk(n){ for(const c of n.childNodes){ if(c.nodeType!==1) continue;
+    if(c.localName==='p') blocks.push({p:wText(c)});
+    else if(c.localName==='tbl') blocks.push({rows:[...c.getElementsByTagNameNS(WNS,'tr')].map(r=>[...r.childNodes].filter(x=>x.localName==='tc').map(wText))});
+    else if(c.localName!=='sdt' && c.localName!=='sectPr') walk(c); } })(body);
+  const L={title:'', sub:'', items:[]}; let cur=null, stop=false;
+  blocks.forEach(b=>{
+    if(stop) return;
+    if(b.p!=null){
+      const s=b.p; if(!s) return;
+      if(!L.title){ L.title=s; return; }
+      if(!L.sub && /answer sheet/i.test(s)){ L.sub=s; return; }
+      if(/^declaration\b/i.test(s)){ stop=true; return; }
+      const m=s.match(/^Question\s+(\d+)\s*(?:\(\s*(\d+)\s*marks?\s*\))?\s*$/i);
+      if(m){ cur={n:+m[1], type:'W', marks:m[2]?+m[2]:null, q:''}; L.items.push(cur); return; }
+      if(/^part\s+[a-z]\b/i.test(s)){ cur=null; return; }
+      if(cur) cur.q+=(cur.q?'\n':'')+s;
+      return;
+    }
+    const h=b.rows[0]||[];
+    if(/^question$/i.test(h[0]||'') && /^[A-J]$/.test(h[1]||'')){
+      const opts=h.filter(x=>/^[A-J]$/.test(x)), mk=h.findIndex(x=>/^marks?$/i.test(x));
+      b.rows.slice(1).forEach(r=>{ if(/^\d+$/.test(r[0]||'')) L.items.push({n:+r[0], type:'MC', opts, marks: mk>=0 && /^\d+$/.test(r[mk]||'')? +r[mk] : null}); });
+      cur=null;
+    }
+  });
+  return L;
+}
+async function loadForm(mid){
+  const key=CID+'/'+mid; if(AF[key]) return;
+  const s=srcOf((curMod(mid)||{}).sheet);
+  if(!s || s.kind!=='store' || extOf('storage:'+s.path)!=='docx' || typeof DecompressionStream==='undefined'){ AF[key]={none:true}; drawFormBox(mid); return; }
+  AF[key]={loading:true};
+  try{
+    const u=await getMedia(s.path), L=parseSheet(await zipText(await (await fetch(u)).blob(), 'word/document.xml'));
+    if(!L.items.length) throw new Error('no questions found');
+    const p=(progress.mods||{})[mid]||{}, src=p.draft || p.form || {};
+    AF[key]={L, vals:{mc:Object.assign({},src.mc), w:Object.assign({},src.written||src.w), decl:false}};
+  }catch(e){ console.warn('answer form', e); AF[key]={none:true}; }
+  drawFormBox(mid);
+}
+function drawFormBox(mid){ const b=$('af-'+mid); if(b) keepInputs('af-'+mid, ()=>{ b.innerHTML=formHTML(mid); }); }
+function formOf(mid){ const f=AF[CID+'/'+mid]; return f && f.L? f : null; }
+function formHTML(mid){
+  const f=AF[CID+'/'+mid];
+  if(!f || f.loading) return '<p class="note">Loading your answer form…</p>';
+  if(!f.L) return '';
+  const L=f.L, v=f.vals, mc=L.items.filter(x=>x.type==='MC'), w=L.items.filter(x=>x.type==='W'), id=x=>mid+'-'+x.n;
+  const nm=(enrol&&enrol.name)||profile.name||(me&&me.email)||'';
+  let h='<h3>✍️ Answer the test here</h3>'
+    +'<div class="af-head"><b>'+esc(L.title)+'</b><br><span class="sm">Learner: <b>'+esc(nm)+'</b>'+(profile.idno?' · ID '+esc(profile.idno):'')+' · '+esc(course.code||'')+' · Assessor: filled in by the college when marked</span></div>'
+    +'<p class="note">Open the test with <b>👁 View</b> above, then answer each question here. Your answers are saved as you go, so you can stop and come back later.</p>';
+  if(mc.length) h+='<p class="af-part">Part A: tap the correct answer</p>'+mc.map(x=>'<div class="afq" id="afq-'+id(x)+'"><span class="afn">'+x.n+'</span>'
+      +x.opts.map(o=>'<label class="afo"><input type="radio" name="afr-'+id(x)+'" id="afr-'+id(x)+'-'+o+'" value="'+o+'"'+(v.mc[x.n]===o?' checked':'')+' onchange="afSet(\''+mid+'\','+x.n+',this.value,\'mc\')"><span>'+o+'</span></label>').join('')
+      +(x.marks?'<span class="sm">'+x.marks+' mark'+(x.marks==1?'':'s')+'</span>':'')+'</div>').join('');
+  if(w.length) h+='<p class="af-part">Part B: write your answers in full sentences</p>'+w.map(x=>'<div class="afw"><label for="afw-'+id(x)+'">Question '+x.n+(x.marks?' <span class="sm">('+x.marks+' marks)</span>':'')+'</label>'
+      +(x.q?'<div class="afqt">'+esc(x.q)+'</div>':'<div class="sm">See question '+x.n+' in the test.</div>')
+      +'<textarea id="afw-'+id(x)+'" rows="5" placeholder="Type your answer to question '+x.n+' here" oninput="afSet(\''+mid+'\','+x.n+',this.value,\'w\')">'+esc(v.w[x.n]||'')+'</textarea></div>').join('');
+  h+='<label class="afdecl"><input type="checkbox" id="afd-'+mid+'"'+(v.decl?' checked':'')+' onchange="afDecl(\''+mid+'\',this.checked)"> I declare that these answers are my own work and that I did not receive help from any other person during this test.</label>'
+    +'<p class="sm" id="afs-'+mid+'">'+afCount(mid)+'</p>';
+  return h;
+}
+function afCount(mid){ const f=formOf(mid); if(!f) return ''; const n=f.L.items.length, done=f.L.items.filter(x=>x.type==='MC'? f.vals.mc[x.n] : (f.vals.w[x.n]||'').trim()).length;
+  return done+' of '+n+' questions answered'+(done<n?'':' ✔'); }
+const afTimers={};
+window.afSet = (mid,n,val,kind)=>{
+  const f=formOf(mid); if(!f) return;
+  f.vals[kind][n]=val;
+  const s=$('afs-'+mid); if(s) s.textContent=afCount(mid);
+  clearTimeout(afTimers[mid]); afTimers[mid]=setTimeout(()=>afSave(mid), kind==='mc'? 300 : 2500);
+};
+window.afDecl = (mid,c)=>{ const f=formOf(mid); if(f) f.vals.decl=c; };
+function afSave(mid){ const f=formOf(mid); if(!f) return; clearTimeout(afTimers[mid]);
+  if(['passed','waiting'].includes(modStatus(mid))) return;
+  saveProg({mods:{[mid]:{draft:{mc:f.vals.mc, w:f.vals.w, at:serverTimestamp()}}}}); }
+window.addEventListener('pagehide', ()=>Object.keys(afTimers).forEach(afSave));
+// The answers as saved on hand-in: per question (for marking, the PoE and pre-marking) and as plain text.
+function afRecord(mid){
+  const f=formOf(mid); if(!f) return null;
+  const mc={}, written={}, items=f.L.items.map(x=>{ const a=x.type==='MC'? (f.vals.mc[x.n]||'') : (f.vals.w[x.n]||'').trim();
+    if(x.type==='MC') mc[x.n]=a; else written[x.n]=a;
+    return {n:x.n, type:x.type, q:x.q||'', marks:x.marks, a}; });
+  const text=items.map(x=>x.n+'. '+(x.a||'(not answered)')).join('\n');
+  return {form:{title:f.L.title, items, mc, written, decl:{name:(enrol&&enrol.name)||profile.name||'', at:Timestamp.now()}}, text,
+    missing:items.filter(x=>!x.a).map(x=>x.n)};
+}
+// Staff and PoE: a handed-in on-screen form as a table.
+function formTable(fm, print){
+  if(!fm || !(fm.items||[]).length) return '';
+  const cls=print? 'pr' : 'aft';
+  return '<table class="'+cls+'"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th></tr>'
+    +fm.items.map(x=>'<tr><td>'+x.n+'</td><td style="white-space:pre-wrap;">'+(x.type==='MC'? 'Multiple choice' : esc(x.q||'See the test'))+(x.marks?' <span class="sm">('+x.marks+')</span>':'')+'</td><td style="white-space:pre-wrap;">'+(x.a? '<b>'+esc(x.a)+'</b>' : '<i>(not answered)</i>')+'</td></tr>').join('')
+    +'</table>'+(fm.decl? '<p class="sm">Learner declaration accepted on screen by '+esc(fm.decl.name||'')+(fm.decl.at?' on '+fmtDT(fm.decl.at):'')+'.</p>' : '');
+}
 
 window.openedItem = (mid,k)=>{
   const o={}; o[k]=serverTimestamp();
   saveProg({mods:{[mid]:{opened:o}}}); setCurrent(mid,k);
 };
 window.submitTest = async mid=>{
-  const answers=$('ans-'+mid).value.trim(), link=$('lnk-'+mid).value.trim(), paper=$('pap-'+mid).checked;
   if(!canHandIn(mid)){ toast('Watch the video through first.'); return; }
-  const sheets=mySheets(mid).map(e=>e.id);
-  if(!answers && !link && !paper && !sheets.length){ toast('Upload your completed answer sheet first (or type your answers, add a link, or tick that you handed it in on paper).'); return; }
-  if(link && !safeUrl(link)){ toast('The link must start with https://'); return; }
-  await saveProg({mods:{[mid]:{answers, link, paper, sheets, submittedAt:serverTimestamp()}}});
+  const sheets=mySheets(mid).map(e=>e.id), rec=afRecord(mid);
+  if(rec){
+    const f=formOf(mid);
+    if(!f.vals.decl){ toast('Tick the declaration (that these answers are your own work) first.'); const d=$('afd-'+mid); if(d) d.focus(); return; }
+    if(rec.missing.length===rec.form.items.length && !sheets.length){ toast('Answer the questions first.'); return; }
+    if(rec.missing.length && !confirm('You have not answered question '+rec.missing.join(', ')+'. Hand in anyway?')) return;
+    clearTimeout(afTimers[mid]);
+    await saveProg({mods:{[mid]:{form:rec.form, answers:rec.text, sheets, submittedAt:serverTimestamp()}}});
+  } else {
+    const answers=(($('ans-'+mid)||{}).value||'').trim();
+    if(!answers && !sheets.length){ toast('Upload your completed answer sheet first (or type your answers).'); return; }
+    await saveProg({mods:{[mid]:{answers, sheets, submittedAt:serverTimestamp()}}});
+  }
   setCurrent(mid,'test-submitted');
   toast('Handed in. Your assessor will mark it soon.');
 };
@@ -1769,7 +1920,7 @@ function renderMarking(){
       +(pm.testAtt? '<div id="mk-'+id+'" data-c="'+c+'" data-u="'+e.uid+'" data-m="'+m+'" data-a="'+pm.testAtt+'"><p class="note">Loading the online test…</p></div>' : '')
       +(()=>{ const sh=S.evidence.filter(v=>v.uid===e.uid && v.kind==='sheet' && v.mid===m && v.cid===c).sort((a,b)=>ms(a.at)-ms(b.at));
           return sh.length? '<p class="note" style="margin-top:8px;"><b>📤 Completed answer sheet'+(sh.length>1?'s':'')+'</b></p>'+sheetList(sh,true) : ''; })()
-      +(pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
+      +(pm.form? '<p class="note" style="margin-top:8px;"><b>✍️ Answered on screen</b></p>'+formTable(pm.form) : pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
       +(link?'<p style="margin-top:8px;"><a href="'+esc(link)+'" target="_blank" rel="noopener">📎 Open completed answer sheet</a></p>':'')
       +(pm.paper?'<p class="note" style="margin-top:6px;">📄 Student says the answer sheet was handed in on paper.</p>':'')
       +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
@@ -1790,6 +1941,7 @@ window.mark = async (c,uid,m,outcome)=>{
   const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
   const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
+  if(pm.form) rec.form=pm.form;
   let mx={};
   if(pm.testAtt){
     let d; try{ d=await loadMarkData(c,uid,m,pm.testAtt); }catch(e){ toast('The online test could not be loaded.'); return; }
@@ -2049,7 +2201,8 @@ window.printPoE = async uid=>{
         +(a.paper?'<tr><th>Paper</th><td colspan="3">Answer sheet handed in on paper: file it behind this page.</td></tr>':'')
         +'<tr><th>Feedback: done well</th><td colspan="3" style="white-space:pre-wrap;">'+esc(a.good||'')+'</td></tr>'
         +'<tr><th>Feedback: needs correction</th><td colspan="3" style="white-space:pre-wrap;">'+esc(a.fix||a.comment||'')+'</td></tr></table>'
-        +(a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'')
+        +(a.form? '<p style="margin-top:3mm;font-size:10pt;"><b>Answers typed on screen in the portal</b> (headings, questions and names are added by the portal and cannot be changed by the learner)</p>'+formTable(a.form,true)
+          : a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'')
         +(a.qa? '<p style="margin-top:3mm;font-size:10pt;">Online test version '+esc(a.ver||'')+' · started '+fmtDT(a.startedAt)+' · handed in '+fmtDT(a.submittedAt)+' · score <b>'+a.total+' / '+a.max+' ('+(a.max?Math.round(a.total/a.max*100):0)+'%)</b></p>'
           +'<table class="pr"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'+a.qa.map(q=>'<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'(not answered)':esc(q.a))+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td>'+q.s+' / '+q.max+'</td></tr>').join('')+'</table>' : '');
     });
