@@ -71,6 +71,17 @@ input.code{text-transform:uppercase; letter-spacing:2px; font-weight:700; font-f
 .mod>.mh b{color:var(--green-deep);}
 .mod.locked>.mh b{color:var(--muted);}
 .mod .mb{padding:0 14px 14px; border-top:1px solid #efe9da;}
+.todo{background:#fbf8f1; border:2px solid var(--gold-deep); border-radius:14px; padding:12px; margin:12px 0 6px;}
+.todo-h{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; color:var(--green-deep); font-size:1rem;}
+.todo-r{display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:#fff; border-radius:12px; padding:10px; margin:6px 0; border:1px solid var(--sand-deep);}
+.todo-r.done{background:#eef6ef; border-color:#b9d9c0;}
+.todo-n{flex:0 0 34px; height:34px; border-radius:50%; border:3px solid var(--green-deep); background:var(--gold); color:var(--green-deep); font-weight:800; display:flex; align-items:center; justify-content:center;}
+.todo-r.done .todo-n{background:var(--ok,#2e7d4f); border-color:var(--ok,#2e7d4f); color:#fff;}
+.todo-i{flex:0 0 auto; font-size:1.8rem; line-height:1;}
+.todo-t{flex:1 1 200px; color:var(--green-deep);}
+.todo-t b{font-size:1rem;}
+.todo-w{display:inline-block; margin-top:4px; background:var(--green-deep); color:var(--gold); border-radius:999px; padding:2px 10px; font-size:.72rem; font-weight:700;}
+.todo-b{flex:0 1 auto; max-width:100%; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
 .item{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 0; border-bottom:1px dashed #e8e0cd;}
 .item:last-child{border-bottom:none;}
 .item .lbl{font-weight:600; color:var(--green-deep);}
@@ -454,6 +465,7 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDo
          onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion, deleteField, orderBy, limit
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { POE_SECTIONS, POE_UNITS, POE_FORMS, FB_FORMS, RATE5 } from "./poe-defs.js";
+import { POE_STEPS } from "./poe-steps.js";
 
 import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
@@ -911,7 +923,7 @@ function modBody(mid, st){
   if(!m) return '<p class="note" style="padding-top:10px;">Loading…</p>';
   if(m._err) return '<p class="note" style="padding-top:10px;">This module could not be opened. Check your connection and try again.</p>';
   const p=(progress.mods||{})[mid]||{}, opened=p.opened||{}, mk=(results.marks||{})[mid];
-  let h='';
+  let h='<div id="todo-'+mid+'">'+todoHTML(mid, st)+'</div>';
   ITEMS.forEach(it=>{
     const s=srcOf(m[it.k]);
     if(!s){ h+=itemRow(it.label,'<span class="sm">Not added yet</span>'); return; }
@@ -959,6 +971,51 @@ function modBody(mid, st){
 }
 // picture guide for students: what to do after the module test, and when (help/after-the-test.jpg)
 const HELP_BTN='<div class="btnrow" style="margin-top:4px;"><a class="btn small ghost" href="help/after-the-test.jpg" target="_blank" rel="noopener">❓ How do I hand in? (picture guide)</a></div>';
+/* ---------- "My to-do list" at the top of every module (poe-steps.js) ----------
+   Shows the student WHAT to do for their PoE in this module, HOW (a few words) and WHEN, with a
+   tick that comes from what the portal already stores (watch time, test status, uploads, signed
+   forms, feedback links). It saves nothing of its own. */
+const TODO_HELP='<a class="btn small ghost" href="help/poe-checklist.jpg" target="_blank" rel="noopener">❓ How does this work? (picture guide)</a>';
+function todoSteps(mid){ const u=POE_STEPS[course.code]; return u? (u[baseOf(mid)]||[]) : []; }
+function todoState(s, mid, st, ctx){
+  const m=curMod(mid)||{};
+  if(s.t==='watch'){ if(!MEDIA.some(k=>trackable(m[k]))) return null; return canHandIn(mid)? {s:'done', t:'Watched'} : {s:'todo', t:'Not watched yet'}; }
+  if(s.t==='test'){ if(!srcOf(m.sheet) && !otOf(m) && !srcOf(m.test)) return {s:'todo', t:'Not open yet'};
+    return st==='passed'? {s:'done', t:'Competent'} : st==='waiting'? {s:'wait', t:'Handed in: waiting for marking'} : st==='nyc'? {s:'part', t:'Fix it and hand in again'} : {s:'todo', t:'Not handed in'}; }
+  if(s.t==='log') return {s:'log', t:''};
+  if(s.t==='up'){ const ev=ctx.ev.filter(e=>e.slot===s.slot && (!s.mod || e.mid===mid)); const redo=ev.filter(e=>e.review&&e.review.status==='redo').length, n=ev.length-redo, min=s.min||1;
+    if(n>=min) return {s:'done', t:n+' uploaded'}; if(redo && !n) return {s:'part', t:'Needs correction'};
+    return n? {s:'part', t:n+' of '+min+' uploaded'} : {s:'todo', t:'Nothing uploaded yet'}; }
+  const its=s.ids.map(id=>ctx.u.items.find(x=>x.id===id)).filter(Boolean); if(!its.length) return null;
+  const sts=its.map(it=>itemStatus(it,ctx)), d=sts.filter(x=>x.s==='done'||x.s==='na').length;
+  if(d===its.length) return {s:'done', t:its.length>1? 'All '+its.length+' done' : sts[0].t};
+  if(its.length>1) return {s:d?'part':'todo', t:d+' of '+its.length+' done'};
+  return s.t==='wait'? {s:'wait', t:'Your assessor does this'} : sts[0];
+}
+function todoBtns(s, mid, st, ctx, locked){
+  if(s.t==='watch'||s.t==='test') return '<span class="sm">⬇️ Below</span>';
+  if(s.t==='log') return '<a class="btn small secondary" href="LWECFieldLogbook.html" target="_blank" rel="noopener">📒 Open Field Logbook</a>';
+  if(s.t==='up') return locked? '' : '<button class="btn small" onclick="poePickFile(\''+s.slot+'\',\''+mid+'\')">⬆️ Upload</button>';
+  if(s.t==='wait') return '';
+  return s.ids.map((id,i)=>{ const it=ctx.u.items.find(x=>x.id===id); if(!it) return ''; const st2=itemStatus(it,ctx), b=stuItemBtns(it, st2, locked);
+    return (s.labels||[])[i] && b? b.replace(/>[^<]+</, '>'+(st2.s==='done'?'✔ ':'✍️ ')+esc(s.labels[i])+'<') : b; }).join(' ');
+}
+const TODO_MARK={done:'✔', wait:'⏳'};
+function todoHTML(mid, st){
+  const steps=todoSteps(mid), u=poeUnit(); if(!steps.length || !u) return '';
+  const ctx=stuCtx(), locked=!!PL.locked;
+  const rows=steps.map(s=>[s, todoState(s, mid, st, ctx)]).filter(r=>r[1]);
+  const need=rows.filter(r=>r[1].s!=='log'), done=need.filter(r=>r[1].s==='done').length;
+  let h='<div class="todo"><div class="todo-h"><b>✅ My to-do list for this module</b><span class="pill '+(done===need.length?'ok':'gold')+'">'+done+' of '+need.length+' done</span></div>'
+    +'<p class="sm" style="margin:2px 0 8px;">Do these in order. They go into your Portfolio of Evidence (PoE) by themselves.</p>';
+  rows.forEach(([s,x],i)=>{
+    h+='<div class="todo-r '+x.s+'"><div class="todo-n">'+(TODO_MARK[x.s]||(i+1))+'</div><div class="todo-i">'+s.ico+'</div>'
+      +'<div class="todo-t"><b>'+esc(s.what)+'</b><div class="sm">'+esc(s.how)+'</div><span class="todo-w">⏰ '+esc(s.when)+'</span>'
+      +(x.t? ' <span class="pill '+(x.s==='done'?'ok':x.s==='part'?'wait':'')+'">'+esc(x.t)+'</span>':'')+'</div>'
+      +'<div class="todo-b">'+todoBtns(s, mid, st, ctx, locked)+'</div></div>';
+  });
+  return h+'<div class="btnrow" style="margin-top:6px;">'+TODO_HELP+'</div></div>';
+}
 function feedbackBox(mk){
   if(!mk) return '';
   const g=mk.good||'', f=mk.fix||mk.comment||'';
@@ -2731,6 +2788,7 @@ function renderStuPoe(){
   });
   h+='</details>';
   keepInputs('poeBox', ()=>{ box.innerHTML=h; });
+  if(openMid){ const t=$('todo-'+openMid); if(t) t.innerHTML=todoHTML(openMid, modStatus(openMid)); }
 }
 function stuItemExtra(it, ctx){
   if(it.kind==='upload'){
@@ -2763,7 +2821,8 @@ function stuItemBtns(it, st, locked){
 
 /* ---------- uploads into a PoE task slot ---------- */
 let poeSlot=null;
-window.poePickFile = slot=>{ poeSlot=slot; const i=$('poeFile'); i.value=''; i.click(); };
+let poeMid=null;   // set when the upload starts from a module's to-do list
+window.poePickFile = (slot, mid)=>{ poeSlot=slot; poeMid=mid||null; const i=$('poeFile'); i.value=''; i.click(); };
 window.poeFileChosen = async input=>{
   const files=[...input.files]; if(!files.length||!poeSlot) return;
   const it=poeUnit().items.find(x=>x.id===poeSlot);
@@ -2771,7 +2830,7 @@ window.poeFileChosen = async input=>{
   const odd=files.find(f=>!evType(f)); if(odd){ toast(odd.name+': only photos, PowerPoint, PDF, Word, Excel or video files can be uploaded.'); return; }
   toast('Uploading… keep this page open.');
   try{
-    for(let i=0;i<files.length;i++) await putEvidence(me.uid, files[i], {title:it.title+(files.length>1?' ('+(i+1)+')':''), note:'PoE task', us:course.code, slot:poeSlot, studentName:(enrol&&enrol.name)||profile.name||''},
+    for(let i=0;i<files.length;i++) await putEvidence(me.uid, files[i], Object.assign({title:it.title+(poeMid?' · '+modTitle(poeMid):'')+(files.length>1?' ('+(i+1)+')':''), note:'PoE task', us:course.code, slot:poeSlot, studentName:(enrol&&enrol.name)||profile.name||''}, poeMid? {cid:CID, mid:poeMid} : {}),
       (g,t)=>{ $('toast').textContent='Uploading '+(i+1)+' of '+files.length+': '+Math.round(g/t*100)+'%'; $('toast').classList.add('show'); });
     toast('Uploaded. Your assessor can see it now.');
   }catch(e){ console.warn(e); toast('Upload failed: '+(e.code||e.message)); }
