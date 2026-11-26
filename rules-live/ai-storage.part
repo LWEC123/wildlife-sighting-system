@@ -1,0 +1,12 @@
+    // Assessor memos for AI pre-marking: staff upload, and NOBODY can open them from a
+    // browser (not even staff). Only the server-side marking function reads them.
+    match /memos/{cid}/{file} {
+      allow read: if false;
+      allow create, update: if isCourseStaff()
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('application/pdf')
+            || request.resource.contentType.matches('application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document')
+            || request.resource.contentType.matches('text/plain'));
+      allow delete: if isCourseStaff();
+    }
+

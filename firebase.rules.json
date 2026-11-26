@@ -1,4 +1,4 @@
 {
-  "firestore": { "rules": "rules-live/firestore.rules" },
-  "storage": { "rules": "rules-live/storage.rules" }
+  "firestore": { "rules": ".rules-out/firestore.rules" },
+  "storage": { "rules": ".rules-out/storage.rules" }
 }
