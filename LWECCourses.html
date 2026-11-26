@@ -2218,7 +2218,7 @@ function stuItemBtns(it, st, locked){
   const F=it.form, fd=formDef(F)||{};
   if(locked && it.kind!=='third') return (it.kind==='learner'&&st.s==='done')? '<button class="btn small ghost" onclick="openPoeForm(\''+F+'\')">View</button>' : '';
   if(it.kind==='learner'){
-    if(F==='self'||fd.who==='learner'){ if(st.s==='wait') return ''; return '<button class="btn small'+(st.s==='done'?' ghost':'')+'" onclick="openPoeForm(\''+F+'\')">'+(st.s==='done'?'View or change':'Fill in and sign')+'</button>'; }
+    if(F==='self'||fd.who==='learner'){ if(st.s==='wait') return ''; return '<button class="btn small'+(st.s==='done'?' ghost':'')+'" onclick="openPoeForm(\''+F+'\')">'+(st.s==='done'?'View or change':(F==='appeal'?'Lodge an appeal':'Fill in and sign'))+'</button>'; }
   }
   if(F==='review'){ const rv=Object.keys(((PA.f||{}).review||{}).items||{}).filter(id=>!(((PL.f||{}).revAck||{})[id]||{}).sig); return rv.map(id=>'<button class="btn small" onclick="openPoeForm(\'revAck\',\''+id+'\')">Sign review</button>').join(''); }
   if(it.kind==='assessor'){ const o=(fd.scope==='prog'?PAP:PA).f||{}; return o[F]&&o[F].sig? '<button class="btn small ghost" onclick="openPoeForm(\''+F+'\')">View</button>' : ''; }
