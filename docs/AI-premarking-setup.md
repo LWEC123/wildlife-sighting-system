@@ -38,7 +38,7 @@ Cloud Functions need the pay-as-you-go **Blaze** plan. The free allowance stays;
 3. When it offers a **budget alert**, set **USD 5**. You get an email if it ever gets near that.
 
 ### 4. Deploy (Claude can do this with you)
-In **Google Cloud Shell** (https://shell.cloud.google.com, signed in as limpopowt@gmail.com, it has the Firebase tools built in):
+In **Google Cloud Shell** (https://shell.cloud.google.com, signed in as limpopowt@gmail.com, it has the Firebase tools built in). The database is in africa-south1 (Johannesburg), so the functions run there too:
 
 ```bash
 git clone https://github.com/LWEC123/wildlife-sighting-system.git && cd wildlife-sighting-system

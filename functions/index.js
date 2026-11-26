@@ -23,7 +23,7 @@ const nodemailer = require('nodemailer');
 const { premark, newHandIns, callClaudeReal } = require('./premark');
 
 // Must match the Firestore database location (checked when deploying) and REGION in LWECCourses.html.
-const REGION = 'us-central1';
+const REGION = 'africa-south1';   // Johannesburg, same as the Firestore database
 const NOTIFY_FROM = 'limpopowt@gmail.com';
 const NOTIFY_TO = 'limpopowt@gmail.com';
 const PORTAL = 'https://lwec123.github.io/wildlife-sighting-system/LWECCourses.html#marking';

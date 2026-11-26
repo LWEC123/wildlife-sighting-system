@@ -404,7 +404,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 // AI pre-marking runs in a Cloud Function (functions/ in the repo). Region must match functions/index.js.
-const FN_REGION = 'us-central1';
+const FN_REGION = 'africa-south1';
 const fns = getFunctions(app, FN_REGION);
 const STORE_HOST = 'https://firebasestorage.googleapis.com';
 const BUCKET = firebaseConfig.storageBucket;
