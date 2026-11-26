@@ -90,9 +90,7 @@ table.t tr.click:hover td{background:#fbf8f0;}
 .af-head{background:var(--sand); border-radius:8px; padding:10px 12px; margin:6px 0;}
 .af-part{font-weight:700; margin:14px 0 4px;}
 .afstaff{display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:8px;}
-.afstaff label{margin:0; font-weight:700;}
-.afstaff select{width:auto; flex:0 1 230px; margin:0;}
-.afas{font-size:.9rem;}
+.afstaff span{font-size:.9rem;}
 .afq{display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:6px 0; border-bottom:1px dashed #e8e0cd;}
 .afn{display:inline-block; min-width:2.2em; font-weight:700;}
 .afo{display:inline-flex; margin:0; cursor:pointer;}
@@ -1005,9 +1003,31 @@ window.uploadSheet = async mid=>{
    Headings, labels, the learner's name and the assessor are drawn by the portal, so a student
    can't change them. A draft is saved as the student goes (progress.mods[mid].draft); on hand-in
    the answers are saved as progress.mods[mid].form (per question) and .answers (plain text). */
-// The assessor on every answer sheet is fixed; the student picks the facilitator from this list.
-const FORM_ASSESSOR={name:'Zeriah Wessels', reg:'613/A/00337/2020'};
-const FACILITATORS=['D.P.J. Steyn','Johann Roos'];
+// Facilitators and assessors of the college. Students never choose them: staff set a student's
+// facilitator in the Student monitor (enrol.facilitator), and the assessor is whoever marks.
+// CATHSSETA registrations (from the registration letters). Numbers fill in by themselves when the
+// signed-in staff member's name matches; add D.P.J. Steyn's and Johann Roos's when they are known.
+const STAFF=[
+  {name:'E.Z. Wessels', areg:'613/A/00337/2020'},
+  {name:'D.P.J. Steyn', pending:'assessor and moderator registration awaited from CATHSSETA'},
+  {name:'Johann Roos', pending:'CATHSSETA assessor registration not received yet (has the 115753 assessor training certificate)'},
+  {name:'C.S. Wessels', areg:'613/A/00345/2020', aTo:'2028-10-27', mreg:'613/M/00771/2023', mTo:'2029-05-04'}
+];
+const STAFF_NAMES=STAFF.map(x=>x.name);
+function staffOf(name){ return STAFF.find(x=>samePerson(x.name,name))||null; }
+// Can this staff member sign as assessor / moderator? Facilitators without a registration can't.
+function regBlock(name, role){ const st=staffOf(name); if(!st) return '';
+  if(role==='mod'? !st.mreg : !st.areg) return st.name+' has no CATHSSETA '+(role==='mod'?'moderator':'assessor')+' registration on file yet'+(st.pending?' ('+st.pending+')':'')+', so cannot sign as '+(role==='mod'?'moderator':'assessor')+'.';
+  return ''; }
+// Same person? Surname matches and the first-name initials overlap ("Zeriah Wessels" = "E.Z. Wessels",
+// but not "C.S. Wessels"). Used so nobody assesses or moderates their own work.
+function personKey(n){ const t=String(n||'').toLowerCase().replace(/[^a-z .'-]/g,' ').split(/[\s.]+/).filter(Boolean); if(!t.length) return null;
+  const part=/^(du|de|der|van|von|le|la|den|ten|ter)$/; return {sur:t[t.length-1], ini:new Set(t.slice(0,-1).filter(x=>!part.test(x)).map(x=>x[0]))}; }
+function samePerson(a,b){ const x=personKey(a), y=personKey(b); if(!x||!y||x.sur!==y.sur) return false;
+  if(!x.ini.size||!y.ini.size) return true; return [...x.ini].some(i=>y.ini.has(i)); }
+// Would the signed-in staff member be judging their own work? (same login, email or name)
+function isOwnWork(e){ if(!e||!me) return false; const myName=(assessor().name||profile.name||'');
+  return e.uid===me.uid || (e.email && me.email && e.email.toLowerCase()===me.email.toLowerCase()) || samePerson(e.name, myName) || samePerson(e.name, profile.name); }
 const AF={};          // cid/mid -> {L: layout, vals:{mc:{}, w:{}, decl}} | {none:true} | {loading:true}
 const WNS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 async function zipText(blob, want){
@@ -1069,7 +1089,7 @@ async function loadForm(mid){
     const u=await getMedia(s.path), L=parseSheet(await zipText(await (await fetch(u)).blob(), 'word/document.xml'));
     if(!L.items.length) throw new Error('no questions found');
     const p=(progress.mods||{})[mid]||{}, src=p.draft || p.form || {};
-    AF[key]={L, vals:{mc:Object.assign({},src.mc), w:Object.assign({},src.written||src.w), decl:false, fac:FACILITATORS.includes(src.fac)? src.fac : ''}};
+    AF[key]={L, vals:{mc:Object.assign({},src.mc), w:Object.assign({},src.written||src.w), decl:false}};
   }catch(e){ console.warn('answer form', e); AF[key]={none:true}; }
   drawFormBox(mid);
 }
@@ -1083,9 +1103,7 @@ function formHTML(mid){
   const nm=(enrol&&enrol.name)||profile.name||(me&&me.email)||'';
   let h='<h3>✍️ Answer the test here</h3>'
     +'<div class="af-head"><b>'+esc(L.title)+'</b><br><span class="sm">Learner: <b>'+esc(nm)+'</b>'+(profile.idno?' · ID '+esc(profile.idno):'')+' · '+esc(course.code||'')+'</span>'
-      +'<div class="afstaff"><label for="aff-'+mid+'">Facilitator</label><select id="aff-'+mid+'" onchange="afFac(\''+mid+'\',this.value)"><option value="">Choose your facilitator…</option>'
-      +FACILITATORS.map(x=>'<option'+(v.fac===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>'
-      +'<span class="afas">Assessor: <b>'+esc(FORM_ASSESSOR.name)+'</b> <span class="sm">('+esc(FORM_ASSESSOR.reg)+')</span></span></div></div>'
+      +'<div class="afstaff"><span>Facilitator: <b>'+esc((enrol&&enrol.facilitator)||'set by the college')+'</b></span><span>Assessor: <b>completed by the college on marking</b></span></div></div>'
     +'<p class="note">Open the test with <b>👁 View</b> above, then answer each question here. Your answers are saved as you go, so you can stop and come back later.</p>';
   if(mc.length) h+='<p class="af-part">Part A: tap the correct answer</p>'+mc.map(x=>'<div class="afq" id="afq-'+id(x)+'"><span class="afn">'+x.n+'</span>'
       +x.opts.map(o=>'<label class="afo"><input type="radio" name="afr-'+id(x)+'" id="afr-'+id(x)+'-'+o+'" value="'+o+'"'+(v.mc[x.n]===o?' checked':'')+' onchange="afSet(\''+mid+'\','+x.n+',this.value,\'mc\')"><span>'+o+'</span></label>').join('')
@@ -1107,10 +1125,9 @@ window.afSet = (mid,n,val,kind)=>{
   clearTimeout(afTimers[mid]); afTimers[mid]=setTimeout(()=>afSave(mid), kind==='mc'? 300 : 2500);
 };
 window.afDecl = (mid,c)=>{ const f=formOf(mid); if(f) f.vals.decl=c; };
-window.afFac = (mid,v)=>{ const f=formOf(mid); if(!f) return; f.vals.fac=FACILITATORS.includes(v)? v : ''; afSave(mid); };
 function afSave(mid){ const f=formOf(mid); if(!f) return; clearTimeout(afTimers[mid]);
   if(['passed','waiting'].includes(modStatus(mid))) return;
-  saveProg({mods:{[mid]:{draft:{mc:f.vals.mc, w:f.vals.w, fac:f.vals.fac||'', at:serverTimestamp()}}}}); }
+  saveProg({mods:{[mid]:{draft:{mc:f.vals.mc, w:f.vals.w, at:serverTimestamp()}}}}); }
 window.addEventListener('pagehide', ()=>Object.keys(afTimers).forEach(afSave));
 // The answers as saved on hand-in: per question (for marking, the PoE and pre-marking) and as plain text.
 function afRecord(mid){
@@ -1119,14 +1136,14 @@ function afRecord(mid){
     if(x.type==='MC') mc[x.n]=a; else written[x.n]=a;
     return {n:x.n, type:x.type, q:x.q||'', marks:x.marks, a}; });
   const text=items.map(x=>x.n+'. '+(x.a||'(not answered)')).join('\n');
-  return {form:{title:f.L.title, items, mc, written, facilitator:f.vals.fac||'', assessor:FORM_ASSESSOR.name, assessorReg:FORM_ASSESSOR.reg, decl:{name:(enrol&&enrol.name)||profile.name||'', at:Timestamp.now()}}, text,
+  return {form:{title:f.L.title, items, mc, written, facilitator:(enrol&&enrol.facilitator)||'', decl:{name:(enrol&&enrol.name)||profile.name||'', at:Timestamp.now()}}, text,
     missing:items.filter(x=>!x.a).map(x=>x.n)};
 }
 // Staff and PoE: a handed-in on-screen form as a table.
 function formTable(fm, print){
   if(!fm || !(fm.items||[]).length) return '';
   const cls=print? 'pr' : 'aft';
-  return (fm.facilitator||fm.assessor? '<p class="sm" style="margin:6px 0;">Facilitator: <b>'+esc(fm.facilitator||'not chosen')+'</b> · Assessor: <b>'+esc(fm.assessor||'')+'</b>'+(fm.assessorReg?' ('+esc(fm.assessorReg)+')':'')+'</p>' : '')
+  return (fm.facilitator? '<p class="sm" style="margin:6px 0;">Facilitator: <b>'+esc(fm.facilitator)+'</b></p>' : '')
     +'<table class="'+cls+'"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th></tr>'
     +fm.items.map(x=>'<tr><td>'+x.n+'</td><td style="white-space:pre-wrap;">'+(x.type==='MC'? 'Multiple choice' : esc(x.q||'See the test'))+(x.marks?' <span class="sm">('+x.marks+')</span>':'')+'</td><td style="white-space:pre-wrap;">'+(x.a? '<b>'+esc(x.a)+'</b>' : '<i>(not answered)</i>')+'</td></tr>').join('')
     +'</table>'+(fm.decl? '<p class="sm">Learner declaration accepted on screen by '+esc(fm.decl.name||'')+(fm.decl.at?' on '+fmtDT(fm.decl.at):'')+'.</p>' : '');
@@ -1141,7 +1158,6 @@ window.submitTest = async mid=>{
   const sheets=mySheets(mid).map(e=>e.id), rec=afRecord(mid);
   if(rec){
     const f=formOf(mid);
-    if(!f.vals.fac){ toast('Choose your facilitator at the top of the answer form first.'); const d=$('aff-'+mid); if(d) d.focus(); return; }
     if(!f.vals.decl){ toast('Tick the declaration (that these answers are your own work) first.'); const d=$('afd-'+mid); if(d) d.focus(); return; }
     if(rec.missing.length===rec.form.items.length && !sheets.length){ toast('Answer the questions first.'); return; }
     if(rec.missing.length && !confirm('You have not answered question '+rec.missing.join(', ')+'. Hand in anyway?')) return;
@@ -1893,6 +1909,7 @@ window.openStu = (uid, quiet)=>{
         +(off?'<span class="pill bad">Paused</span> ':'<span class="pill ok">Open</span> ')
         +'<button class="btn small ghost" onclick="toggleCourse(\''+uid+'\',\''+c+'\','+(!off)+')">'+(off?'Open again':'Pause')+'</button></td></tr>'; }).join('')
     +'</table></div>'
+    +facLine(e)
     +'<h3>'+esc(course.title)+': modules</h3>'+choiceLine(e,x)+'<div class="tablewrap"><table class="t"><tr><th>Module</th><th>Opened</th><th>Watched (real viewing time)</th><th>Test</th><th>Result</th></tr>'
     +x.mids.map(m=>{
       const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, mk=marks[m];
@@ -1914,6 +1931,17 @@ window.openStu = (uid, quiet)=>{
   $('stuDetail').innerHTML=h; $('stuDetail').hidden=false;
   if(fresh) renderStaffUpload(e);
   if(!quiet) $('stuDetail').scrollIntoView({behavior:'smooth'});
+};
+function facLine(e){
+  return '<div class="callout">Facilitator: <b>'+esc(e.facilitator||'not set yet')+'</b>'
+    +' <select id="fac-'+e.uid+'" style="width:auto;display:inline-block;padding:5px;margin-left:6px;"><option value="">Change to…</option>'+STAFF_NAMES.map(n=>'<option>'+esc(n)+'</option>').join('')+'</select>'
+    +' <button class="btn small ghost" onclick="setFacilitator(\''+e.uid+'\')">Save</button> <span class="sm">Shown on the student\'s answer forms and in the PoE. The facilitator may also be the assessor.</span></div>';
+}
+window.setFacilitator = async uid=>{
+  const v=$('fac-'+uid).value; if(!STAFF_NAMES.includes(v)){ toast('Pick the facilitator first.'); return; }
+  const e=S.enrol.find(x=>x.uid===uid); if(e && samePerson(e.name, v)){ toast('A student cannot be their own facilitator.'); return; }
+  try{ await updateDoc(doc(db,'enrol',PK+'_'+uid), {facilitator:v}); toast('Facilitator set to '+v+'.'); }
+  catch(err){ toast('Could not save: '+err.code); }
 };
 function choiceLine(e,x){
   const ch=choiceOf(x.cid); if(!ch) return '';
@@ -2077,7 +2105,7 @@ function renderMarking(){
   courseIds(true).forEach(c=>S.enrol.forEach(e=>{ const x=stuSummary(e,c); x.waiting.forEach(m=>items.push({e, c, m, pm:(x.p.mods||{})[m]})); }));
   items.sort((a,b)=>ms(a.pm.submittedAt)-ms(b.pm.submittedAt));
   keepInputs('markList', ()=>{ $('markList').innerHTML = items.length? items.map(({e,c,m,pm})=>{
-    const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link);
+    const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link), own=isOwnWork(e);
     return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
       +(pm.testAtt? '<div id="mk-'+id+'" data-c="'+c+'" data-u="'+e.uid+'" data-m="'+m+'" data-a="'+pm.testAtt+'"><p class="note">Loading the online test…</p></div>' : '')
       +(()=>{ const sh=S.evidence.filter(v=>v.uid===e.uid && v.kind==='sheet' && v.mid===m && v.cid===c).sort((a,b)=>ms(a.at)-ms(b.at));
@@ -2088,6 +2116,8 @@ function renderMarking(){
       +'<div id="ai-'+id+'">'+aiBox(c,e.uid,m,pm,id)+'</div>'
       +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
       +'<label>Assessor feedback: what needs correction</label><textarea id="ff-'+id+'" placeholder="e.g. Question 7: explain the role of fire in the grassland biome. Resubmit by ..."></textarea>'
+      +(own? '<div class="callout">This is <b>your own work</b>. Another assessor must mark it.</div>' : '')
+      +(e.facilitator? '<p class="sm">Facilitator: <b>'+esc(e.facilitator)+'</b></p>' : '')
       +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
   }).join('') : '<div class="card"><p class="note">Nothing to mark right now. 🎉</p></div>'; });
   document.querySelectorAll('#markList [id^="mk-"]').forEach(b=>fillMark(b.dataset.c, b.dataset.u, b.dataset.m, +b.dataset.a));
@@ -2096,10 +2126,11 @@ function renderMarking(){
 }
 // Registered assessors: their name and CATHSSETA registration number fill in by themselves on
 // every device. Others type theirs once on the Marking page; it is kept on their staff profile.
-const ASSESSORS={'limpopowt@gmail.com':{name:'Zeriah Wessels', reg:'613/A/00337/2020'}};
+const ASSESSORS={'limpopowt@gmail.com':{name:'E.Z. Wessels', reg:'613/A/00337/2020'}};
 function assessor(){ let a={}; try{ a=JSON.parse(localStorage.getItem('lwec_assessor')||'{}'); }catch(e){}
   const k=ASSESSORS[String((me&&me.email)||'').toLowerCase()]||{}, pa=profile.assessor||{};
-  return {name:a.name||pa.name||k.name||profile.name||'', reg:a.reg||pa.reg||k.reg||''}; }
+  const name=a.name||pa.name||k.name||profile.name||'', st=staffOf(name)||{};
+  return {name, reg:a.reg||pa.reg||k.reg||st.areg||'', mreg:st.mreg||''}; }
 window.saveAssessor = ()=>{ const v={name:val('asName'), reg:val('asReg')};
   try{ localStorage.setItem('lwec_assessor', JSON.stringify(v)); }catch(e){}
   if(me && isMentor){ profile.assessor=v; setDoc(doc(db,'users',me.uid), {assessor:v}, {merge:true}).catch(e=>console.warn('assessor save',e)); } };
@@ -2108,12 +2139,17 @@ window.mark = async (c,uid,m,outcome)=>{
   const good=(($('fg-'+id)||{}).value||'').trim(), fix=(($('ff-'+id)||{}).value||'').trim();
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
   if(!as.name){ toast('Type your assessor name at the top of this page first.'); $('asName').focus(); return; }
+  if(!as.reg){ toast('Type your assessor registration number at the top of this page first.'); $('asReg').focus(); return; }
+  const rb=regBlock(as.name,'ass'); if(rb){ toast(rb); return; }
+  const stu=S.enrol.find(x=>x.uid===uid);
+  if(isOwnWork(stu)){ toast('This is your own work. Another assessor must mark it.'); return; }
   if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
   if(!good && !fix && !confirm('Mark without any written feedback?')) return;
   const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
   const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
   if(pm.form) rec.form=pm.form;
+  rec.facilitator=(stu&&stu.facilitator)||(pm.form&&pm.form.facilitator)||'';
   let mx={};
   if(pm.testAtt){
     let d; try{ d=await loadMarkData(c,uid,m,pm.testAtt); }catch(e){ toast('The online test could not be loaded.'); return; }
@@ -2153,6 +2189,8 @@ window.priorCompetent = async (uid,m)=>{
   const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
   const as={name:val('asName')||assessor().name, reg:val('asReg')||assessor().reg};
   if(!as.name){ toast('Type your assessor name on the Marking page first (it is saved for next time).'); return; }
+  if(isOwnWork(e)){ toast('This is your own work. Another assessor must record it.'); return; }
+  const rb=regBlock(as.name,'ass'); if(rb){ toast(rb); return; }
   const x=stuSummary(e), passed=(x.r.passed||{}), upto=x.mids.indexOf(m);
   const todo=x.mids.slice(0,upto+1).filter(k=>passed[k]!==true);
   if(!todo.length){ toast('Already competent.'); return; }
@@ -2618,8 +2656,21 @@ window.savePoeForm = async sign=>{
     if(fd.special==='rep' && !v.outcome){ toast('Choose the overall outcome.'); return; }
     if(fd.special==='obs' && Object.values(v.rows||{}).some(r=>!r.r)){ toast('Mark every row C or NYC.'); return; }
   }
+  if(sign && isMentor){
+    const stu=S.enrol.find(x=>x.uid===uid);
+    if(isOwnWork(stu)){ toast('This is your own work. Another assessor or moderator must sign it.'); return; }
+    const rb= F==='mod'? regBlock(assessor().name||profile.name,'mod') : ['plan','oral','obs','log','rep','appealDec'].includes(F)? regBlock(assessor().name||profile.name,'ass') : '';
+    if(rb){ toast(rb); return; }
+    if(F==='mod'){
+      const hist=(S.res[cid+'_'+uid]||{}).hist||{}, mine=assessor().name||profile.name||'';
+      const assessed=Object.values(hist).some(hs=>(hs||[]).some(h=>h.byUid===me.uid || samePerson(h.by, mine)));
+      const A=((SP.uid===uid? SP.A : null)||{}).f||{}, repSig=(A.rep&&A.rep.sig)||null;
+      if(assessed || (repSig && (repSig.uid===me.uid || samePerson(repSig.name, mine)))){ toast('You assessed this learner\'s work, so you cannot moderate it. Another registered moderator must sign.'); return; }
+    }
+  }
   let sig=null;
-  if(sign){ const s=await askSignature(fd.sign, isMentor? (F==='mod'?'Moderator':'Assessor')+(assessor().reg?' · Reg. '+assessor().reg:'') : 'Learner'); if(!s) return; sig=sigRec(s, isMentor? (F==='mod'?'Moderator':'Assessor')+(assessor().reg?' (reg. '+assessor().reg+')':'') : 'Learner'); }
+  if(sign){ const rg= F==='mod'? (assessor().mreg||assessor().reg) : assessor().reg;
+    const s=await askSignature(fd.sign, isMentor? (F==='mod'?'Moderator':'Assessor')+(rg?' · Reg. '+rg:'') : 'Learner'); if(!s) return; sig=sigRec(s, isMentor? (F==='mod'?'Moderator':'Assessor')+(rg?' (reg. '+rg+')':'') : 'Learner'); }
   const coll= fd.who==='learner'? 'poeL' : 'poeA', key=poeKey(cid, uid);
   let rec={v}; if(sig) rec.sig=sig;
   let patch;
