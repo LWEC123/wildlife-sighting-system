@@ -133,6 +133,9 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   table.pr th{background:#e9e4d4;}
   .decl{margin-top:8mm; font-size:10pt;}
   .sigline{display:inline-block; width:30%; margin-right:3%; margin-top:14mm; border-top:1px solid #000; font-size:9pt; padding-top:2pt;}
+  .prtext p{font-size:9.5pt; margin:1.5mm 0;} .prnote{font-size:9.5pt; color:#444; font-style:italic;}
+  .prsig{margin-top:3mm; font-size:9pt;} .sigbox{border:1px solid #999; padding:2mm; display:flex; gap:4mm; align-items:center; margin-top:2mm; page-break-inside:avoid; font-size:9pt;}
+  .sigbox img{height:14mm; width:auto;} .pr-page h3{font-size:11pt; margin:4mm 0 1.5mm; color:#1e3a2a;}
   .slip .c{font-family:Consolas,monospace; font-size:18pt; font-weight:700; letter-spacing:3px;}
 }
 /* protected viewing */
@@ -156,6 +159,16 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
 .ccard{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid #e3ddcc; border-left:5px solid var(--green); border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff;}
 .ccard.off{border-left-color:#b9b2a0; background:#faf8f3;}
 .ccard .info{flex:1 1 260px;}
+.pmodal{position:fixed; inset:0; background:rgba(20,30,22,.55); z-index:320; overflow:auto; padding:16px 10px;}
+.pmodal>.pbox{background:#fff; border-radius:12px; max-width:920px; margin:0 auto; box-shadow:0 6px 30px rgba(0,0,0,.35);}
+.pmodal .phead{background:var(--green-deep); color:#fff; padding:12px 14px; border-radius:12px 12px 0 0; display:flex; gap:10px; align-items:center; position:sticky; top:-16px; z-index:2;}
+.pmodal .phead b{flex:1;}
+.pmodal .pbody{padding:14px 16px 20px;}
+.sigbox{display:flex; gap:12px; align-items:center; border:1px solid #d8d0bc; border-radius:8px; padding:8px 10px; margin-top:6px; background:#fbf9f3; font-size:.85rem;}
+.sigbox img{height:46px; width:auto; background:#fff; border-bottom:1px solid #999;}
+.sigbox.empty{color:var(--muted); font-style:italic;}
+#sg_pad{width:100%; height:150px; border:1.5px dashed var(--green); border-radius:8px; background:#fff; touch-action:none;}
+#shareQr img,#shareQr canvas{margin:8px auto; display:block;}
 #staffBar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:12px 16px;}
 #staffBar select{flex:1 1 260px; width:auto;}
 </style>
@@ -263,8 +276,10 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
       <p class="note" style="margin-top:10px;">Work through the modules in order. The next module opens once your assessor marks your test as <b>competent</b>.</p>
       <p class="sm" id="aiLine" style="margin-top:6px;"></p>
     </div>
+    <div id="poeBox"></div>
     <div id="modList"></div>
   </div>
+  <input type="file" id="poeFile" multiple hidden accept="image/*,.ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,video/mp4,video/quicktime,audio/*" onchange="poeFileChosen(this)">
 </section>
 
 <!-- ================= STUDENT: EVIDENCE FILE ================= -->
@@ -306,6 +321,7 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   </div>
   <div class="card" id="classGrid" hidden></div>
   <div class="card" id="stuDetail" hidden></div>
+  <div class="card" id="stuPoe" hidden></div>
   <div class="card" id="stuUpload" hidden></div>
 </section>
 
@@ -380,6 +396,7 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
       <p class="sm">Each option is its own module with its own files, named with a letter after the module number: M05A_Limpopo, M05B_Mpumalanga, and so on. A student clicks one option, works through only that module, and the next module opens once it is marked competent. Click <b>Save course</b> and the option modules appear below. Leave the module number empty for no choice.</p>
     </details>
     <div class="btnrow"><label class="btn small ghost" style="margin:0;cursor:pointer;">Load outcome descriptions (Tag_Key.txt)<input type="file" accept=".txt" hidden onchange="importTagKey(this)"></label><span class="sm" id="tagNote"></span></div>
+    <div class="btnrow"><label class="btn small ghost" style="margin:0;cursor:pointer;">Load oral questions (Oral_Questions.txt, staff only)<input type="file" accept=".txt" hidden onchange="importOral(this)"></label><span class="sm" id="oralNote">For the PoE oral questioning record. Questions only: model answers stay in your Assessor CONF file.</span></div>
     <div id="setMods" style="margin-top:12px;"></div>
     <div class="btnrow"><button class="btn" id="setSave" onclick="saveSetup()">Save course</button><span class="sm" id="setNote"></span></div>
   </div>
@@ -390,17 +407,35 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   <div class="vhead"><b id="vTitle"></b><span class="sm" id="vNote"></span><button class="btn small" onclick="closeViewer()">✕ Close</button></div>
   <div id="vBody"></div>
 </div>
+<div class="pmodal" id="pfModal" hidden><div class="pbox"><div class="phead"><b id="pfTitle"></b><button class="btn small" onclick="closePoeForm()">✕ Close</button></div><div class="pbody" id="pfBody"></div></div></div>
+<div class="pmodal" id="sigModal" hidden style="z-index:340;"><div class="pbox" style="max-width:520px;"><div class="phead"><b>✍️ Sign</b><button class="btn small" onclick="sgCancel()">✕</button></div><div class="pbody">
+  <p class="note" id="sg_stmt"></p>
+  <label>Your full name</label><input id="sg_name" autocomplete="name">
+  <p class="sm" id="sg_role" style="margin-top:4px;"></p>
+  <div id="sg_saved" hidden><label>Your saved signature</label><div class="sigbox"><img id="sg_savedImg" alt="signature"></div><p class="sm" style="margin-top:4px;"><a href="#" onclick="sgRedraw();return false;">Draw a new signature</a></p></div>
+  <div id="sg_drawBox"><label>Sign with your finger or mouse</label><canvas id="sg_pad"></canvas><p class="sm"><a href="#" onclick="sgClear();return false;">Clear</a> · Your signature is saved, so next time you sign with one click.</p></div>
+  <p class="sm" style="margin-top:8px;">Your name, signature, account and the date and time are recorded with this form. This is your electronic signature.</p>
+  <div class="btnrow"><button class="btn" onclick="sgOk()">Sign</button><button class="btn ghost small" onclick="sgCancel()">Cancel</button></div>
+</div></div></div>
+<div class="pmodal" id="shareModal" hidden><div class="pbox" style="max-width:520px;"><div class="phead"><b id="shareTitle">Link</b><button class="btn small" onclick="hideEl('shareModal')">✕</button></div><div class="pbody">
+  <p class="note">Send this link. It opens a short form on any phone, with no login. Every answer comes straight into the PoE.</p>
+  <input id="shareUrl" readonly onclick="this.select()">
+  <div class="btnrow"><button class="btn small secondary" onclick="copyShare()">📋 Copy link</button><a class="btn small" id="shareWa" target="_blank" rel="noopener">WhatsApp</a><a class="btn small ghost" id="shareMail">Email</a></div>
+  <p class="sm" style="margin-top:10px;">Or let them scan this code with their phone camera:</p><div id="shareQr"></div>
+</div></div></div>
 <div id="slips"></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          sendPasswordResetEmail, signOut, onAuthStateChanged
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
-         onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion
+         onSnapshot, serverTimestamp, increment, writeBatch, Timestamp, arrayUnion, deleteField
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { POE_SECTIONS, POE_UNITS, POE_FORMS, FB_FORMS, RATE5 } from "./poe-defs.js";
 
 import { getStorage, ref as sref, uploadBytesResumable, getDownloadURL
        } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
@@ -604,6 +639,7 @@ function stopAll(){
   unsubs.forEach(u=>{try{u();}catch(e){}}); unsubs=[];
   Object.values(resUnsubs).forEach(u=>{try{u();}catch(e){}}); resUnsubs={};
   if(progUnsub){ progUnsub(); progUnsub=null; } if(modUnsub){ modUnsub(); modUnsub=null; }
+  poeUnsubs.forEach(u=>{try{u();}catch(e){}}); poeUnsubs=[]; MYSIG=null;
   stopTracking();
 }
 
@@ -672,7 +708,7 @@ function startStudent(){
   $('nav').hidden=true; $('navEvidence').hidden=false; showTab('course');
   $('agreeText').innerHTML=AGREE_TEXT.map(p=>'<p>'+esc(p)+'</p>').join('');
   unsubs.push(onSnapshot(query(collection(db,'evidence'), where('uid','==',me.uid)), s=>{
-    myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); if(CID) renderCourse();
+    myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); if(CID) renderCourse(); else renderStuPoe();
   }, e=>console.warn('evidence',e)));
   unsubs.push(onSnapshot(doc(db,'agree',me.uid), s=>{ agreed=s.exists()?s.data():false; renderCourse(); }, e=>{ console.warn('agree',e); agreed=false; renderCourse(); }));
   unsubs.push(onSnapshot(doc(db,'aiconsent',me.uid), s=>{ myAI=s.exists()?s.data():null; renderCourse(); }, e=>{ console.warn('aiconsent',e); myAI=undefined; renderCourse(); }));
@@ -784,6 +820,7 @@ function renderCourse(){
       +'</div>';
   }).join('');
   // keep a playing video alive: only re-render the list when nothing is playing
+  renderStuPoe();
   if(!anyPlaying()) { flushVideo(); players={}; keepInputs('modList', ()=>{ $('modList').innerHTML=html; });
     if(openMid){ mountPlayer(openMid); if($('af-'+openMid) && !AF[CID+'/'+openMid]) loadForm(openMid); if($('ot-'+openMid)){ if(OT[CID+'/'+openMid]) drawTest(openMid); else loadTest(openMid); } } }
 }
@@ -815,11 +852,13 @@ window.openCourse = cid=>{
     if(openMid && openMid.length>3 && !s.metadata.hasPendingWrites){ delete modCache[cid+'/'+openMid]; toggleModLoad(openMid); } else renderCourse();
   }, e=>console.warn('choice',e)) : ()=>{};
   progUnsub=()=>{ u1(); u2(); };
+  stuPoeListen(cid);
   renderCourse(); window.scrollTo(0,0);
 };
 window.backToList = ()=>{
   pauseAll(); flushVideo(); players={}; openMid=null; CID=null;
   if(progUnsub){ progUnsub(); progUnsub=null; }
+  poeUnsubs.forEach(u=>{try{u();}catch(e){}}); poeUnsubs=[];
   renderCourse(); window.scrollTo(0,0);
 };
 
@@ -1638,11 +1677,11 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 /* ---------- evidence file ---------- */
 function usLabel(id){ const u=US_LIST.find(x=>x.id===id); return u? u.label : 'US '+String(id).replace(/^US/,''); }
-function fileIcon(t){ t=t||''; return t.startsWith('image/')?'🖼️': t.startsWith('video/')?'🎬': /presentation|powerpoint/.test(t)?'🖥️': /pdf/.test(t)?'📄': '📎'; }
+function fileIcon(t){ t=t||''; return t.startsWith('image/')?'🖼️': t.startsWith('video/')?'🎬': t.startsWith('audio/')?'🎙️': /presentation|powerpoint/.test(t)?'🖥️': /pdf/.test(t)?'📄': '📎'; }
 const EXT_TYPES={ppt:'application/vnd.ms-powerpoint',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',pdf:'application/pdf',doc:'application/msword',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',gif:'image/gif',webp:'image/webp',mp4:'video/mp4',mov:'video/quicktime',m4v:'video/mp4'};
+  xls:'application/vnd.ms-excel',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',heic:'image/heic',gif:'image/gif',webp:'image/webp',mp4:'video/mp4',mov:'video/quicktime',mp3:'audio/mpeg',m4a:'audio/mp4',ogg:'audio/ogg',opus:'audio/ogg',wav:'audio/wav',aac:'audio/aac',m4v:'video/mp4'};
 function typeOf(f){ return f.type || EXT_TYPES[(f.name.split('.').pop()||'').toLowerCase()] || ''; }
-function evType(f){ const t=typeOf(f); return /^(image\/|video\/|application\/pdf$|application\/msword$|application\/vnd\.(ms-powerpoint|ms-excel|openxmlformats-officedocument\.))/.test(t)? t : ''; }
+function evType(f){ const t=typeOf(f); return /^(image\/|video\/|audio\/|application\/pdf$|application\/msword$|application\/vnd\.(ms-powerpoint|ms-excel|openxmlformats-officedocument\.))/.test(t)? t : ''; }
 function fmtSize(b){ return b>1048576? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
 function evReviewPill(e){
   const r=e.review||{};
@@ -1764,7 +1803,7 @@ function migrateLinks(cid, docs){
   });
 }
 window.pickStaffCourse = cid=>{
-  useCourse(cid); setupDirty=false; listenModules(); fillStaffCourses();
+  useCourse(cid); setupDirty=false; listenModules(); fillStaffCourses(); $('stuPoe').hidden=true;
   renderMonitor(); if(!$('tab-setup').hidden) renderSetup();
 };
 
@@ -1831,7 +1870,7 @@ window.openStu = (uid, quiet)=>{
   curStu=uid; const x=stuSummary(e), p=x.p, marks=(x.r.marks||{}), passed=(x.r.passed||{}), ag=S.agree[uid];
   let h='<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;"><h2>'+esc(e.name||e.email)+'</h2>'
     +'<div class="btnrow" style="margin-top:0;"><button class="btn small '+(e.active?'danger':'secondary')+'" onclick="toggleAccess(\''+uid+'\','+(!e.active)+')">'+(e.active?'Pause all access':'Switch access back on')+'</button>'
-    +'<button class="btn small" onclick="printPoE(\''+uid+'\')">📄 PoE pack ('+esc(course.code)+')</button><button class="btn small ghost" onclick="closeStu()">Close</button></div></div>'
+    +'<button class="btn small secondary" onclick="openStaffPoe(\''+uid+'\')">🗂️ PoE forms ('+esc(course.code)+')</button><button class="btn small" onclick="printPoE(\''+uid+'\')">📄 Full PoE (PDF)</button><button class="btn small ghost" onclick="closeStu()">Close</button></div></div>'
     +'<p class="note">'+esc(e.email||'')+' · joined '+fmtD(e.at)+' with code <span class="codechip">'+esc(fmtCode(e.code||''))+'</span> · '
     +(ag? '📜 learner agreement signed '+fmtDT(ag.at)+' as “'+esc(ag.name)+'”' : '<b style="color:var(--danger)">learner agreement not signed yet</b>')+'</p>'
     +'<div class="statgrid"><div class="stat"><b>'+x.done+'/'+NMODS+'</b><span>'+esc(course.code)+' modules competent</span></div><div class="stat"><b>'+fmtDur(x.allSec)+'</b><span>total time (all unit standards)</span></div><div class="stat"><b>'+x.sess.length+'</b><span>sessions (90 days)</span></div><div class="stat"><b>'+(x.online?'Now':esc(ago(x.lastSeen)))+'</b><span>last on</span></div></div>'
@@ -1886,13 +1925,13 @@ function watchTxt(m,pm){
   });
   return out.join('<br>')||'—';
 }
-window.reviewEvidence = async (id,status)=>{
+window.reviewEvidence = async (id,status)=>{  // returns a promise (used by the PoE panel)
   const comment=(($('evc-'+id)||{}).value||'').trim();
   if(status==='redo' && !comment){ toast('Write what needs correction.'); return; }
   try{ await updateDoc(doc(db,'evidence',id), {review:{status, comment, by:val('asName')||assessor().name||profile.name||'', at:serverTimestamp()}}); toast(status==='accepted'?'Accepted for the PoE.':'Sent back for correction.'); }
   catch(e){ toast('Could not save: '+e.code); }
 };
-window.closeStu = ()=>{ curStu=null; $('stuDetail').hidden=true; $('stuUpload').hidden=true; };
+window.closeStu = ()=>{ curStu=null; $('stuDetail').hidden=true; $('stuUpload').hidden=true; $('stuPoe').hidden=true; };
 window.toggleAccess = async (uid,on)=>{
   if(!on && !confirm('Pause this student\'s access to ALL unit standards? They will not be able to open anything until you switch it back on.')) return;
   try{ await updateDoc(doc(db,'enrol',PK+'_'+uid), {active:on}); toast(on?'Access switched on.':'Access paused.'); }
@@ -2303,26 +2342,510 @@ window.saveSetup = async (quiet)=>{
   $('setSave').disabled=false;
 };
 
-/* ---------- PoE evidence pack (one unit standard) ---------- */
+/* =========================================================
+   PORTFOLIO OF EVIDENCE: online forms, e-signatures, third-party links and the CATHSSETA PoE PDF
+   Data: poeL/<cid>_<uid> (learner-signed forms), poeA/<cid>_<uid> (assessor and moderator forms),
+   poeL/prog_<uid> and poeA/prog_<uid> (once for the whole qualification), sig/<uid> (saved signature),
+   fb/<token> + fb/<token>/resp/* (mentor and tourist feedback through a link, no login).
+   Assessor memos and model answers never go on this website.
+   ========================================================= */
+window.hideEl = id=>{ $(id).hidden=true; };
+const POE_ITEM_ICON={learner:'✍️', assessor:'🧑‍🏫', upload:'⬆️', third:'🔗', auto:'💻'};
+function poeUnit(code){ return POE_UNITS[code||course.code]||null; }
+function poeKey(cid, uid){ return cid+'_'+uid; }
+function formDef(k){ return POE_FORMS[k]; }
+let PL={}, PA={}, PLP={}, PAP={}, MYFB=[], MYSIG=null, poeUnsubs=[], FBRESP={};
+let ORALQ={};   // cid -> [{code,q}] (staff only, from testkeys/oral_<cid>)
+
+/* ---------- small helpers ---------- */
+function fVal(f, v){ if(v==null||v==='') return ''; if(f.t==='check') return v? '✔ On file' : ''; if(f.t==='yn') return v; if(f.t==='rate') return RATE5[(+v||0)-1]||v; return v; }
+function sigHtml(s, label){
+  if(!s) return '<div class="sigbox empty">'+esc(label||'Not signed yet')+'</div>';
+  return '<div class="sigbox">'+(s.png?'<img src="'+esc(s.png)+'" alt="signature">':'')+'<div><b>'+esc(s.name||'')+'</b>'+(s.role?' · '+esc(s.role):'')+'<br><span class="sm">Signed online '+fmtDT(s.at)+(s.email?' · '+esc(s.email):'')+'</span></div></div>';
+}
+function fieldInput(id, f, v, ro){
+  v= v==null? (f.v||'') : v; const dis=ro?' disabled':'';
+  if(f.t==='area') return '<textarea id="'+id+'"'+dis+'>'+esc(v)+'</textarea>';
+  if(f.t==='sel') return '<select id="'+id+'"'+dis+'><option value=""></option>'+f.o.map(o=>'<option'+(o===v?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>';
+  if(f.t==='yn') return '<select id="'+id+'"'+dis+'><option value=""></option>'+['Yes','No'].map(o=>'<option'+(o===v?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+  if(f.t==='rate') return '<select id="'+id+'"'+dis+'><option value=""></option>'+RATE5.map((o,i)=>'<option value="'+(i+1)+'"'+(String(i+1)===String(v)?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+  if(f.t==='check') return '<label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0;"><input type="checkbox" id="'+id+'" style="width:auto;"'+(v?' checked':'')+dis+'> On file</label>';
+  return '<input id="'+id+'" type="'+(f.t==='date'?'date':f.t==='num'?'number':'text')+'" value="'+esc(v)+'"'+dis+'>';
+}
+function fieldsHtml(pre, fields, vals, ro){
+  return fields.map(f=>'<label>'+esc(f.l)+'</label>'+fieldInput(pre+f.k, f, (vals||{})[f.k], ro)).join('');
+}
+function readFields(pre, fields){ const o={}; fields.forEach(f=>{ const el=$(pre+f.k); if(!el) return; o[f.k]= f.t==='check'? el.checked : el.value.trim(); }); return o; }
+function textBlock(t){ return (t||[]).length? '<div class="agree">'+t.map((p,i)=>'<p>'+(t.length>1?(i+1)+'. ':'')+esc(p)+'</p>').join('')+'</div>' : ''; }
+
+/* ---------- signature: draw once, reuse ---------- */
+let sigCb=null, sgDraw=false, sgInk=false;
+function sigPad(){ return $('sg_pad'); }
+function sgSize(){ const p=sigPad(), r=p.getBoundingClientRect(), c=p.getContext('2d'); p.width=r.width*2; p.height=r.height*2; c.setTransform(2,0,0,2,0,0); c.lineWidth=2.2; c.lineCap='round'; c.strokeStyle='#1e3a2a'; sgInk=false; }
+function sgPos(ev){ const r=sigPad().getBoundingClientRect(), t=ev.touches?ev.touches[0]:ev; return {x:t.clientX-r.left, y:t.clientY-r.top}; }
+function sgInit(){
+  const p=sigPad(); if(!p || p.dataset.ok) return; p.dataset.ok=1; const c=()=>p.getContext('2d');
+  const st=ev=>{ ev.preventDefault(); sgDraw=true; const q=sgPos(ev); c().beginPath(); c().moveTo(q.x,q.y); };
+  const mv=ev=>{ if(!sgDraw) return; ev.preventDefault(); const q=sgPos(ev); c().lineTo(q.x,q.y); c().stroke(); sgInk=true; };
+  const en=()=>{ sgDraw=false; };
+  p.addEventListener('mousedown',st); p.addEventListener('mousemove',mv); window.addEventListener('mouseup',en);
+  p.addEventListener('touchstart',st,{passive:false}); p.addEventListener('touchmove',mv,{passive:false}); p.addEventListener('touchend',en);
+}
+async function loadMySig(){ if(MYSIG!==null) return MYSIG; try{ const s=await getDoc(doc(db,'sig',me.uid)); MYSIG=s.exists()?s.data():false; }catch(e){ MYSIG=false; } return MYSIG; }
+// Ask for a signature. statement = what the person confirms. Resolves {name, png} or null.
+function askSignature(statement, role){
+  return new Promise(async res=>{
+    await loadMySig();
+    sigCb=res; $('sg_stmt').textContent=statement||'';
+    $('sg_name').value=(MYSIG&&MYSIG.name)||profile.name||(isMentor?assessor().name:'')||'';
+    $('sg_role').textContent=role||'';
+    const has=!!(MYSIG&&MYSIG.png);
+    $('sg_saved').hidden=!has; $('sg_drawBox').hidden=has;
+    if(has) $('sg_savedImg').src=MYSIG.png;
+    $('sigModal').hidden=false; sgInit(); if(!has) setTimeout(sgSize,50);
+  });
+}
+window.sgRedraw = ()=>{ $('sg_saved').hidden=true; $('sg_drawBox').hidden=false; setTimeout(sgSize,50); };
+window.sgClear = ()=>sgSize();
+window.sgCancel = ()=>{ $('sigModal').hidden=true; if(sigCb) sigCb(null); sigCb=null; };
+window.sgOk = async ()=>{
+  const name=$('sg_name').value.trim();
+  if(name.length<4 || !/\s/.test(name)){ toast('Type your full name (first name and surname).'); return; }
+  let png='';
+  if(!$('sg_drawBox').hidden){
+    if(!sgInk){ toast('Sign in the box with your finger or mouse.'); return; }
+    // keep it small: draw onto a 360 x 120 canvas
+    const src=sigPad(), c=document.createElement('canvas'); c.width=360; c.height=120; c.getContext('2d').drawImage(src,0,0,360,120); png=c.toDataURL('image/png');
+    try{ await setDoc(doc(db,'sig',me.uid), {uid:me.uid, name, png, at:serverTimestamp()}); MYSIG={name, png}; }catch(e){ console.warn('sig',e); }
+  } else png=MYSIG.png;
+  if(MYSIG && MYSIG.name!==name){ try{ await setDoc(doc(db,'sig',me.uid), {uid:me.uid, name, png, at:serverTimestamp()}); MYSIG.name=name; }catch(e){} }
+  $('sigModal').hidden=true; const cb=sigCb; sigCb=null; if(cb) cb({name, png});
+};
+function sigRec(s, role){ return {name:s.name, png:s.png, role:role||'', email:me.email||'', uid:me.uid, at:serverTimestamp()}; }
+
+/* ---------- status of every PoE item ---------- */
+// ctx: {u (unit), L (poeL), A (poeA), LP, AP, res, ev (evidence list for this unit), fb (fb docs), resp (token->[responses]), ag, mids}
+function stuMidsDone(ctx){ const p=(ctx.res&&ctx.res.passed)||{}; return ctx.mids.filter(m=>p[m]===true).length; }
+function itemStatus(it, ctx){
+  const L=(ctx.L.f||{}), A=(ctx.A.f||{}), LP=(ctx.LP.f||{}), AP=(ctx.AP.f||{});
+  const signed=o=>!!(o&&o.sig);
+  const F=it.form;
+  if(it.id==='L-AGREE') return ctx.ag? {s:'done', t:'Signed '+fmtD(ctx.ag.at)} : {s:'todo', t:'Not signed'};
+  if(it.id==='T-FORM'){ const ms=ctx.mids.filter(m=>m!==ctx.mids[ctx.mids.length-1]); const p=(ctx.res&&ctx.res.passed)||{}; const d=ms.filter(m=>p[m]===true).length; return {s:d===ms.length?'done':d?'part':'todo', t:d+' of '+ms.length+' module tests competent'}; }
+  if(it.id==='T-SUMM'){ const m=ctx.mids[ctx.mids.length-1]; const p=(ctx.res&&ctx.res.passed)||{}, mk=((ctx.res&&ctx.res.marks)||{})[m]; return p[m]===true? {s:'done', t:'Competent '+fmtD(mk&&mk.at)} : mk&&mk.outcome==='NYC'? {s:'part', t:'Not yet competent: re-assess'} : {s:'todo', t:'Not written yet'}; }
+  if(it.kind==='upload'){ const ev=ctx.ev.filter(e=>e.slot===it.id); const ok=ev.filter(e=>e.review&&e.review.status==='accepted').length, redo=ev.filter(e=>e.review&&e.review.status==='redo').length;
+    return !ev.length? {s:'todo', t:'Nothing uploaded'} : ok? {s:'done', t:ok+' file'+(ok>1?'s':'')+' accepted'} : redo&&redo===ev.length? {s:'part', t:'Needs correction'} : {s:'part', t:ev.length+' uploaded, not reviewed yet'}; }
+  if(it.kind==='third'){ const n=ctx.fb.filter(f=>f.type===it.ftype).reduce((a,f)=>a+((ctx.resp[f.id]||[]).length),0);
+    return n>=(it.min||1)? {s:'done', t:n+' received'} : n? {s:'part', t:n+' of '+(it.min||1)+' received'} : {s:'todo', t:ctx.fb.some(f=>f.type===it.ftype)? 'Link created, none received yet' : 'No link yet'}; }
+  if(F==='review'){ const rv=Object.entries((A.review||{}).items||{}); if(!rv.length) return {s:'todo', t:'No progress review yet'}; const ack=rv.filter(([id])=>signed(((L.revAck)||{})[id])).length; return {s:ack===rv.length?'done':'part', t:rv.length+' review'+(rv.length>1?'s':'')+', '+ack+' signed by the learner'}; }
+  if(F==='appeal'){ if(!signed(L.appeal)) return {s:'na', t:'No appeal lodged'}; return signed(A.appealDec)? {s:'done', t:'Appeal decided'} : {s:'part', t:'Appeal lodged, waiting for a decision'}; }
+  const scopeL= (formDef(F)||{}).scope==='prog'? LP : L, scopeA= (formDef(F)||{}).scope==='prog'? AP : A;
+  const o= it.kind==='learner'? scopeL[F] : scopeA[F];
+  if(signed(o)){ const r=o.v&&o.v.outcome? ' · '+o.v.outcome : ''; return {s:'done', t:'Signed '+fmtD(o.sig.at)+r}; }
+  if(o && o.v) return {s:'part', t:'Started, not signed'};
+  if(it.form==='planAck' && !signed(A.plan)) return {s:'wait', t:'Waiting for the assessor\'s plan'};
+  if(it.form==='repAck' && !signed(A.rep)) return {s:'wait', t:'Waiting for the assessor\'s report'};
+  return {s:'todo', t:'Not done'};
+}
+const ST_PILL={done:'<span class="pill ok">✔ ', part:'<span class="pill wait">◐ ', todo:'<span class="pill">○ ', wait:'<span class="pill">⏳ ', na:'<span class="pill">— '};
+function stPill(st){ return ST_PILL[st.s]+esc(st.t)+'</span>'; }
+
+/* ---------- STUDENT: listeners and the PoE card ---------- */
+function stuPoeListen(cid){
+  poeUnsubs.forEach(u=>{try{u();}catch(e){}}); poeUnsubs=[]; PL={}; PA={};
+  const u=poeUnit(cdef(cid).code); if(!u) return;
+  const w=(ref, set)=>poeUnsubs.push(onSnapshot(ref, s=>{ set(s.exists()?s.data():{}); renderStuPoe(); }, e=>console.warn('poe',e)));
+  w(doc(db,'poeL',poeKey(cid,me.uid)), d=>PL=d); w(doc(db,'poeA',poeKey(cid,me.uid)), d=>PA=d);
+  w(doc(db,'poeL',poeKey('prog',me.uid)), d=>PLP=d); w(doc(db,'poeA',poeKey('prog',me.uid)), d=>PAP=d);
+  poeUnsubs.push(onSnapshot(query(collection(db,'fb'), where('uid','==',me.uid)), async s=>{
+    MYFB=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(f=>f.cid===cid);
+    await Promise.all(MYFB.map(async f=>{ try{ const r=await getDocs(collection(db,'fb',f.id,'resp')); FBRESP[f.id]=r.docs.map(d=>Object.assign({id:d.id},d.data())); }catch(e){ FBRESP[f.id]=FBRESP[f.id]||[]; } }));
+    renderStuPoe();
+  }, e=>console.warn('fb',e)));
+}
+function stuCtx(){ return {u:poeUnit(), L:PL, A:PA, LP:PLP, AP:PAP, res:results, ev:myEvidence.filter(e=>e.us===course.code), fb:MYFB, resp:FBRESP, ag:agreed, mids:MIDS}; }
+function renderStuPoe(){
+  const box=$('poeBox'); if(!box) return;
+  const u=CID&&!isMentor? poeUnit() : null; if(!u){ box.innerHTML=''; return; }
+  const ctx=stuCtx(), its=u.items, sts=its.map(it=>itemStatus(it,ctx)), need=its.filter((it,i)=>!it.optional);
+  const done=need.filter(it=>itemStatus(it,ctx).s==='done').length;
+  const locked=!!PL.locked;
+  let h='<details class="card" id="poeDet"'+(window.__poeOpen?' open':'')+' ontoggle="window.__poeOpen=this.open"><summary style="cursor:pointer;"><h2 style="display:inline;">🗂️ My Portfolio of Evidence</h2> <span class="pill gold">'+done+' of '+need.length+' done</span></summary>'
+    +'<p class="note" style="margin-top:8px;">Everything for your PoE is done here online: you fill in and sign your forms, upload your tasks, and send a link to your mentor and your tourists. Your assessor signs their part online too. '
+    +(locked?'<b>Your assessor has closed this PoE: it can no longer be changed.</b>':'')+'</p>'
+    +'<div class="bar"><i style="width:'+Math.round(done/Math.max(1,need.length)*100)+'%"></i></div>';
+  POE_SECTIONS.forEach(([n,t])=>{
+    const rows=its.map((it,i)=>[it,sts[i]]).filter(([it])=>it.sec===n); if(!rows.length) return;
+    h+='<h3>'+n+'. '+esc(t)+'</h3>';
+    rows.forEach(([it,st])=>{ h+='<div class="item"><div style="flex:1 1 260px;"><div class="lbl">'+POE_ITEM_ICON[it.kind]+' '+esc(it.title)+'</div>'+stuItemExtra(it,ctx)+'</div><div>'+stPill(st)+'<div class="btnrow" style="margin-top:6px;justify-content:flex-end;">'+stuItemBtns(it,st,locked)+'</div></div></div>'; });
+  });
+  h+='</details>';
+  keepInputs('poeBox', ()=>{ box.innerHTML=h; });
+}
+function stuItemExtra(it, ctx){
+  if(it.kind==='upload'){
+    const ev=ctx.ev.filter(e=>e.slot===it.id);
+    return '<details style="margin-top:4px;"><summary class="sm" style="cursor:pointer;">What to hand in</summary><div class="answer">'+it.brief.map(esc).join('\n')+'</div></details>'
+      +ev.map(e=>'<div class="sm">'+fileIcon(e.type)+' '+esc(e.name)+' · '+fmtD(e.at)+' '+evReviewPill(e)+(e.review&&e.review.comment?' <i>'+esc(e.review.comment)+'</i>':'')+'</div>').join('');
+  }
+  if(it.kind==='third'){
+    const fs=ctx.fb.filter(f=>f.type===it.ftype);
+    return fs.map(f=>'<div class="sm" style="margin-top:4px;">Link: <span class="codechip" style="font-size:.72rem;">'+esc(fbUrl(f.id))+'</span> · '+((ctx.resp[f.id]||[]).length)+' received</div>').join('')
+      +'<div class="sm">'+(it.ftype==='client'?'Send the link to every tourist on your assessed tour (or let them scan the QR code on your phone). They fill it in on their phone; no login needed.':'Send the link to your mentor, supervisor or employer. They fill it in on their phone and sign with their finger.')+'</div>';
+  }
+  if(it.id==='A-LOG') return '<div class="sm">'+esc(ctx.u.logRule)+' Log them in your Field Logbook and ask your mentor to sign each one.</div>';
+  if(it.form==='review'){ const rv=Object.entries(((ctx.A.f||{}).review||{}).items||{}).sort((a,b)=>ms(a[1].sig&&a[1].sig.at)-ms(b[1].sig&&b[1].sig.at)); return rv.map(([id,r])=>'<div class="sm">Review '+esc((r.v||{}).date||fmtD(r.sig&&r.sig.at))+': '+(((ctx.L.f||{}).revAck||{})[id]&&((ctx.L.f||{}).revAck||{})[id].sig?'signed by you':'<b>waiting for your signature</b>')+'</div>').join(''); }
+  return '';
+}
+function stuItemBtns(it, st, locked){
+  const F=it.form, fd=formDef(F)||{};
+  if(locked && it.kind!=='third') return (it.kind==='learner'&&st.s==='done')? '<button class="btn small ghost" onclick="openPoeForm(\''+F+'\')">View</button>' : '';
+  if(it.kind==='learner'){
+    if(F==='self'||fd.who==='learner'){ if(st.s==='wait') return ''; return '<button class="btn small'+(st.s==='done'?' ghost':'')+'" onclick="openPoeForm(\''+F+'\')">'+(st.s==='done'?'View or change':(F==='appeal'?'Lodge an appeal':'Fill in and sign'))+'</button>'; }
+  }
+  if(F==='review'){ const rv=Object.keys(((PA.f||{}).review||{}).items||{}).filter(id=>!(((PL.f||{}).revAck||{})[id]||{}).sig); return rv.map(id=>'<button class="btn small" onclick="openPoeForm(\'revAck\',\''+id+'\')">Sign review</button>').join(''); }
+  if(it.kind==='assessor'){ const o=(fd.scope==='prog'?PAP:PA).f||{}; return o[F]&&o[F].sig? '<button class="btn small ghost" onclick="openPoeForm(\''+F+'\')">View</button>' : ''; }
+  if(it.kind==='upload') return '<button class="btn small" onclick="poePickFile(\''+it.id+'\')">⬆️ Upload</button>';
+  if(it.kind==='third') return '<button class="btn small" onclick="newFbLink(\''+it.ftype+'\')">'+(MYFB.some(f=>f.type===it.ftype)?'Share link':'Get link')+'</button>';
+  if(it.id==='T-FORM'||it.id==='T-SUMM') return '';
+  return '';
+}
+
+/* ---------- uploads into a PoE task slot ---------- */
+let poeSlot=null;
+window.poePickFile = slot=>{ poeSlot=slot; const i=$('poeFile'); i.value=''; i.click(); };
+window.poeFileChosen = async input=>{
+  const files=[...input.files]; if(!files.length||!poeSlot) return;
+  const it=poeUnit().items.find(x=>x.id===poeSlot);
+  const big=files.find(f=>f.size>EV_MAX); if(big){ toast(big.name+' is larger than 500 MB.'); return; }
+  const odd=files.find(f=>!evType(f)); if(odd){ toast(odd.name+': only photos, PowerPoint, PDF, Word, Excel or video files can be uploaded.'); return; }
+  toast('Uploading… keep this page open.');
+  try{
+    for(let i=0;i<files.length;i++) await putEvidence(me.uid, files[i], {title:it.title+(files.length>1?' ('+(i+1)+')':''), note:'PoE task', us:course.code, slot:poeSlot, studentName:(enrol&&enrol.name)||profile.name||''},
+      (g,t)=>{ $('toast').textContent='Uploading '+(i+1)+' of '+files.length+': '+Math.round(g/t*100)+'%'; $('toast').classList.add('show'); });
+    toast('Uploaded. Your assessor can see it now.');
+  }catch(e){ console.warn(e); toast('Upload failed: '+(e.code||e.message)); }
+};
+
+/* ---------- third-party links ---------- */
+function fbUrl(tok){ return location.origin+location.pathname.replace(/[^/]*$/,'')+'LWECFeedback.html?t='+tok; }
+function newTok(){ const A='abcdefghijkmnpqrstuvwxyz23456789'; const r=new Uint32Array(16); crypto.getRandomValues(r); return Array.from(r,x=>A[x%A.length]).join(''); }
+async function makeFb(uid, name, ftype){
+  const tok=newTok();
+  await setDoc(doc(db,'fb',tok), {uid, cid:CID, us:course.title, code:course.code, student:name, type:ftype, open:true, by:me.uid, at:serverTimestamp()});
+  return tok;
+}
+window.newFbLink = async ftype=>{
+  let f=MYFB.find(x=>x.type===ftype);
+  try{ if(!f){ const tok=await makeFb(me.uid, (enrol&&enrol.name)||profile.name||'', ftype); f={id:tok, type:ftype}; } }
+  catch(e){ toast('Could not create the link: '+(e.code||e.message)); return; }
+  showShare(f.id, ftype, (enrol&&enrol.name)||profile.name||'');
+};
+window.showShare = (tok, ftype, name)=>{
+  const url=fbUrl(tok), msg=(ftype==='client'? 'Thank you for joining my guided experience! Please give me feedback for my assessment (2 minutes): ' : 'Please complete my workplace report for my LWEC assessment (5 minutes): ')+url;
+  $('shareTitle').textContent= ftype==='client'? 'Tourist feedback link' : 'Mentor / employer report link';
+  $('shareUrl').value=url; $('shareWa').href='https://wa.me/?text='+encodeURIComponent(msg);
+  $('shareMail').href='mailto:?subject='+encodeURIComponent('LWEC '+(ftype==='client'?'tourist feedback':'workplace report')+' for '+name)+'&body='+encodeURIComponent(msg);
+  $('shareQr').innerHTML=''; try{ if(window.QRCode) new QRCode($('shareQr'), {text:url, width:180, height:180}); }catch(e){}
+  $('shareModal').hidden=false;
+};
+window.copyShare = ()=>{ const i=$('shareUrl'); i.select(); try{ navigator.clipboard.writeText(i.value); }catch(e){ document.execCommand('copy'); } toast('Link copied.'); };
+
+/* ---------- opening a form (student or staff) ---------- */
+// F = form key; sub = review id (for review / revAck); staffUid = when staff opens a learner's PoE
+let PF=null;
+window.openPoeForm = async (F, sub, staffUid)=>{
+  const fd=formDef(F); if(!fd) return;
+  const uid=staffUid||me.uid, cid=fd.scope==='prog'?'prog':CID;
+  const Ld= staffUid? (fd.scope==='prog'?SP.LP:SP.L) : (fd.scope==='prog'?PLP:PL);
+  const Ad= staffUid? (fd.scope==='prog'?SP.AP:SP.A) : (fd.scope==='prog'?PAP:PA);
+  const mine= fd.who==='learner'? !isMentor : isMentor;
+  const store= fd.who==='learner'? Ld : Ad;
+  let rec= ((store.f||{})[F])||{};
+  if(F==='review') rec= sub? ((((store.f||{}).review||{}).items||{})[sub]||{}) : {};
+  if(F==='revAck') rec= (((store.f||{}).revAck||{})[sub])||{};
+  const locked= !!(Ld.locked) && fd.who==='learner';
+  const ro= !mine || locked;
+  PF={F, sub, uid, cid, fd, ro};
+  let h='<p class="note">'+esc(fd.intro||'')+'</p>'+textBlock(fd.text);
+  if(fd.needs){ const need=((formDef(fd.needs).who==='learner'?Ld:Ad).f||{})[fd.needs]; if(need&&need.v) h+='<details class="modset" open><summary>'+esc(formDef(fd.needs).title)+'</summary>'+readOnlyForm(fd.needs, need)+'</details>'; }
+  if(F==='revAck'){ const r=((((Ad.f||{}).review||{}).items||{})[sub])||{}; h+='<div class="modset">'+readOnlyForm('review', r)+'</div>'; }
+  if(fd.special==='self') h+=selfHtml(rec.v, ro);
+  else if(fd.special==='obs') h+=obsHtml(rec.v, ro);
+  else if(fd.special==='oral') h+=await oralHtml(rec.v, ro);
+  else if(fd.special==='log') h+=await logHtml(rec.v, ro, uid);
+  else if(fd.special==='rep') h+=repHtml(rec.v, ro);
+  else if(fd.special==='review'){ h+=reviewSnapHtml(rec.snap||reviewSnap(uid)); h+=fieldsHtml('pf-', fd.fields, rec.v||(sub?{}:{date:new Date().toISOString().slice(0,10)}), ro); }
+  if(fd.fields && !fd.special) h+=fieldsHtml('pf-', fd.fields, rec.v, ro);
+  if(fd.after) h+=textBlock(fd.after);
+  h+='<h3>Signature</h3>'+sigHtml(rec.sig, mine? 'Not signed yet' : (fd.who==='learner'?'The learner has not signed yet':'The assessor has not signed yet'));
+  if(!ro) h+='<p class="sm" style="margin-top:6px;">'+esc(fd.sign||'')+'</p><div class="btnrow"><button class="btn" onclick="savePoeForm(true)">✍️ Save and sign</button><button class="btn ghost small" onclick="savePoeForm(false)">Save without signing</button></div>';
+  $('pfTitle').textContent=fd.title+(staffUid? ' · '+(SP.name||'') : '');
+  $('pfBody').innerHTML=h; $('pfModal').hidden=false; $('pfBody').scrollTop=0;
+};
+window.closePoeForm = ()=>{ $('pfModal').hidden=true; PF=null; };
+function readOnlyForm(F, rec){
+  const fd=formDef(F); if(!rec||!rec.v) return '<p class="note">Not completed yet.</p>';
+  return '<table class="t">'+(fd.fields||[]).map(f=>'<tr><th style="width:40%">'+esc(f.l)+'</th><td style="white-space:pre-wrap;">'+esc(fVal(f,rec.v[f.k]))+'</td></tr>').join('')+'</table>'+sigHtml(rec.sig);
+}
+window.savePoeForm = async sign=>{
+  if(!PF) return; const {F, sub, uid, cid, fd}=PF;
+  let v;
+  if(fd.special==='self') v=readSelf(); else if(fd.special==='obs') v=readObs(); else if(fd.special==='oral') v=readOral();
+  else if(fd.special==='log') v=readLog(); else if(fd.special==='rep') v=readRep(); else v=readFields('pf-', fd.fields||[]);
+  if(sign){
+    const miss=(fd.fields||[]).filter(f=>f.req && !v[f.k]); if(miss.length){ toast('Complete: '+miss[0].l); return; }
+    if(fd.special==='rep' && !v.outcome){ toast('Choose the overall outcome.'); return; }
+    if(fd.special==='obs' && Object.values(v.rows||{}).some(r=>!r.r)){ toast('Mark every row C or NYC.'); return; }
+  }
+  let sig=null;
+  if(sign){ const s=await askSignature(fd.sign, isMentor? (F==='mod'?'Moderator':'Assessor')+(assessor().reg?' · Reg. '+assessor().reg:'') : 'Learner'); if(!s) return; sig=sigRec(s, isMentor? (F==='mod'?'Moderator':'Assessor')+(assessor().reg?' (reg. '+assessor().reg+')':'') : 'Learner'); }
+  const coll= fd.who==='learner'? 'poeL' : 'poeA', key=poeKey(cid, uid);
+  let rec={v}; if(sig) rec.sig=sig;
+  let patch;
+  if(F==='review'){ const id=sub||('r'+Date.now().toString(36)); rec.snap=reviewSnap(uid); patch={f:{review:{items:{[id]:rec}}}}; PF.sub=id; }
+  else if(F==='revAck') patch={f:{revAck:{[sub]:rec}}};
+  else patch={f:{[F]:rec}};
+  if(!sig) patch=JSON.parse(JSON.stringify(patch));
+  try{
+    // a full rewrite of the form so stale signatures never remain on changed content
+    const ref=doc(db,coll,key);
+    await setDoc(ref, Object.assign({uid, cid, updatedAt:serverTimestamp()}, patch), {merge:true});
+    if(!sig && F!=='review' && F!=='revAck') await updateDoc(ref, {['f.'+F+'.sig']:deleteField()}).catch(()=>{});
+    toast(sig? 'Signed and saved ✔' : 'Saved (not signed yet).');
+    closePoeForm(); if(isMentor && SP.uid) staffPoeLoad(SP.uid);
+  }catch(e){ console.warn(e); toast('Could not save: '+(e.code||e.message)); }
+};
+
+/* ---------- special forms ---------- */
+function selfHtml(v, ro){
+  const u=poeUnit(); v=v||{};
+  return '<div class="tablewrap"><table class="t"><tr><th>Outcome</th><th style="width:150px;">Can I do it?</th><th>My evidence (where it shows)</th></tr>'
+    +u.outcomes.map(([c,t])=>'<tr><td><b>'+esc(c)+'</b> '+esc(t)+'</td><td><select id="sa-'+c+'"'+(ro?' disabled':'')+'><option value=""></option>'+['I can do this','I need more practice'].map(o=>'<option'+((v[c]||{}).a===o?' selected':'')+'>'+o+'</option>').join('')+'</select></td><td><input id="se-'+c+'" value="'+esc((v[c]||{}).e||'')+'"'+(ro?' disabled':'')+'></td></tr>').join('')+'</table></div>';
+}
+function readSelf(){ const o={}; poeUnit().outcomes.forEach(([c])=>{ o[c]={a:$('sa-'+c).value, e:$('se-'+c).value.trim()}; }); return o; }
+function obsHtml(v, ro){
+  const u=poeUnit(), fd=formDef('obs'); v=v||{}; const rows=v.rows||{};
+  return fieldsHtml('pf-', fd.meta, v.meta, ro)
+    +'<div class="tablewrap" style="margin-top:10px;"><table class="t"><tr><th>#</th><th>Criterion</th><th>Evidence indicators</th><th>What the learner said or did</th><th>C / NYC</th></tr>'
+    +u.obs.map((r,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(r[0])+'</b><div class="sm">'+esc(r[1])+'</div></td><td class="sm">'+esc(r[2])+'</td><td><textarea id="ob-e-'+i+'" style="min-height:60px;"'+(ro?' disabled':'')+'>'+esc((rows[i]||{}).e||'')+'</textarea></td><td><select id="ob-r-'+i+'" style="width:auto;"'+(ro?' disabled':'')+'><option value=""></option>'+['C','NYC'].map(o=>'<option'+((rows[i]||{}).r===o?' selected':'')+'>'+o+'</option>').join('')+'</select></td></tr>').join('')
+    +'</table></div><label>Overall comment</label><textarea id="ob-c"'+(ro?' disabled':'')+'>'+esc(v.comment||'')+'</textarea>'
+    +'<label>Practical outcome</label><select id="ob-o"'+(ro?' disabled':'')+'><option value=""></option>'+['Competent','Not yet competent'].map(o=>'<option'+(v.outcome===o?' selected':'')+'>'+o+'</option>').join('')+'</select>';
+}
+function readObs(){ const u=poeUnit(), rows={}; u.obs.forEach((r,i)=>{ rows[i]={e:$('ob-e-'+i).value.trim(), r:$('ob-r-'+i).value}; }); return {meta:readFields('pf-', formDef('obs').meta), rows, comment:$('ob-c').value.trim(), outcome:$('ob-o').value}; }
+async function oralHtml(v, ro){
+  const u=poeUnit(); v=v||{}; let rows=v.rows;
+  if(!rows||!rows.length){
+    if(!ORALQ[CID]){ try{ const s=await getDoc(doc(db,'testkeys','oral_'+CID)); ORALQ[CID]=s.exists()?(s.data().qs||[]):[]; }catch(e){ ORALQ[CID]=[]; } }
+    rows=(ORALQ[CID].length? ORALQ[CID] : [{code:'',q:''},{code:'',q:''},{code:'',q:''}]).map(q=>({c:q.code, q:q.q, a:'', r:''}));
+  }
+  PF && (PF.oralN=rows.length);
+  const codes=u.outcomes.map(o=>o[0]).concat(['Authenticity']);
+  return (ORALQ[CID]&&!ORALQ[CID].length&&!ro? '<div class="callout">Tip: load the oral questions once in <b>Course setup → Load oral questions</b> (file Oral_Questions.txt in the Assessor CONF folder) and they appear here ready to ask.</div>' : '')
+    +'<div id="oralRows">'+rows.map((r,i)=>oralRow(i,r,ro,codes)).join('')+'</div>'
+    +(ro?'':'<button class="btn small ghost" onclick="addOralRow()">+ Add a question</button>');
+}
+function oralRow(i,r,ro,codes){
+  codes=codes||poeUnit().outcomes.map(o=>o[0]).concat(['Authenticity']); const d=ro?' disabled':'';
+  return '<div class="sub-entry"><div class="row"><div style="flex:0 1 180px;"><label>Outcome</label><input id="or-c-'+i+'" list="orCodes" value="'+esc(r.c||'')+'"'+d+'><datalist id="orCodes">'+codes.map(c=>'<option value="'+esc(c)+'">').join('')+'</datalist></div>'
+    +'<div><label>Question asked</label><input id="or-q-'+i+'" value="'+esc(r.q||'')+'"'+d+'></div></div>'
+    +'<label>What the learner answered</label><textarea id="or-a-'+i+'" style="min-height:60px;"'+d+'>'+esc(r.a||'')+'</textarea>'
+    +'<label>Judgement</label><select id="or-r-'+i+'" style="width:auto;"'+d+'><option value=""></option>'+['C','NYC','Not asked'].map(o=>'<option'+(r.r===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div>';
+}
+window.addOralRow = ()=>{ const i=PF.oralN++; $('oralRows').insertAdjacentHTML('beforeend', oralRow(i,{},false)); };
+function readOral(){ const rows=[]; for(let i=0;i<(PF.oralN||0);i++){ if(!$('or-q-'+i)) continue; const r={c:$('or-c-'+i).value.trim(), q:$('or-q-'+i).value.trim(), a:$('or-a-'+i).value.trim(), r:$('or-r-'+i).value}; if(r.q||r.a) rows.push(r); } return {rows}; }
+async function logEntries(uid){ try{ const s=await getDocs(query(collection(db,'entries'), where('uid','==',uid))); return s.docs.map(d=>d.data()); }catch(e){ console.warn('entries',e); return null; } }
+function logCount(list){
+  const guided=list.filter(e=>e.signed && ((e.kind==='day' && /Guest-facing/i.test(e.type||'')) || (e.kind==='walk' && /lead/i.test(e.role||''))));
+  return {all:list.length, signed:list.filter(e=>e.signed).length, guided:guided.length, hours:guided.reduce((a,e)=>a+(+e.hours||0),0), rows:guided.sort((a,b)=>String(a.date).localeCompare(String(b.date)))};
+}
+async function logHtml(v, ro, uid){
+  const list=await logEntries(uid); v=v||{};
+  if(!list) return '<p class="note">The Field Logbook could not be read.</p>';
+  const c=logCount(list); PF && (PF.logSnap={guided:c.guided, hours:c.hours, signed:c.signed, all:c.all});
+  return '<div class="callout"><b>Requirement:</b> '+esc(poeUnit().logRule)+'</div>'
+    +'<div class="statgrid"><div class="stat"><b>'+c.guided+'</b><span>mentor-signed guided activities</span></div><div class="stat"><b>'+c.hours+'</b><span>hours guiding</span></div><div class="stat"><b>'+c.signed+' / '+c.all+'</b><span>all logbook entries signed</span></div></div>'
+    +'<div class="tablewrap" style="margin-top:8px;"><table class="t"><tr><th>Date</th><th>Activity</th><th>Hours</th><th>Place</th><th>Signed by</th></tr>'+c.rows.map(e=>'<tr><td>'+esc(e.date||'')+'</td><td>'+esc(e.type||e.role||e.kind)+'</td><td>'+esc(e.hours||'')+'</td><td>'+esc(e.loc||e.area||'')+'</td><td>'+esc(e.signed.name||'')+'</td></tr>').join('')+'</table></div>'
+    +'<label>Requirement met?</label><select id="lg-r"'+(ro?' disabled':'')+'><option value=""></option>'+['C','NYC'].map(o=>'<option'+(v.res===o?' selected':'')+'>'+o+'</option>').join('')+'</select>'
+    +'<label>Assessor comment</label><textarea id="lg-c"'+(ro?' disabled':'')+'>'+esc(v.comment||'')+'</textarea>';
+}
+function readLog(){ return {res:$('lg-r').value, comment:$('lg-c').value.trim(), snap:(PF&&PF.logSnap)||null}; }
+function repHtml(v, ro){
+  const u=poeUnit(), ctx=SP.ctx||stuCtx(); v=v||{}; const it=v.items||{}, d=ro?' disabled':'';
+  const rows=u.items.filter(x=>!['A-REP','L-ACK','A-MOD','L-EVAL','L-APPEAL'].includes(x.id));
+  return '<p class="note">Judge every piece of evidence. The status column shows what the portal has on record. One NYC means the unit standard is Not Yet Competent.</p>'
+    +'<div class="tablewrap"><table class="t"><tr><th>Evidence</th><th>On record</th><th>Judgement</th><th>Comment</th></tr>'
+    +rows.map(x=>{ const st=itemStatus(x,ctx), cur=(it[x.id]||{}).r || (st.s==='done'?'C':st.s==='na'?'N/A':'');
+      return '<tr><td>'+esc(x.title)+'</td><td>'+stPill(st)+'</td><td><select id="rp-r-'+x.id+'" style="width:auto;"'+d+'><option value=""></option>'+['C','NYC','N/A'].map(o=>'<option'+(cur===o?' selected':'')+'>'+o+'</option>').join('')+'</select></td><td><input id="rp-c-'+x.id+'" value="'+esc((it[x.id]||{}).c||'')+'"'+d+'></td></tr>'; }).join('')
+    +'</table></div>'
+    +'<label>What the learner did well (specific, with evidence)</label><textarea id="rp-good"'+d+'>'+esc(v.good||'')+'</textarea>'
+    +'<label>Criteria not yet met, and why</label><textarea id="rp-nyc"'+d+'>'+esc(v.nyc||'')+'</textarea>'
+    +'<label>Action plan and re-assessment date (if NYC)</label><textarea id="rp-act"'+d+'>'+esc(v.act||'')+'</textarea>'
+    +'<div class="row"><div><label>Date of the assessment decision</label><input type="date" id="rp-date" value="'+esc(v.date||new Date().toISOString().slice(0,10))+'"'+d+'></div>'
+    +'<div><label>Overall outcome for '+esc(u.code.replace('US','US '))+'</label><select id="rp-out"'+d+'><option value=""></option>'+['Competent','Not yet competent'].map(o=>'<option'+(v.outcome===o?' selected':'')+'>'+o+'</option>').join('')+'</select></div></div>';
+}
+function readRep(){ const u=poeUnit(), items={}; u.items.forEach(x=>{ const r=$('rp-r-'+x.id); if(r) items[x.id]={r:r.value, c:$('rp-c-'+x.id).value.trim()}; });
+  return {items, good:$('rp-good').value.trim(), nyc:$('rp-nyc').value.trim(), act:$('rp-act').value.trim(), date:$('rp-date').value, outcome:$('rp-out').value}; }
+function reviewSnap(uid){
+  const e=S.enrol.find(x=>x.uid===uid); if(!e || !isMentor) return null;
+  const x=stuSummary(e), passed=(x.r.passed||{});
+  return {done:x.done, total:x.mids.length, mods:x.mids.filter(m=>passed[m]===true).map(m=>parseInt(m.slice(1,3),10)+(m.length>3?m[3].toUpperCase():'')).join(', '),
+    time:Math.round((x.totalSec||0)/60), waiting:x.waiting.length, uploads:S.evidence.filter(v=>v.uid===uid && v.us===course.code).length, lastSeen:x.lastSeen||0};
+}
+function reviewSnapHtml(s){
+  if(!s) return '';
+  return '<div class="statgrid"><div class="stat"><b>'+s.done+'/'+s.total+'</b><span>modules competent</span></div><div class="stat"><b>'+fmtDur((s.time||0)*60)+'</b><span>time on this unit standard</span></div><div class="stat"><b>'+s.waiting+'</b><span>tests waiting to be marked</span></div><div class="stat"><b>'+s.uploads+'</b><span>evidence files</span></div></div>'
+    +(s.mods?'<p class="sm" style="margin-top:6px;">Competent modules: '+esc(s.mods)+'</p>':'');
+}
+
+/* ---------- STAFF: the learner's PoE panel ---------- */
+let SP={};   // staff view of one learner: {uid, name, L, A, LP, AP, fb, resp, ctx}
+async function staffPoeLoad(uid){
+  const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
+  const g=async (c,k)=>{ try{ const s=await getDoc(doc(db,c,k)); return s.exists()?s.data():{}; }catch(err){ return {}; } };
+  const [L,A,LP,AP]=await Promise.all([g('poeL',poeKey(CID,uid)), g('poeA',poeKey(CID,uid)), g('poeL',poeKey('prog',uid)), g('poeA',poeKey('prog',uid))]);
+  let fb=[]; try{ const s=await getDocs(query(collection(db,'fb'), where('uid','==',uid))); fb=s.docs.map(d=>Object.assign({id:d.id},d.data())).filter(f=>f.cid===CID); }catch(err){ console.warn('fb',err); }
+  const resp={}; await Promise.all(fb.map(async f=>{ try{ const r=await getDocs(collection(db,'fb',f.id,'resp')); resp[f.id]=r.docs.map(d=>Object.assign({id:d.id},d.data())); }catch(err){ resp[f.id]=[]; } }));
+  const x=stuSummary(e);
+  SP={uid, name:e.name||e.email, L, A, LP, AP, fb, resp};
+  SP.ctx={u:poeUnit(), L, A, LP, AP, res:x.r, ev:S.evidence.filter(v=>v.uid===uid && v.us===course.code), fb, resp, ag:S.agree[uid], mids:x.mids};
+  renderStaffPoe();
+}
+window.openStaffPoe = uid=>{ $('stuPoe').hidden=false; $('stuPoe').innerHTML='<p class="note">Loading the PoE…</p>'; staffPoeLoad(uid).then(()=>$('stuPoe').scrollIntoView({behavior:'smooth'})); };
+function renderStaffPoe(){
+  const u=poeUnit(), box=$('stuPoe');
+  if(!u){ box.innerHTML='<h2>🗂️ PoE forms</h2><p class="note">There are no PoE forms for '+esc(course.title)+' yet.</p>'; return; }
+  const ctx=SP.ctx, need=u.items.filter(x=>!x.optional), done=need.filter(x=>itemStatus(x,ctx).s==='done').length;
+  let h='<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;"><h2>🗂️ PoE: '+esc(SP.name)+' · '+esc(u.code.replace('US','US '))+'</h2>'
+    +'<div class="btnrow" style="margin-top:0;"><button class="btn small" onclick="printPoE(\''+SP.uid+'\')">📄 Full PoE (PDF)</button>'
+    +'<button class="btn small ghost" onclick="lockPoe('+(!SP.L.locked)+')">'+(SP.L.locked?'🔓 Re-open for the learner':'🔒 Close PoE (no more changes)')+'</button>'
+    +'<button class="btn small ghost" onclick="hideEl(\'stuPoe\')">Close</button></div></div>'
+    +'<p class="note">'+done+' of '+need.length+' items done. ✍️ the learner signs online · 🧑‍🏫 you sign online · ⬆️ learner uploads · 🔗 mentor or tourists through a link · 💻 the portal records it.</p>'
+    +'<div class="bar"><i style="width:'+Math.round(done/Math.max(1,need.length)*100)+'%"></i></div>';
+  POE_SECTIONS.forEach(([n,t])=>{
+    const rows=u.items.filter(x=>x.sec===n); if(!rows.length) return;
+    h+='<h3>'+n+'. '+esc(t)+'</h3>';
+    rows.forEach(it=>{ const st=itemStatus(it,ctx);
+      h+='<div class="item"><div style="flex:1 1 260px;"><div class="lbl">'+POE_ITEM_ICON[it.kind]+' '+esc(it.title)+'</div>'+staffItemExtra(it)+'</div><div>'+stPill(st)+'<div class="btnrow" style="margin-top:6px;justify-content:flex-end;">'+staffItemBtns(it,st)+'</div></div></div>'; });
+  });
+  h+='<h3>Outcome mapping grid</h3><p class="note">Which evidence covers each outcome. 🟢 every piece done · 🟠 some · ○ none yet.</p>'+mapGrid(u, ctx, false);
+  box.innerHTML=h; box.hidden=false;
+}
+function staffItemExtra(it){
+  if(it.kind==='third'){ const fs=SP.fb.filter(f=>f.type===it.ftype); return fs.map(f=>'<div class="sm">'+((SP.resp[f.id]||[]).length)+' received · <a href="#" onclick="showShare(\''+f.id+'\',\''+it.ftype+'\',\''+esc(SP.name).replace(/'/g,'')+'\');return false;">show link</a>'+((SP.resp[f.id]||[]).length?' · <a href="#" onclick="viewResp(\''+f.id+'\');return false;">read</a>':'')+'</div>').join(''); }
+  if(it.kind==='upload'){ const ev=SP.ctx.ev.filter(e=>e.slot===it.id); return ev.map(e=>'<div class="sm">'+fileIcon(e.type)+' <a href="'+esc(e.url)+'" target="_blank" rel="noopener">'+esc(e.name)+'</a> '+evReviewPill(e)+(e.review&&e.review.status?'':' <button class="btn small secondary" style="padding:3px 10px;" onclick="reviewEvidence(\''+e.id+'\',\'accepted\').then(()=>staffPoeLoad(SP.uid))">✔ Accept</button>')+'</div>').join(''); }
+  if(it.form==='review'){ const rv=Object.entries(((SP.A.f||{}).review||{}).items||{}); return rv.map(([id,r])=>'<div class="sm"><a href="#" onclick="openPoeForm(\'review\',\''+id+'\',\''+SP.uid+'\');return false;">Review '+esc((r.v||{}).date||'')+'</a> · learner '+((((SP.L.f||{}).revAck||{})[id]||{}).sig?'signed':'not signed yet')+'</div>').join(''); }
+  return '';
+}
+function staffItemBtns(it, st){
+  const F=it.form, fd=formDef(F)||{};
+  if(it.kind==='assessor' && F==='review') return '<button class="btn small" onclick="openPoeForm(\'review\',null,\''+SP.uid+'\')">+ New progress review</button>';
+  if(it.kind==='assessor') return '<button class="btn small'+(st.s==='done'?' ghost':'')+'" onclick="openPoeForm(\''+F+'\',null,\''+SP.uid+'\')">'+(st.s==='done'?'View or change':'Fill in and sign')+'</button>';
+  if(it.kind==='learner' && F==='appeal') return ((SP.L.f||{}).appeal? '<button class="btn small ghost" onclick="openPoeForm(\'appeal\',null,\''+SP.uid+'\')">Read appeal</button><button class="btn small" onclick="openPoeForm(\'appealDec\',null,\''+SP.uid+'\')">Decide</button>' : '');
+  if(it.kind==='learner') return st.s==='todo'||st.s==='wait'? '' : '<button class="btn small ghost" onclick="openPoeForm(\''+F+'\',null,\''+SP.uid+'\')">View</button>';
+  if(it.kind==='third') return '<button class="btn small ghost" onclick="staffFb(\''+it.ftype+'\')">'+(SP.fb.some(f=>f.type===it.ftype)?'Share link':'Create link')+'</button>';
+  return '';
+}
+window.staffFb = async ftype=>{
+  let f=SP.fb.find(x=>x.type===ftype);
+  try{ if(!f){ const tok=await makeFb(SP.uid, SP.name, ftype); f={id:tok}; await staffPoeLoad(SP.uid); } }catch(e){ toast('Could not create the link: '+(e.code||e.message)); return; }
+  showShare(f.id, ftype, SP.name);
+};
+window.viewResp = tok=>{
+  const f=SP.fb.find(x=>x.id===tok), fd=FB_FORMS[f.type];
+  $('pfTitle').textContent=fd.title+' · '+SP.name;
+  $('pfBody').innerHTML=(SP.resp[tok]||[]).map((r,i)=>'<div class="modset"><b>Response '+(i+1)+' · '+fmtDT(r.at)+'</b><table class="t">'+fd.fields.map(q=>'<tr><th style="width:40%">'+esc(q.l)+'</th><td style="white-space:pre-wrap;">'+esc(fVal(q,(r.v||{})[q.k]))+'</td></tr>').join('')+'</table>'+(r.png?sigHtml({name:r.sname, png:r.png, at:r.at}):'')+'</div>').join('');
+  $('pfModal').hidden=false;
+};
+window.lockPoe = async on=>{
+  if(!confirm(on? 'Close this PoE? The learner can then no longer change their forms. You can re-open it later.' : 'Re-open this PoE so the learner can change their forms?')) return;
+  try{ await setDoc(doc(db,'poeL',poeKey(CID,SP.uid)), {uid:SP.uid, cid:CID, locked:on, lockedBy:profile.name||'', lockedAt:serverTimestamp()}, {merge:true}); toast(on?'PoE closed.':'PoE re-opened.'); staffPoeLoad(SP.uid); }
+  catch(e){ toast('Could not change: '+e.code); }
+};
+function mapGrid(u, ctx, print){
+  const sts={}; u.items.forEach(x=>sts[x.id]=itemStatus(x,ctx));
+  const tst=tagStats(ctx.res||{});
+  const rows=u.outcomes.map(([c,t])=>{
+    const its=u.items.filter(x=>(x.codes||[]).includes(c) || ((x.codes||[]).includes('ALL')));
+    const d=its.filter(x=>sts[x.id].s==='done').length;
+    const tg=tst[c]; const tp=tg&&tg.max? Math.round(tg.s/tg.max*100) : null;
+    return '<tr><td><b>'+esc(c)+'</b> '+esc(t)+'</td><td>'+its.map(x=>(sts[x.id].s==='done'?'✔ ':'○ ')+esc(x.id)).join(', ')+'</td><td>'+(tp==null?'—':light(tp)+' '+tp+'%')+'</td><td>'+(d===its.length&&d?'🟢':d?'🟠':'○')+'</td></tr>';
+  }).join('');
+  const key='<p class="'+(print?'':'sm')+'" style="margin-top:4px;'+(print?'font-size:8.5pt;':'')+'">Evidence codes: '+u.items.filter(x=>(x.codes||[]).length).map(x=>esc(x.id)+' = '+esc(x.title)).join(' · ')+'</p>';
+  return (print?'<table class="pr">':'<div class="tablewrap"><table class="t">')+'<tr><th>Outcome</th><th>Evidence</th><th>Online tests</th><th>Covered</th></tr>'+rows+'</table>'+(print?'':'</div>')+key;
+}
+
+/* ---------- staff: load oral questions (Assessor CONF\Oral_Questions.txt) ---------- */
+window.importOral = async input=>{
+  const f=input.files[0]; if(!f) return;
+  const qs=(await f.text()).split(/\r?\n/).filter(l=>l.trim() && !l.startsWith('#') && l.includes('|')).map(l=>{ const i=l.indexOf('|'); return {code:l.slice(0,i).trim(), q:l.slice(i+1).trim()}; });
+  if(!qs.length){ toast('No questions found in that file.'); return; }
+  try{ await setDoc(doc(db,'testkeys','oral_'+CID), {cid:CID, qs, at:serverTimestamp()}); ORALQ[CID]=qs; $('oralNote').textContent='✔ '+qs.length+' oral questions loaded for '+course.code; toast('Oral questions loaded (staff only).'); }
+  catch(e){ toast('Could not load: '+e.code); }
+  input.value='';
+};
+
+/* ---------- The CATHSSETA PoE (one learner, one unit standard), printed or saved as PDF ---------- */
+const PROVIDER='Africa Expectation Safari\'s t/a Limpopo Wildlife Eco College · CATHSSETA accreditation 613/P/00392/2022';
+function prForm(F, rec, title){
+  const fd=formDef(F); if(!rec || !rec.v) return '<h3>'+esc(title||fd.title)+'</h3><p class="prnote">Not completed.</p>';
+  return '<h3>'+esc(title||fd.title)+'</h3>'+(fd.text?'<div class="prtext">'+fd.text.map((t,i)=>'<p>'+(fd.text.length>1?(i+1)+'. ':'')+esc(t)+'</p>').join('')+'</div>':'')
+    +((fd.fields||[]).length?'<table class="pr">'+fd.fields.map(f=>'<tr><th style="width:38%">'+esc(f.l)+'</th><td style="white-space:pre-wrap;">'+esc(fVal(f,rec.v[f.k]))+'</td></tr>').join('')+'</table>':'')
+    +(fd.after?'<div class="prtext">'+fd.after.map(t=>'<p>'+esc(t)+'</p>').join('')+'</div>':'')
+    +'<div class="prsig">'+(fd.sign?'<i>'+esc(fd.sign)+'</i>':'')+sigHtml(rec.sig, 'NOT SIGNED')+'</div>';
+}
+function prPage(title, sub, body){ return '<div class="pr-page"><div class="pr-h"><h1>'+esc(title)+'</h1><div class="sub">'+sub+'</div></div>'+body+'</div>'; }
+function prStatusTable(items, ctx){ return '<table class="pr"><tr><th>Evidence</th><th>Status</th></tr>'+items.map(x=>'<tr><td>'+esc(x.title)+'</td><td>'+esc(itemStatus(x,ctx).t)+'</td></tr>').join('')+'</table>'; }
+
 window.printPoE = async uid=>{
   const e=S.enrol.find(x=>x.uid===uid); if(!e) return;
+  toast('Putting the PoE together…');
   let u={}; try{ const s=await getDoc(doc(db,'users',uid)); u=s.exists()?s.data():{}; }catch(err){}
+  await staffPoeLoad(uid);
+  const U=poeUnit(), ctx=SP.ctx||{}, L=(SP.L.f||{}), A=(SP.A.f||{}), LP=(SP.LP.f||{}), AP=(SP.AP.f||{});
   const x=stuSummary(e), p=x.p, r=x.r, hist=r.hist||{}, passed=r.passed||{}, ag=S.agree[uid], ch=choiceOf(CID);
-  const name=esc(u.name||e.name||e.email);
-  const stuLine='<table class="pr"><tr><th>Learner</th><td>'+name+'</td><th>Student no.</th><td>'+esc(u.sno||'')+'</td></tr><tr><th>ID number</th><td>'+esc(u.idno||'')+'</td><th>Email</th><td>'+esc(e.email||u.email||'')+'</td></tr><tr><th>Programme</th><td colspan="3">'+esc(PROG)+'</td></tr><tr><th>Unit standard</th><td colspan="3">'+esc(course.title)+'</td></tr>'
-    +(ch? '<tr><th>'+esc(ch.title||'Choice')+'</th><td colspan="3">'+(x.chosen? esc(x.chosen.name||optName(ch.slot+x.chosen.opt))+' (chosen '+fmtD(x.chosen.at)+')' : 'Not chosen')+'</td></tr>' : '')
-    +'<tr><th>Learner agreement</th><td colspan="3">'+(ag? 'Accepted online on '+fmtDT(ag.at)+', signed as “'+esc(ag.name)+'” (version '+esc(ag.version)+')' : 'Not signed online')+'</td></tr></table>';
-  let h='<div class="pr-page"><div class="pr-h"><img src="icons/lwec-logo.png" style="height:60px;"><h1>Portfolio of Evidence: online learning record</h1><div class="sub">Limpopo Wildlife Eco College</div></div>'+stuLine
-    +'<h3 style="margin-top:6mm;">Summary</h3><table class="pr"><tr><th>Module</th><th>First opened</th><th>Video watched</th><th>Attempts</th><th>Outcome</th><th>Date</th><th>Assessor</th></tr>'
-    +x.mids.map(m=>{ const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, hs=hist[m]||[], last=hs[hs.length-1];
-      const first=Math.min(...Object.values(op).map(ms).filter(Boolean), Infinity);
-      return '<tr><td>'+esc(modTitle(m))+'</td><td>'+(first<Infinity?fmtD(first):'—')+'</td><td>'+watchTxt(m,pm).replace(/<[^>]+>/g,' ')+'</td><td>'+hs.length+'</td><td>'+(passed[m]===true?'Competent':last?'Not yet competent':'—')+'</td><td>'+(last?fmtD(last.at):'—')+'</td><td>'+(last?esc(last.by):'')+'</td></tr>'; }).join('')
-    +'</table><p style="margin-top:4mm;font-size:9pt;">Time active on this unit standard: '+fmtDur(x.totalSec)+' · Sessions in the last 90 days: '+x.sess.length+' · Pack printed '+new Date().toLocaleString('en-ZA')+'</p></div>';
-  setupMids(CID).forEach(m=>{
-    const hs=hist[m]||[]; if(!hs.length) return;
-    h+='<div class="pr-page"><div class="pr-h"><h1>'+esc(modTitle(m))+'</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>';
+  const name=esc(u.name||e.name||e.email), sub=name+' · '+esc(course.title);
+  // assessors' saved signatures, for the module test marks
+  const sigs={}; const ids=new Set(); Object.values(hist).forEach(hs=>hs.forEach(a=>a.byUid&&ids.add(a.byUid)));
+  await Promise.all([...ids].map(async id=>{ try{ const s=await getDoc(doc(db,'sig',id)); if(s.exists()) sigs[id]=s.data(); }catch(err){} }));
+  const rep=A.rep||{}, mod=A.mod||{};
+  const stuLine='<table class="pr"><tr><th>Learner</th><td>'+name+'</td><th>ID number</th><td>'+esc(u.idno||'')+'</td></tr><tr><th>Student no.</th><td>'+esc(u.sno||'')+'</td><th>Email</th><td>'+esc(e.email||u.email||'')+'</td></tr><tr><th>Qualification</th><td colspan="3">'+esc(PROG)+'</td></tr><tr><th>Unit standard</th><td colspan="3">'+esc(course.title)+(U?' · NQF 4 · '+U.credits+' credits':'')+'</td></tr>'
+    +(ch? '<tr><th>'+esc(ch.title||'Choice')+'</th><td colspan="3">'+(x.chosen? esc(x.chosen.name||optName(ch.slot+x.chosen.opt)) : 'Not chosen')+'</td></tr>' : '')
+    +'<tr><th>Provider</th><td colspan="3">'+esc(PROVIDER)+'</td></tr>'
+    +'<tr><th>Assessor</th><td>'+esc((rep.sig&&rep.sig.name)||assessor().name)+'</td><th>Moderator</th><td>'+esc(((mod.v||{}).name)||'')+' '+esc(((mod.v||{}).reg)||'')+'</td></tr>'
+    +'<tr><th>Result</th><td colspan="3"><b>'+esc((rep.v||{}).outcome||'Not yet decided')+'</b>'+(rep.sig?' · signed '+fmtD(rep.sig.at):'')+'</td></tr></table>';
+  // cover and index
+  let h='<div class="pr-page"><div class="pr-h"><img src="icons/lwec-logo.png" style="height:60px;"><h1>Portfolio of Evidence</h1><div class="sub">Limpopo Wildlife Eco College · CATHSSETA</div></div>'+stuLine;
+  if(U){ h+='<h3 style="margin-top:5mm;">Index</h3><table class="pr"><tr><th>Section</th><th>Evidence</th><th>Status</th></tr>'
+      +POE_SECTIONS.map(([n,t])=>{ const its=U.items.filter(it=>it.sec===n); return its.map((it,i)=>'<tr>'+(i===0?'<td rowspan="'+its.length+'"><b>'+n+'. '+esc(t)+'</b></td>':'')+'<td>'+esc(it.title)+'</td><td>'+esc(itemStatus(it,ctx).t)+'</td></tr>').join(''); }).join('')+'</table>'; }
+  h+='<p style="margin-top:3mm;font-size:8.5pt;">Compiled from the LWEC Learning Portal on '+new Date().toLocaleString('en-ZA')+'. Online signatures were made by the signed-in account shown, with the date and time recorded by the server. Uploaded files, videos and photos are kept in the learner\'s online evidence file and can be opened by the assessor, moderator or CATHSSETA on request.</p></div>';
+
+  // 1. Learner administration
+  if(U){
+    let b=prForm('popia', LP.popia)+prForm('cond', LP.cond)+prForm('needs', LP.needs);
+    b+='<h3>Administration documents on file</h3>'+(AP.admin&&AP.admin.v? '<table class="pr">'+formDef('admin').fields.map(f=>'<tr><th>'+esc(f.l)+'</th><td>'+(AP.admin.v[f.k]?'✔ On file':'Not on file')+'</td></tr>').join('')+'</table>'+sigHtml(AP.admin.sig,'NOT SIGNED') : '<p class="prnote">Not checked yet.</p>');
+    h+=prPage('1. Learner administration', sub, b);
+  }
+  if(ag) h+=prPage('1. Learning portal agreement', sub, String(ag.text||'').split('\n').map(t=>'<p style="margin-bottom:3mm;font-size:10pt;">'+esc(t)+'</p>').join('')
+      +'<p style="margin-top:6mm;font-size:10pt;">Accepted online on <b>'+fmtDT(ag.at)+'</b>, signed by typing the name “<b>'+esc(ag.name)+'</b>”, from the account '+esc(ag.email||'')+'.</p>');
+  // 2. Programme and assessment plan
+  if(U){
+    let b=prForm('plan', A.plan)+prForm('planAck', L.planAck);
+    const sv=(L.self||{}).v;
+    b+='<h3>'+esc(formDef('self').title)+'</h3>'+(sv? '<table class="pr"><tr><th>Outcome</th><th>Learner says</th><th>Evidence</th></tr>'+U.outcomes.map(([c,t])=>'<tr><td><b>'+esc(c)+'</b> '+esc(t)+'</td><td>'+esc((sv[c]||{}).a||'')+'</td><td>'+esc((sv[c]||{}).e||'')+'</td></tr>').join('')+'</table>'+sigHtml(L.self.sig,'NOT SIGNED') : '<p class="prnote">Not completed.</p>');
+    h+=prPage('2. Programme and assessment plan', sub, b);
+    const rv=Object.entries(((A.review||{}).items)||{}).sort((a,b)=>String((a[1].v||{}).date).localeCompare(String((b[1].v||{}).date)));
+    h+=prPage('2. Learner progress reports', sub, rv.length? rv.map(([id,rr],i)=>'<h3>Progress review '+(i+1)+'</h3>'+(rr.snap?'<p class="prnote">Progress on record: '+rr.snap.done+' of '+rr.snap.total+' modules competent'+(rr.snap.mods?' ('+esc(rr.snap.mods)+')':'')+' · '+fmtDur((rr.snap.time||0)*60)+' on this unit standard · '+rr.snap.waiting+' tests waiting · '+rr.snap.uploads+' evidence files</p>':'')
+        +prForm('review', rr, ' ').replace('<h3> </h3>','')+prForm('revAck', ((L.revAck||{})[id]), 'Learner')).join('') : '<p class="prnote">No progress reviews recorded yet.</p>');
+  }
+  // 3 and 4. Formative and summative tests
+  const last=x.mids[x.mids.length-1];
+  const modPage=m=>{
+    const hs=hist[m]||[]; if(!hs.length) return '';
+    let b='';
     hs.forEach((a,i)=>{
-      h+='<h3>Attempt '+(i+1)+': '+(a.outcome==='C'?'Competent':'Not yet competent')+'</h3><table class="pr"><tr><th>Handed in</th><td>'+fmtDT(a.submittedAt)+'</td><th>Assessed</th><td>'+fmtDT(a.at)+'</td></tr>'
+      const sg=a.byUid&&sigs[a.byUid];
+      b+='<h3>Attempt '+(i+1)+': '+(a.outcome==='C'?'Competent':'Not yet competent')+'</h3><table class="pr"><tr><th>Handed in</th><td>'+fmtDT(a.submittedAt)+'</td><th>Assessed</th><td>'+fmtDT(a.at)+'</td></tr>'
         +'<tr><th>Assessor</th><td>'+esc(a.by)+'</td><th>Registration no.</th><td>'+esc(a.reg||'')+'</td></tr>'
         +(a.link?'<tr><th>Answer sheet link</th><td colspan="3">'+esc(a.link)+'</td></tr>':'')
         +(a.paper?'<tr><th>Paper</th><td colspan="3">Answer sheet handed in on paper: file it behind this page.</td></tr>':'')
@@ -2331,31 +2854,71 @@ window.printPoE = async uid=>{
         +(a.form? '<p style="margin-top:3mm;font-size:10pt;"><b>Answers typed on screen in the portal</b> (headings, questions and names are added by the portal and cannot be changed by the learner)</p>'+formTable(a.form,true)
           : a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'')
         +(a.qa? '<p style="margin-top:3mm;font-size:10pt;">Online test version '+esc(a.ver||'')+' · started '+fmtDT(a.startedAt)+' · handed in '+fmtDT(a.submittedAt)+' · score <b>'+a.total+' / '+a.max+' ('+(a.max?Math.round(a.total/a.max*100):0)+'%)</b></p>'
-          +'<table class="pr"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'+a.qa.map(q=>'<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'(not answered)':esc(q.a))+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td>'+q.s+' / '+q.max+'</td></tr>').join('')+'</table>' : '');
+          +'<table class="pr"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'+a.qa.map(q=>'<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'(not answered)':esc(q.a))+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td>'+q.s+' / '+q.max+'</td></tr>').join('')+'</table>' : '')
+        +'<div class="prsig">'+sigHtml(sg? {name:a.by, png:sg.png, role:'Assessor'+(a.reg?' (reg. '+a.reg+')':''), at:a.at} : {name:a.by, role:'Assessor (marked online)', at:a.at})+'</div>';
     });
-    h+='<div class="decl">Learner declaration: I declare that the work handed in for this module is my own.</div>'
-      +'<div class="sigline">Learner signature and date</div><div class="sigline">Assessor signature and date</div>'
-      +'<div class="sigline">Moderator signature and date</div></div>';
-  });
-  const ev=S.evidence.filter(v=>v.uid===uid && v.us===course.code && (!v.review || v.review.status!=='redo'));
-  if(ev.length){
-    h+='<div class="pr-page"><div class="pr-h"><h1>Additional evidence</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>'
-      +'<table class="pr"><tr><th>Evidence</th><th>File</th><th>Added</th><th>Assessor</th></tr>'
-      +ev.sort((a,b)=>ms(a.at)-ms(b.at)).map(v=>'<tr><td><b>'+esc(v.title)+'</b>'+(v.note?'<br>'+esc(v.note):'')+'</td><td>'+esc(v.name)+'<br>'+fmtSize(v.size||0)+'</td><td>'+fmtD(v.at)+(v.byStaff?'<br>by the assessor':'<br>by the learner')+'</td><td>'+(v.review&&v.review.status==='accepted'?'Accepted, '+esc(v.review.by||'')+' '+fmtD(v.review.at)+(v.review.comment?'<br>'+esc(v.review.comment):''):'Not reviewed')+'</td></tr>').join('')
-      +'</table>'
-      +ev.filter(v=>(v.type||'').startsWith('image/')&&v.url).map(v=>'<div style="display:inline-block;width:47%;margin:3mm 1%;vertical-align:top;page-break-inside:avoid;"><img src="'+esc(v.url)+'" style="width:100%;max-height:85mm;object-fit:contain;border:1px solid #999;"><div style="font-size:8.5pt;">'+esc(v.title)+' · '+fmtD(v.at)+'</div></div>').join('')
-      +'<p style="font-size:9pt;margin-top:4mm;">Presentations, documents and videos are kept in the learner\'s online evidence file and can be opened by the assessor or moderator on request.</p></div>';
+    return prPage((m===last?'4. Summative: ':'3. Formative: ')+modTitle(m), sub, b);
+  };
+  h+=prPage('3. Formative assessment: summary', sub, '<table class="pr"><tr><th>Module</th><th>First opened</th><th>Video watched</th><th>Attempts</th><th>Outcome</th><th>Date</th><th>Assessor</th></tr>'
+    +x.mids.map(m=>{ const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, hs=hist[m]||[], la=hs[hs.length-1];
+      const first=Math.min(...Object.values(op).map(ms).filter(Boolean), Infinity);
+      return '<tr><td>'+esc(modTitle(m))+'</td><td>'+(first<Infinity?fmtD(first):'—')+'</td><td>'+watchTxt(m,pm).replace(/<[^>]+>/g,' ')+'</td><td>'+hs.length+'</td><td>'+(passed[m]===true?(la&&la.prior?'Competent before the online portal':'Competent'):la?'Not yet competent':'—')+'</td><td>'+(la?fmtD(la.at):'—')+'</td><td>'+(la?esc(la.by):'')+'</td></tr>'; }).join('')
+    +'</table><p style="margin-top:4mm;font-size:9pt;">Time active on this unit standard: '+fmtDur(x.totalSec)+' · Sessions in the last 90 days: '+x.sess.length+'</p>');
+  setupMids(CID).filter(m=>m!==last).forEach(m=>{ h+=modPage(m); });
+  h+=modPage(last);
+  if(U){
+    let b=prForm('decl', L.decl);
+    const ov=(A.oral||{}).v;
+    b+='<h3>Oral questioning record</h3>'+(ov&&ov.rows&&ov.rows.length? '<table class="pr"><tr><th>Outcome</th><th>Question</th><th>Learner\'s answer</th><th>C/NYC</th></tr>'+ov.rows.map(q=>'<tr><td>'+esc(q.c)+'</td><td>'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+esc(q.a)+'</td><td>'+esc(q.r)+'</td></tr>').join('')+'</table>'+sigHtml(A.oral.sig,'NOT SIGNED') : '<p class="prnote">No oral questioning recorded.</p>');
+    const ups=U.items.filter(it=>it.kind==='upload');
+    b+='<h3>Tasks handed in (uploaded)</h3><table class="pr"><tr><th>Task</th><th>Outcomes</th><th>Files</th><th>Assessor</th></tr>'+ups.map(it=>{ const ev=ctx.ev.filter(v=>v.slot===it.id);
+      return '<tr><td><b>'+esc(it.title)+'</b></td><td>'+esc((it.codes||[]).join(', '))+'</td><td>'+(ev.map(v=>esc(v.name)+' ('+fmtD(v.at)+')').join('<br>')||'—')+'</td><td>'+(ev.map(v=>v.review&&v.review.status==='accepted'?'Accepted, '+esc(v.review.by||'')+' '+fmtD(v.review.at)+(v.review.comment?': '+esc(v.review.comment):''):v.review&&v.review.status==='redo'?'Needs correction: '+esc(v.review.comment||''):'Not reviewed').join('<br>')||'')+'</td></tr>'; }).join('')+'</table>';
+    h+=prPage('4. Summative assessment', sub, b);
+    // 5. Practical and workplace
+    const ob=(A.obs||{}).v;
+    let c5='<h3>Observation checklist</h3>';
+    if(ob){ c5+='<table class="pr">'+formDef('obs').meta.map(f=>'<tr><th>'+esc(f.l)+'</th><td>'+esc((ob.meta||{})[f.k]||'')+'</td></tr>').join('')+'</table>'
+      +'<table class="pr"><tr><th>#</th><th>Criterion</th><th>Indicators</th><th>Evidence observed</th><th>C/NYC</th></tr>'+U.obs.map((rw,i)=>'<tr><td>'+(i+1)+'</td><td><b>'+esc(rw[0])+'</b><br>'+esc(rw[1])+'</td><td>'+esc(rw[2])+'</td><td style="white-space:pre-wrap;">'+esc(((ob.rows||{})[i]||{}).e||'')+'</td><td>'+esc(((ob.rows||{})[i]||{}).r||'')+'</td></tr>').join('')+'</table>'
+      +'<p style="font-size:9.5pt;margin-top:2mm;"><b>Overall comment:</b> '+esc(ob.comment||'')+'<br><b>Practical outcome:</b> '+esc(ob.outcome||'')+'</p>'+sigHtml(A.obs.sig,'NOT SIGNED'); }
+    else c5+='<p class="prnote">Not observed yet.</p>';
+    h+=prPage('5. Integrated final practical', sub, c5);
+    const lg=(A.log||{}).v, ent=await logEntries(uid), lc=ent? logCount(ent) : null;
+    h+=prPage('5. Workplace logbook', sub, '<p style="font-size:9.5pt;"><b>Requirement:</b> '+esc(U.logRule)+'</p>'
+      +(lc? '<p style="font-size:9.5pt;">Field Logbook: '+lc.guided+' mentor-signed guided activities, '+lc.hours+' hours; '+lc.signed+' of '+lc.all+' entries signed.</p><table class="pr"><tr><th>Date</th><th>Activity</th><th>Hours</th><th>Place</th><th>Signed by mentor</th></tr>'+lc.rows.map(en=>'<tr><td>'+esc(en.date||'')+'</td><td>'+esc(en.type||en.role||en.kind)+'</td><td>'+esc(en.hours||'')+'</td><td>'+esc(en.loc||en.area||'')+'</td><td>'+(en.signed.png?'<img src="'+esc(en.signed.png)+'" style="height:22px;vertical-align:middle;"> ':'')+esc(en.signed.name||'')+'</td></tr>').join('')+'</table>' : '<p class="prnote">Field Logbook could not be read.</p>')
+      +'<h3>Assessor review</h3>'+(lg? '<p style="font-size:9.5pt;">Requirement met: <b>'+esc(lg.res||'')+'</b>. '+esc(lg.comment||'')+'</p>'+sigHtml(A.log.sig,'NOT SIGNED') : '<p class="prnote">Not reviewed yet.</p>'));
+    ['mentor','client'].forEach(t=>{
+      const fd=FB_FORMS[t], resp=SP.fb.filter(f=>f.type===t).flatMap(f=>SP.resp[f.id]||[]);
+      let b='';
+      if(!resp.length) b='<p class="prnote">None received yet.</p>';
+      else if(t==='client'){
+        const rk=fd.fields.filter(q=>q.t==='rate');
+        b='<table class="pr"><tr><th>Date</th><th>Name</th><th>From</th>'+rk.map(q=>'<th>'+esc(q.l)+'</th>').join('')+'<th>Recommend</th></tr>'+resp.map(rr=>{ const v=rr.v||{}; return '<tr><td>'+esc(v.date||'')+'</td><td>'+esc(v.name||'')+'</td><td>'+esc(v.country||'')+'</td>'+rk.map(q=>'<td>'+esc(v[q.k]||'')+'</td>').join('')+'<td>'+esc(v.rec||'')+'</td></tr>'; }).join('')
+          +'<tr><th colspan="3">Average (1 to 5)</th>'+rk.map(q=>{ const a=resp.map(rr=>+((rr.v||{})[q.k])||0).filter(Boolean); return '<th>'+(a.length?(a.reduce((s,n)=>s+n,0)/a.length).toFixed(1):'')+'</th>'; }).join('')+'<th></th></tr></table>'
+          +resp.map((rr,i)=>((rr.v||{}).good||(rr.v||{}).imp)? '<p style="font-size:9pt;margin-top:2mm;"><b>Tourist '+(i+1)+':</b> enjoyed: '+esc((rr.v||{}).good||'')+' · could be better: '+esc((rr.v||{}).imp||'')+'</p>' : '').join('');
+      } else b=resp.map(rr=>'<table class="pr">'+fd.fields.map(q=>'<tr><th style="width:38%">'+esc(q.l)+'</th><td style="white-space:pre-wrap;">'+esc(fVal(q,(rr.v||{})[q.k]))+'</td></tr>').join('')+'</table><div class="prsig"><i>'+esc(fd.sign)+'</i>'+sigHtml({name:rr.sname, png:rr.png, role:'Mentor / supervisor', at:rr.at})+'</div>').join('');
+      h+=prPage('5. '+fd.title, sub, '<p class="prnote">Completed online through a personal link sent to the '+(t==='client'?'tourists':'mentor')+'; date and time recorded by the server.</p>'+b);
+    });
+    h+=prPage('5. Learner self-evaluation', sub, prForm('refl', L.refl));
+    // 6. Moderation
+    h+=prPage('6. Moderation', sub, prForm('mod', A.mod));
+    // 7. Results and feedback
+    const rv=rep.v||{};
+    let b7='<h3>Assessment results</h3>'+(rep.v? '<table class="pr"><tr><th>Evidence</th><th>Judgement</th><th>Comment</th></tr>'+U.items.filter(it=>(rv.items||{})[it.id]).map(it=>'<tr><td>'+esc(it.title)+'</td><td><b>'+esc(rv.items[it.id].r||'')+'</b></td><td>'+esc(rv.items[it.id].c||'')+'</td></tr>').join('')+'</table>'
+      +'<table class="pr" style="margin-top:3mm;"><tr><th style="width:38%">Done well</th><td style="white-space:pre-wrap;">'+esc(rv.good||'')+'</td></tr><tr><th>Not yet met, and why</th><td style="white-space:pre-wrap;">'+esc(rv.nyc||'')+'</td></tr><tr><th>Action plan and re-assessment</th><td style="white-space:pre-wrap;">'+esc(rv.act||'')+'</td></tr><tr><th>Date of decision</th><td>'+esc(rv.date||'')+'</td></tr><tr><th>OVERALL OUTCOME</th><td><b>'+esc(rv.outcome||'')+'</b></td></tr></table>'+sigHtml(rep.sig,'NOT SIGNED') : '<p class="prnote">No assessment decision yet.</p>');
+    b7+=prForm('repAck', L.repAck);
+    h+=prPage('7. Assessor report and feedback', sub, b7);
+    h+=prPage('7. Outcome mapping grid', sub, mapGrid(U, ctx, true));
+    h+=prPage('7. Learner feedback on the training', sub, prForm('eval', L.eval));
+    h+=prPage('8. Appeals', sub, L.appeal&&L.appeal.sig? prForm('appeal', L.appeal)+prForm('appealDec', A.appealDec) : '<p class="prnote">No appeal was lodged. The appeal procedure was explained in the assessment plan, and the online appeal form was available to the learner.</p>');
   }
   const tst=tagStats(r), tgs=Object.keys(tst).sort(sortTags);
-  if(tgs.length){
-    h+='<div class="pr-page"><div class="pr-h"><h1>Outcomes achieved</h1><div class="sub">'+name+' · '+esc(course.title)+'</div></div>'
-      +'<p style="font-size:9.5pt;">From the latest marked online test of every module. 🟢 70% or more · 🟠 50 to 69% · 🔴 below 50%.</p>'
-      +'<table class="pr"><tr><th>Outcome</th><th>Marks</th><th>%</th><th></th></tr>'+tgs.map(t=>{ const x=tst[t], p=x.max?Math.round(x.s/x.max*100):0; return '<tr><td>'+esc(tagLabel(t))+'</td><td>'+x.s+' / '+x.max+'</td><td>'+p+'%</td><td>'+light(p)+'</td></tr>'; }).join('')+'</table></div>';
-  }
-  if(ag){
-    h+='<div class="pr-page"><div class="pr-h"><h1>Learner agreement</h1><div class="sub">'+name+'</div></div>'
-      +String(ag.text||'').split('\n').map(t=>'<p style="margin-bottom:3mm;font-size:10pt;">'+esc(t)+'</p>').join('')
-      +'<p style="margin-top:6mm;font-size:10pt;">Accepted online on <b>'+fmtDT(ag.at)+'</b>, signed by typing the name “<b>'+esc(ag.name)+'</b>”, from the account '+esc(ag.email||'')+'.</p></div>';
+  if(tgs.length) h+=prPage('7. Outcomes achieved in the online tests', sub, '<p style="font-size:9.5pt;">From the latest marked online test of every module. 🟢 70% or more · 🟠 50 to 69% · 🔴 below 50%.</p>'
+      +'<table class="pr"><tr><th>Outcome</th><th>Marks</th><th>%</th><th></th></tr>'+tgs.map(t=>{ const y=tst[t], pc=y.max?Math.round(y.s/y.max*100):0; return '<tr><td>'+esc(tagLabel(t))+'</td><td>'+y.s+' / '+y.max+'</td><td>'+pc+'%</td><td>'+light(pc)+'</td></tr>'; }).join('')+'</table>');
+  const ev=S.evidence.filter(v=>v.uid===uid && v.us===course.code && (!v.review || v.review.status!=='redo'));
+  if(ev.length){
+    h+=prPage('Evidence file', sub, '<table class="pr"><tr><th>Evidence</th><th>File</th><th>Added</th><th>Assessor</th></tr>'
+      +ev.sort((a,b)=>ms(a.at)-ms(b.at)).map(v=>'<tr><td><b>'+esc(v.title)+'</b>'+(v.note?'<br>'+esc(v.note):'')+'</td><td>'+esc(v.name)+'<br>'+fmtSize(v.size||0)+'</td><td>'+fmtD(v.at)+(v.byStaff?'<br>by the assessor':'<br>by the learner')+'</td><td>'+(v.review&&v.review.status==='accepted'?'Accepted, '+esc(v.review.by||'')+' '+fmtD(v.review.at)+(v.review.comment?'<br>'+esc(v.review.comment):''):'Not reviewed yet')+'</td></tr>').join('')
+      +'</table>'+ev.filter(v=>(v.type||'').startsWith('image/')&&v.url).map(v=>'<div style="display:inline-block;width:47%;margin:3mm 1%;vertical-align:top;page-break-inside:avoid;"><img src="'+esc(v.url)+'" style="width:100%;max-height:85mm;object-fit:contain;border:1px solid #999;"><div style="font-size:8.5pt;">'+esc(v.title)+' · '+fmtD(v.at)+'</div></div>').join(''));
   }
   $('slips').innerHTML=h;
   await Promise.all([...document.querySelectorAll('#slips img')].map(i=>i.complete?0:new Promise(r=>{ i.onload=i.onerror=r; setTimeout(r,8000); })));
