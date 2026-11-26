@@ -1,0 +1,4 @@
+{
+  "firestore": { "rules": "rules-live/firestore.rules" },
+  "storage": { "rules": "rules-live/storage.rules" }
+}

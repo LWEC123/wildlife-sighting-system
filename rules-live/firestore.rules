@@ -1,0 +1,383 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isMentor() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/mentors/$(request.auth.uid));
+    }
+    // A mentors doc without a 'level' field is a full mentor; level 'signer'
+    // may sign entries but not delete them or remove signatures.
+    function isFullMentor() {
+      return isMentor()
+        && get(/databases/$(database)/documents/mentors/$(request.auth.uid))
+             .data.get('level', 'full') == 'full';
+    }
+
+    // Staff list. Only editable in the Firebase console — never from the app.
+    match /mentors/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    // Student profiles. A student may only create themself as role 'student'
+    // and may only edit their own personal fields — never their role.
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isMentor());
+      allow list: if isMentor();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role == 'student';
+      allow update: if isMentor()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['name', 'sno', 'idno', 'mentor', 'prog', 'saqa']));
+      allow delete: if false;
+    }
+
+    // Programme targets are issued by the college: mentors write, students read.
+    match /targets/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isMentor());
+      allow list: if isMentor();
+      allow create, update: if isMentor();
+      allow delete: if false;
+    }
+
+    // Logbook entries. Students see and write only their own; a signed entry
+    // is locked for the student. Mentors see everything and may correct.
+    match /entries/{entryId} {
+      allow read: if signedIn()
+        && (isMentor() || resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if isFullMentor()
+        || (isMentor() && resource.data.signed == null
+            && request.resource.data.uid == resource.data.uid)
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && resource.data.signed == null
+            && request.resource.data.uid == request.auth.uid);
+      allow delete: if isFullMentor()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && resource.data.signed == null);
+    }
+
+    // ================= LWEC Learning Portal (LWECCourses.html) =================
+    // Course staff = FULL mentors only. 'signer' mentors may sign Field Logbook entries
+    // but are students in the Learning Portal: they never see other students' work,
+    // marks, access codes or test memos.
+    function isCourseStaff() { return isFullMentor(); }
+    // Ids: enrol/results/progress docs are '<courseId>_<uid>' (course ids have no '_').
+    // One access code enrols a student in the whole qualification (SAQA 71549): the
+    // enrolment is enrol/us335815_<uid>. Staff pause everything (active false) or one
+    // unit standard (paused.<courseId> true).
+    function ownsKey(key) { return signedIn() && key.split('_')[1] == request.auth.uid; }
+    function progEnrol() {
+      return get(/databases/$(database)/documents/enrol/$('us335815_' + request.auth.uid));
+    }
+    function progActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/enrol/$('us335815_' + request.auth.uid))
+        && progEnrol().data.active == true;
+    }
+    function enrolledIn(cid) {
+      return progActive() && progEnrol().data.get('paused', {}).get(cid, false) != true;
+    }
+    // "Choose one" modules (e.g. module 5: choose your province): a student opens only
+    // the option they chose, kept in choice/<courseId>_<uid>.
+    function chose(cid, opt) {
+      return exists(/databases/$(database)/documents/choice/$(cid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/choice/$(cid + '_' + request.auth.uid)).data.opt == opt;
+    }
+    function passedModule(cid, mid) {
+      return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+             .data.get('passed', {}).get(mid, false) == true;
+    }
+
+    // Course (unit standard) titles: any signed-in user. Changed by full mentors.
+    match /courses/{cid} {
+      allow get, list: if signedIn();
+      allow write: if isFullMentor();
+
+      // A module's file links reach a student only once the previous module is passed.
+      match /modules/{mid} {
+        allow get: if isCourseStaff()
+          || (enrolledIn(cid)
+              && get(/databases/$(database)/documents/courses/$(cid)).data.get('published', true) != false
+              && (resource.data.prev == '' || passedModule(cid, resource.data.prev))
+              && (resource.data.get('opt', '') == '' || chose(cid, resource.data.opt)));
+        allow list: if isCourseStaff();
+        allow write: if isFullMentor();
+      }
+    }
+
+    // Personal access codes. Staff create them; a student who knows a code may
+    // claim it once, in the same write that creates their own enrolment.
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list, create, delete: if isCourseStaff();
+      allow update: if isCourseStaff()
+        || (signedIn()
+            && resource.data.claimedBy == null
+            && request.resource.data.claimedBy == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['claimedBy', 'claimedAt', 'claimedEmail'])
+            && existsAfter(/databases/$(database)/documents/enrol/$(resource.data.cid + '_' + request.auth.uid)));
+    }
+
+    // Enrolment = course access. Only created by claiming a code; staff pause/resume it.
+    match /enrol/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list, update: if isCourseStaff();
+      allow create: if signedIn()
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.active == true
+        && get(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.claimedBy == null
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.claimedBy == request.auth.uid
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.cid == request.resource.data.cid;
+      allow delete: if false;
+    }
+
+    // Marks: written by staff only. A student reads only their own.
+    match /results/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list, create, update: if isCourseStaff();
+      allow delete: if false;
+    }
+
+    // What a student opened, watched and handed in. Students write their own while
+    // they have access; watch time may grow by at most a few minutes per write.
+    match /progress/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff();
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && enrolledIn(request.resource.data.cid)
+        && request.resource.data.get('totalSec', 0) <= 120;
+      allow update: if ownsKey(key)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.cid == resource.data.cid
+        && enrolledIn(resource.data.cid)
+        && request.resource.data.get('totalSec', 0) <= resource.data.get('totalSec', 0) + 120;
+      allow delete: if false;
+    }
+
+    // Sign-in sessions: start time, last activity and active seconds.
+    match /sessions/{sid} {
+      allow get: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isCourseStaff();
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.sec == 0
+        && progActive();
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'sec'])
+        && request.resource.data.sec <= resource.data.sec + 120;
+      allow delete: if false;
+    }
+
+    // A student's pick in a "choose one" module. The student makes it once; only staff
+    // can change it afterwards.
+    match /choice/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff();
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.opt is string && request.resource.data.opt.size() == 1
+        && enrolledIn(request.resource.data.cid);
+      allow create, update: if isCourseStaff();
+      allow delete: if false;
+    }
+
+    // ---------- Online tests (module quizzes and final assessments) ----------
+    // tests/<cid>_<mid>_<ver>: the question paper, without answers. Version A opens with the
+    // module; another version only after an attempt was marked not yet competent.
+    function lastMark(cid, mid) {
+      return get(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+        .data.get('marks', {}).get(mid, {});
+    }
+    function hadNyc(cid, mid) {
+      return exists(/databases/$(database)/documents/results/$(cid + '_' + request.auth.uid))
+        && lastMark(cid, mid).get('outcome', '') == 'NYC';
+    }
+    match /tests/{id} {
+      allow get: if isCourseStaff()
+        || (enrolledIn(resource.data.cid)
+            && (resource.data.prev == '' || passedModule(resource.data.cid, resource.data.prev))
+            && (resource.data.get('opt', '') == '' || chose(resource.data.cid, resource.data.opt))
+            && (resource.data.ver == 'A' || hadNyc(resource.data.cid, resource.data.mid)));
+      allow list: if isCourseStaff();
+      allow write: if isFullMentor();
+    }
+    // Answers and memos: staff only, never sent to students.
+    match /testkeys/{id} {
+      allow read: if isCourseStaff();
+      allow write: if isFullMentor();
+    }
+    // One sitting of a test: attempts/<cid>_<uid>_<mid>_<n>. Attempt 1 is version A; a new
+    // attempt only after the previous one was marked not yet competent. Handed in once.
+    match /attempts/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid + '_' + request.resource.data.mid + '_' + string(request.resource.data.att)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.startedAt == request.time
+        && !('submittedAt' in request.resource.data)
+        && enrolledIn(request.resource.data.cid)
+        && exists(/databases/$(database)/documents/tests/$(request.resource.data.cid + '_' + request.resource.data.mid + '_' + request.resource.data.ver))
+        && ((request.resource.data.att == 1 && request.resource.data.ver == 'A')
+            || (request.resource.data.att > 1
+                && hadNyc(request.resource.data.cid, request.resource.data.mid)
+                && lastMark(request.resource.data.cid, request.resource.data.mid).get('att', 0) == request.resource.data.att - 1));
+      allow update: if ownsKey(key)
+        && !('submittedAt' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submittedAt'])
+        && request.resource.data.submittedAt == request.time;
+      allow delete: if false;
+    }
+    // One answer per question: answers/<attempt key>_<question>. Saved once, never changed,
+    // only while the attempt is open and (if timed) within the time limit plus one minute.
+    function attemptOpen(d) {
+      let a = get(/databases/$(database)/documents/attempts/$(d.cid + '_' + request.auth.uid + '_' + d.mid + '_' + string(d.att))).data;
+      let t = get(/databases/$(database)/documents/tests/$(d.cid + '_' + d.mid + '_' + a.ver)).data;
+      return !('submittedAt' in a) && a.ver == d.ver
+        && (t.get('time', 0) == 0 || request.time < a.startedAt + duration.value(t.get('time', 0) * 60 + 60, 's'));
+    }
+    match /answers/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if ownsKey(key)
+        && key == request.resource.data.cid + '_' + request.auth.uid + '_' + request.resource.data.mid + '_' + string(request.resource.data.att) + '_' + string(request.resource.data.n)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.a is string && request.resource.data.a.size() <= 6000
+        && attemptOpen(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // ---------- Portfolio of Evidence (online forms and e-signatures) ----------
+    // poeL/<cid>_<uid>: forms the learner fills and signs. poeL/prog_<uid>: once for the
+    // qualification (POPIA, code of conduct, learner profile). The learner writes their own
+    // until the assessor closes the PoE (locked); staff may read and close or re-open it.
+    match /poeL/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff();
+      allow create: if isCourseStaff()
+        || (ownsKey(key)
+            && key == request.resource.data.cid + '_' + request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && progActive()
+            && !('locked' in request.resource.data));
+      allow update: if isCourseStaff()
+        || (ownsKey(key)
+            && progActive()
+            && resource.data.get('locked', false) != true
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.cid == resource.data.cid
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['locked', 'lockedBy', 'lockedAt']));
+      allow delete: if false;
+    }
+    // poeA/<cid>_<uid> and poeA/prog_<uid>: assessor and moderator forms. The learner may
+    // read their own (assessment plan, progress reviews, report), never write.
+    match /poeA/{key} {
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list, create, update: if isCourseStaff();
+      allow delete: if false;
+    }
+    // A person's saved signature (drawn once, reused when signing forms).
+    match /sig/{uid} {
+      allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.png is string && request.resource.data.png.size() < 120000;
+      allow delete: if false;
+    }
+    // Third-party feedback through a link with an unguessable token (mentor or employer
+    // report, tourist feedback). Anyone holding the link may read its header and add a
+    // response while it is open; nobody can list links, or change or delete a response.
+    match /fb/{tok} {
+      allow get: if true;
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if tok.size() >= 16
+        && request.resource.data.open == true
+        && request.resource.data.type in ['mentor', 'client']
+        && (isCourseStaff()
+            || (signedIn() && request.resource.data.uid == request.auth.uid && progActive()));
+      allow update: if isCourseStaff()
+        || (signedIn() && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['open']));
+      allow delete: if false;
+      match /resp/{rid} {
+        allow create: if get(/databases/$(database)/documents/fb/$(tok)).data.open == true
+          && request.resource.data.keys().hasOnly(['type', 'v', 'png', 'sname', 'at'])
+          && request.resource.data.type == get(/databases/$(database)/documents/fb/$(tok)).data.type
+          && request.resource.data.at == request.time
+          && request.resource.data.v is map && request.resource.data.v.keys().size() <= 30
+          && request.resource.data.sname is string && request.resource.data.sname.size() <= 120
+          && request.resource.data.png is string && request.resource.data.png.size() < 120000;
+        allow get, list: if isCourseStaff()
+          || (signedIn() && get(/databases/$(database)/documents/fb/$(tok)).data.uid == request.auth.uid);
+        allow update, delete: if false;
+      }
+    }
+
+    // Learner agreement (copyright and conduct), accepted once before starting.
+    match /agree/{uid} {
+      allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow list: if isCourseStaff();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+
+    // Learner evidence file: a student's own uploads (photos, presentations) per unit
+    // standard. The student adds and, until it is reviewed, deletes their own; staff
+    // see everything, record the review, and may add earlier work for a student.
+    match /evidence/{id} {
+      allow get: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if (signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && progActive()
+          && !('review' in request.resource.data)
+          && request.resource.data.path.matches('evidence/' + request.auth.uid + '/.*'))
+        || (isCourseStaff()
+          && request.resource.data.byStaff == true
+          && request.resource.data.path.matches('evidence/' + request.resource.data.uid + '/.*'));
+      allow update: if isCourseStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['review']);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid
+        && !('review' in resource.data);
+    }
+
+    // ---------- AI pre-marking (suggestions for the assessor only) ----------
+    // premarks/<cid>_<uid>_<mid>: written only by the server (Cloud Function), read by staff.
+    // Never readable by students: it is a draft, not a mark.
+    match /premarks/{id} {
+      allow read: if isCourseStaff();
+      allow write: if false;
+    }
+    // memos/<cid>_<mid>: which assessor memo file is in the locked memos/ storage folder
+    // (name and date only; nobody can read the file itself from a browser).
+    match /memos/{id} {
+      allow read, write: if isCourseStaff();
+    }
+    // aiconsent/<uid>: the student's own yes or no to AI pre-marking (POPIA). They may
+    // change their mind at any time; staff read it.
+    match /aiconsent/{uid} {
+      allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow list: if isCourseStaff();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.ok is bool
+        && request.resource.data.at == request.time;
+      allow delete: if false;
+    }
+  }
+}

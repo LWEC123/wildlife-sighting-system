@@ -1,0 +1,64 @@
+rules_version = '2';
+// Firebase Storage rules for the LWEC Learning Portal (paste into Firebase console →
+// Storage → Rules). Students' evidence uploads and the protected course files live here.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    // Course staff = FULL mentors only ('signer' mentors sign Field Logbook entries
+    // but are students in the Learning Portal).
+    function isCourseStaff() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/mentors/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/mentors/$(request.auth.uid)).data.get('level', 'full') == 'full';
+    }
+    // One enrolment (enrol/us335815_<uid>) covers the whole qualification; staff may
+    // pause one unit standard for a student with paused.<courseId>.
+    function enrolledIn(cid) {
+      let e = firestore.get(/databases/(default)/documents/enrol/$('us335815_' + request.auth.uid));
+      return signedIn() && e != null && e.data.active == true
+        && e.data.get('paused', {}).get(cid, false) != true;
+    }
+
+    // evidence/<student uid>/<qualification>/<unit standard>/<file>
+    match /evidence/{uid}/{rest=**} {
+      allow read: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn()
+        && ((request.auth.uid == uid && enrolledIn('SAQA71549')) || isCourseStaff())
+        && request.resource.size < 500 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType.matches('video/.*')
+            || request.resource.contentType.matches('audio/.*')
+            || request.resource.contentType.matches('application/pdf')
+            || request.resource.contentType.matches('application/vnd\\.(ms-powerpoint|ms-excel|openxmlformats-officedocument\\..*)')
+            || request.resource.contentType.matches('application/msword'));
+      // Files are never deleted from the app once uploaded (evidence integrity).
+      allow delete: if false;
+      allow update: if false;
+    }
+
+    // Course files (guides, presentations, videos, tests, answer sheets). Uploaded by
+    // full mentors from Course setup. Opened only inside the portal, with the student's
+    // own login (no public links); never upload assessor memos.
+    match /course/{cid}/{rest=**} {
+      allow read: if isCourseStaff() || enrolledIn(cid);
+      allow write: if isCourseStaff()
+        && request.resource.size < 1024 * 1024 * 1024;
+    }
+
+    // Assessor memos for AI pre-marking: staff upload, and NOBODY can open them from a
+    // browser (not even staff). Only the server-side marking function reads them.
+    match /memos/{cid}/{file} {
+      allow read: if false;
+      allow create, update: if isCourseStaff()
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('application/pdf')
+            || request.resource.contentType.matches('application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document')
+            || request.resource.contentType.matches('text/plain'));
+      allow delete: if isCourseStaff();
+    }
+
+    match /{all=**} {
+      allow read, write: if false;
+    }
+  }
+}
