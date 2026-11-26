@@ -672,7 +672,7 @@ function startStudent(){
   $('nav').hidden=true; $('navEvidence').hidden=false; showTab('course');
   $('agreeText').innerHTML=AGREE_TEXT.map(p=>'<p>'+esc(p)+'</p>').join('');
   unsubs.push(onSnapshot(query(collection(db,'evidence'), where('uid','==',me.uid)), s=>{
-    myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); renderStuPoe();
+    myEvidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMyEvidence(); if(CID) renderCourse(); else renderStuPoe();
   }, e=>console.warn('evidence',e)));
   unsubs.push(onSnapshot(doc(db,'agree',me.uid), s=>{ agreed=s.exists()?s.data():false; renderCourse(); }, e=>{ console.warn('agree',e); agreed=false; renderCourse(); }));
   unsubs.push(onSnapshot(doc(db,'enrol',PK+'_'+me.uid), async s=>{
@@ -876,16 +876,18 @@ function modBody(mid, st){
       if(st==='nyc') h+='<div class="callout">Your assessor marked this <b>not yet competent</b>. Read the feedback, go back over the module, then take the test again: you will get different questions.</div>'+scoreBox(mk)+feedbackBox(mk);
       h+= canHandIn(mid)? '<div id="ot-'+mid+'"></div>' : '<div class="callout">Watch the module video'+(trackable(m.slides)?' and the presentation':'')+' through (at least '+NEED_PCT+'%) before you start the test.</div>';
     }
+    if(srcOf(m.sheet) || mySheets(mid).length) h+=sheetBox(mid, st);
     return h;
   }
   h+='<h3>Hand in your test</h3>';
   if(st==='passed'){
-    h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk);
+    h+='<p class="note">Your assessor marked this module <b>competent</b> on '+fmtD(mk&&mk.at)+'.</p>'+feedbackBox(mk)+sheetBox(mid, st);
   } else if(st==='waiting'){
-    h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon. The next module opens once it is marked competent.</p>';
+    h+='<p class="note">You handed in on '+fmtDT(p.submittedAt)+'. Your assessor will mark it soon. The next module opens once it is marked competent.</p>'+sheetBox(mid, st);
   } else {
     if(st==='nyc') h+='<div class="callout">Your assessor marked this <b>not yet competent</b>. Please make the corrections below and hand in again.</div>'+feedbackBox(mk);
-    h+='<label>Your answers</label><textarea id="ans-'+mid+'" placeholder="Type your answers here, numbered as on the answer sheet.">'+esc(p.answers||'')+'</textarea>'
+    h+=sheetBox(mid, st)
+      +'<label>Or type your answers here (optional)</label><textarea id="ans-'+mid+'" placeholder="Type your answers here, numbered as on the answer sheet.">'+esc(p.answers||'')+'</textarea>'
       +'<label>Link to your completed answer sheet (optional)</label><input id="lnk-'+mid+'" placeholder="https://… (OneDrive, Google Drive, etc.)" value="'+esc(p.link||'')+'">'
       +'<label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="pap-'+mid+'" style="width:auto;"'+(p.paper?' checked':'')+'> I handed my answer sheet in on paper</label>'
       +(canHandIn(mid)? '<div class="btnrow"><button class="btn" onclick="submitTest(\''+mid+'\')">Hand in for marking</button></div>'
@@ -903,6 +905,42 @@ function feedbackBox(mk){
 }
 function itemRow(l,r){ return '<div class="item"><span class="lbl">'+l+'</span>'+r+'</div>'; }
 
+/* ---------- completed answer sheet: the student uploads the filled-in Word (or PDF/photo) ---------- */
+// Saved as an ordinary evidence file (kind 'sheet', with the module), so the assessor sees it
+// when marking, in the student's evidence file, and in the PoE pack.
+function mySheets(mid){ return myEvidence.filter(e=>e.kind==='sheet' && e.mid===mid && e.cid===CID).sort((a,b)=>ms(a.at)-ms(b.at)); }
+function sheetList(list, staff){
+  return list.map(e=>'<div class="item"><span class="lbl">'+fileIcon(e.type)+' '+esc(e.name)+' <span class="sm">· '+fmtSize(e.size||0)+' · uploaded '+fmtDT(e.at)+'</span>'
+    +(staff?'':' '+evReviewPill(e))+'</span>'+(e.url?'<a class="btn small secondary" href="'+esc(e.url)+'" target="_blank" rel="noopener">Open</a>':'')+'</div>').join('');
+}
+function sheetBox(mid, st){
+  const list=mySheets(mid), canAdd=st!=='passed';
+  let h='<h3>📤 Your completed answer sheet</h3>';
+  h+= list.length? sheetList(list,false) : '<p class="note">Fill in the answer sheet you downloaded above, save it, then upload it here. Word, PDF or a clear photo of each page.</p>';
+  if(canAdd) h+='<div class="btnrow"><input type="file" id="sh-'+mid+'" data-fresh="1" multiple accept=".doc,.docx,.pdf,image/*" style="flex:1 1 220px;width:auto;">'
+    +'<button class="btn small" id="shb-'+mid+'" onclick="uploadSheet(\''+mid+'\')">⬆️ Upload my answer sheet</button><span class="sm" id="shp-'+mid+'"></span></div>';
+  return h;
+}
+window.uploadSheet = async mid=>{
+  const inp=$('sh-'+mid), files=[...((inp&&inp.files)||[])];
+  if(!files.length){ toast('Choose your completed answer sheet first.'); return; }
+  const odd=files.find(f=>!/^(application\/(msword|pdf)|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|image\/)/.test(evType(f)));
+  if(odd){ toast(odd.name+': upload a Word document, a PDF or a photo.'); return; }
+  const big=files.find(f=>f.size>EV_MAX); if(big){ toast(big.name+' is larger than 500 MB.'); return; }
+  $('shb-'+mid).disabled=true;
+  try{
+    for(let i=0;i<files.length;i++){
+      await putEvidence(me.uid, files[i], {title:modTitle(mid)+': completed answer sheet'+(files.length>1?' ('+(i+1)+')':''), note:'', us:course.code, cid:CID, mid, kind:'sheet',
+        studentName:(enrol&&enrol.name)||profile.name||''},
+        (g,t)=>{ const el=$('shp-'+mid); if(el) el.textContent='Uploading '+(i+1)+' of '+files.length+': '+Math.round(g/t*100)+'%. Keep this page open.'; });
+    }
+    const handInNext=!otOf(curMod(mid)) && ['open','nyc'].includes(modStatus(mid));
+    toast(handInNext? 'Answer sheet uploaded. Now press "Hand in for marking".' : 'Answer sheet uploaded. Your assessor can see it now.');
+    setCurrent(mid,'sheet-uploaded');
+  }catch(e){ console.warn(e); toast('Upload failed: '+(e.code||e.message)+'. Check your connection and try again.'); }
+  const b=$('shb-'+mid); if(b) b.disabled=false; const pr=$('shp-'+mid); if(pr) pr.textContent='';
+};
+
 window.openedItem = (mid,k)=>{
   const o={}; o[k]=serverTimestamp();
   saveProg({mods:{[mid]:{opened:o}}}); setCurrent(mid,k);
@@ -910,9 +948,10 @@ window.openedItem = (mid,k)=>{
 window.submitTest = async mid=>{
   const answers=$('ans-'+mid).value.trim(), link=$('lnk-'+mid).value.trim(), paper=$('pap-'+mid).checked;
   if(!canHandIn(mid)){ toast('Watch the video through first.'); return; }
-  if(!answers && !link && !paper){ toast('Type your answers, add a link, or tick that you handed in on paper.'); return; }
+  const sheets=mySheets(mid).map(e=>e.id);
+  if(!answers && !link && !paper && !sheets.length){ toast('Upload your completed answer sheet first (or type your answers, add a link, or tick that you handed it in on paper).'); return; }
   if(link && !safeUrl(link)){ toast('The link must start with https://'); return; }
-  await saveProg({mods:{[mid]:{answers, link, paper, submittedAt:serverTimestamp()}}});
+  await saveProg({mods:{[mid]:{answers, link, paper, sheets, submittedAt:serverTimestamp()}}});
   setCurrent(mid,'test-submitted');
   toast('Handed in. Your assessor will mark it soon.');
 };
@@ -1542,7 +1581,7 @@ function startStaff(){
   unsubs.push(onSnapshot(query(collection(db,'sessions'), where('start','>=',since)), s=>{
     S.sessions=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor();
   }, e=>console.warn('sessions',e)));
-  unsubs.push(onSnapshot(collection(db,'evidence'), s=>{ S.evidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor(); }, e=>console.warn('evidence',e)));
+  unsubs.push(onSnapshot(collection(db,'evidence'), s=>{ S.evidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor(); renderMarking(); }, e=>console.warn('evidence',e)));
   unsubs.push(()=>clearInterval(monTimer));
   monTimer=setInterval(()=>{ if(!$('tab-monitor').hidden) renderMonitor(); }, 30000);
 }
@@ -1763,6 +1802,8 @@ function renderMarking(){
     const id=c+'-'+e.uid+'-'+m, link=safeUrl(pm.link);
     return '<div class="card sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><b>'+esc(e.name||e.email)+' · '+esc(cdef(c).code)+' · '+esc(modTitle(m,c))+(pm.testAtt?' · '+(baseOf(m)===midsOf(c).slice(-1)[0]?'final assessment':'quiz'):'')+'</b><span class="sm">handed in '+fmtDT(pm.submittedAt)+'</span></div>'
       +(pm.testAtt? '<div id="mk-'+id+'" data-c="'+c+'" data-u="'+e.uid+'" data-m="'+m+'" data-a="'+pm.testAtt+'"><p class="note">Loading the online test…</p></div>' : '')
+      +(()=>{ const sh=S.evidence.filter(v=>v.uid===e.uid && v.kind==='sheet' && v.mid===m && v.cid===c).sort((a,b)=>ms(a.at)-ms(b.at));
+          return sh.length? '<p class="note" style="margin-top:8px;"><b>📤 Completed answer sheet'+(sh.length>1?'s':'')+'</b></p>'+sheetList(sh,true) : ''; })()
       +(pm.answers?'<div class="answer">'+esc(pm.answers)+'</div>':'')
       +(link?'<p style="margin-top:8px;"><a href="'+esc(link)+'" target="_blank" rel="noopener">📎 Open completed answer sheet</a></p>':'')
       +(pm.paper?'<p class="note" style="margin-top:6px;">📄 Student says the answer sheet was handed in on paper.</p>':'')
