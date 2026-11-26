@@ -187,7 +187,7 @@ export const POE_UNITS = {
     "sec": 2,
     "kind": "learner",
     "form": "planAck",
-    "title": "Pre-assessment briefing: plan accepted by the learner",
+    "title": "Pre-assessment preparation meeting: plan accepted by the learner",
     "codes": []
    },
    {
@@ -677,7 +677,7 @@ export const POE_UNITS = {
     "sec": 2,
     "kind": "learner",
     "form": "planAck",
-    "title": "Pre-assessment briefing: plan accepted by the learner",
+    "title": "Pre-assessment preparation meeting: plan accepted by the learner",
     "codes": []
    },
    {
@@ -1026,7 +1026,7 @@ export const POE_FORMS = {
       {k:'support', l:'Where do you think you will need the most help?', t:'area'}],
     sign:'The information above is true.'},
   admin: {who:'staff', scope:'prog', sec:1, title:'Administration documents on file', intro:'Tick each document that is in the learner\'s file (paper or scan in 09 STUDENTS).',
-    fields:[{"k": "id", "l": "Certified copy of ID", "t": "check"}, {"k": "enrol", "l": "Enrolment form (signed)", "t": "check"}, {"k": "lpa", "l": "Learning programme agreement (signed)", "t": "check"}, {"k": "entry", "l": "Proof of entry requirements (NQF 3 Communication and Mathematical Literacy, or matric)", "t": "check"}, {"k": "induct", "l": "Induction attendance register", "t": "check"}, {"k": "firstaid", "l": "First aid certificate (valid)", "t": "check"}], sign:'Checked by the assessor.'},
+    fields:[{"k": "reg", "l": "Learner registration (CATHSSETA learner or learnership registration proof)", "t": "check"}, {"k": "id", "l": "Certified copy of ID", "t": "check"}, {"k": "enrol", "l": "Enrolment form (signed)", "t": "check"}, {"k": "lpa", "l": "Learning programme agreement (signed)", "t": "check"}, {"k": "entry", "l": "Matric results or proof of entry requirements (NQF 3 Communication and Mathematical Literacy)", "t": "check"}, {"k": "cv", "l": "Learner CV", "t": "check"}, {"k": "induct", "l": "Induction attendance register", "t": "check"}, {"k": "firstaid", "l": "First aid certificate (valid)", "t": "check"}], sign:'Checked by the assessor.'},
 
   plan: {who:'staff', sec:2, title:'Assessment plan', intro:'Complete before the learner starts the summative work. The learner then accepts it online (pre-assessment briefing).',
     fields:[
@@ -1043,11 +1043,13 @@ export const POE_FORMS = {
       {k:'reassess', l:'Re-assessment arrangement', t:'area', v:'If Not Yet Competent: feedback within 7 days, an agreed action plan, and re-assessment on the criteria not yet met (test version B, a new observation or more evidence) at least 7 days later. Normally no more than two re-assessments.'},
       {k:'appeal', l:'Appeals', t:'area', v:'The learner may appeal an assessment decision: discuss with the assessor within 7 days, then lodge the online appeal form within 14 days. An independent assessor or moderator decides within 14 days. Unresolved appeals go to CATHSSETA.'}],
     sign:'Assessment plan prepared by the assessor.'},
-  planAck: {who:'learner', sec:2, title:'Pre-assessment briefing: learner accepts the assessment plan', needs:'plan',
-    text:['My assessor explained to me how I will be assessed, what evidence I must hand in and by when, and what the outcomes and criteria are.',
+  planAck: {who:'learner', sec:2, title:'Pre-assessment preparation meeting: learner accepts the assessment plan', needs:'plan',
+    text:['I met my assessor for a pre-assessment preparation meeting. My assessor explained to me how I will be assessed, what evidence I must hand in and by when, and what the outcomes and criteria are.',
           'I know that the outcome is Competent or Not Yet Competent, that I will get written feedback, and that I may be re-assessed or appeal.',
           'My special needs (if any) have been discussed and the arrangements are recorded in the plan.'],
-    fields:[{k:'ready', l:'Are you ready to be assessed according to this plan?', t:'sel', o:['Yes, I am ready','Not yet: I need more time or help (explain below)']},
+    fields:[{k:'mdate', l:'Date of the preparation meeting', t:'date'},
+            {k:'mhow', l:'How the meeting was held', t:'sel', o:['In person','Phone or video call']},
+            {k:'ready', l:'Are you ready to be assessed according to this plan?', t:'sel', o:['Yes, I am ready','Not yet: I need more time or help (explain below)']},
             {k:'note', l:'Questions or comments (optional)', t:'area'}],
     sign:'I accept the assessment plan.'},
   self: {who:'learner', sec:2, title:'Learner self-assessment', special:'self', intro:'Before your final assessment, be honest with yourself: for each outcome, can you do it? Say what evidence shows it. This helps you and your assessor find gaps early.',
