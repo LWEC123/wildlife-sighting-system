@@ -62,6 +62,10 @@ service cloud.firestore {
     }
 
     // ================= LWEC Learning Portal (LWECCourses.html) =================
+    // Course staff = FULL mentors only. 'signer' mentors may sign Field Logbook entries
+    // but are students in the Learning Portal: they never see other students' work,
+    // marks, access codes or test memos.
+    function isCourseStaff() { return isFullMentor(); }
     // Ids: enrol/results/progress docs are '<courseId>_<uid>' (course ids have no '_').
     // One access code enrols a student in the whole qualification (SAQA 71549): the
     // enrolment is enrol/us335815_<uid>. Staff pause everything (active false) or one
@@ -97,12 +101,12 @@ service cloud.firestore {
 
       // A module's file links reach a student only once the previous module is passed.
       match /modules/{mid} {
-        allow get: if isMentor()
+        allow get: if isCourseStaff()
           || (enrolledIn(cid)
               && get(/databases/$(database)/documents/courses/$(cid)).data.get('published', true) != false
               && (resource.data.prev == '' || passedModule(cid, resource.data.prev))
               && (resource.data.get('opt', '') == '' || chose(cid, resource.data.opt)));
-        allow list: if isMentor();
+        allow list: if isCourseStaff();
         allow write: if isFullMentor();
       }
     }
@@ -111,8 +115,8 @@ service cloud.firestore {
     // claim it once, in the same write that creates their own enrolment.
     match /invites/{code} {
       allow get: if signedIn();
-      allow list, create, delete: if isMentor();
-      allow update: if isMentor()
+      allow list, create, delete: if isCourseStaff();
+      allow update: if isCourseStaff()
         || (signedIn()
             && resource.data.claimedBy == null
             && request.resource.data.claimedBy == request.auth.uid
@@ -123,8 +127,8 @@ service cloud.firestore {
 
     // Enrolment = course access. Only created by claiming a code; staff pause/resume it.
     match /enrol/{key} {
-      allow get: if isMentor() || ownsKey(key);
-      allow list, update: if isMentor();
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list, update: if isCourseStaff();
       allow create: if signedIn()
         && key == request.resource.data.cid + '_' + request.auth.uid
         && request.resource.data.uid == request.auth.uid
@@ -137,16 +141,16 @@ service cloud.firestore {
 
     // Marks: written by staff only. A student reads only their own.
     match /results/{key} {
-      allow get: if isMentor() || ownsKey(key);
-      allow list, create, update: if isMentor();
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list, create, update: if isCourseStaff();
       allow delete: if false;
     }
 
     // What a student opened, watched and handed in. Students write their own while
     // they have access; watch time may grow by at most a few minutes per write.
     match /progress/{key} {
-      allow get: if isMentor() || ownsKey(key);
-      allow list: if isMentor();
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff();
       allow create: if ownsKey(key)
         && key == request.resource.data.cid + '_' + request.auth.uid
         && request.resource.data.uid == request.auth.uid
@@ -162,8 +166,8 @@ service cloud.firestore {
 
     // Sign-in sessions: start time, last activity and active seconds.
     match /sessions/{sid} {
-      allow get: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow list: if isMentor();
+      allow get: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isCourseStaff();
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.sec == 0
@@ -178,14 +182,14 @@ service cloud.firestore {
     // A student's pick in a "choose one" module. The student makes it once; only staff
     // can change it afterwards.
     match /choice/{key} {
-      allow get: if isMentor() || ownsKey(key);
-      allow list: if isMentor();
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff();
       allow create: if ownsKey(key)
         && key == request.resource.data.cid + '_' + request.auth.uid
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.opt is string && request.resource.data.opt.size() == 1
         && enrolledIn(request.resource.data.cid);
-      allow create, update: if isMentor();
+      allow create, update: if isCourseStaff();
       allow delete: if false;
     }
 
@@ -201,24 +205,24 @@ service cloud.firestore {
         && lastMark(cid, mid).get('outcome', '') == 'NYC';
     }
     match /tests/{id} {
-      allow get: if isMentor()
+      allow get: if isCourseStaff()
         || (enrolledIn(resource.data.cid)
             && (resource.data.prev == '' || passedModule(resource.data.cid, resource.data.prev))
             && (resource.data.get('opt', '') == '' || chose(resource.data.cid, resource.data.opt))
             && (resource.data.ver == 'A' || hadNyc(resource.data.cid, resource.data.mid)));
-      allow list: if isMentor();
+      allow list: if isCourseStaff();
       allow write: if isFullMentor();
     }
     // Answers and memos: staff only, never sent to students.
     match /testkeys/{id} {
-      allow read: if isMentor();
+      allow read: if isCourseStaff();
       allow write: if isFullMentor();
     }
     // One sitting of a test: attempts/<cid>_<uid>_<mid>_<n>. Attempt 1 is version A; a new
     // attempt only after the previous one was marked not yet competent. Handed in once.
     match /attempts/{key} {
-      allow get: if isMentor() || ownsKey(key);
-      allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if ownsKey(key)
         && key == request.resource.data.cid + '_' + request.auth.uid + '_' + request.resource.data.mid + '_' + string(request.resource.data.att)
         && request.resource.data.uid == request.auth.uid
@@ -245,8 +249,8 @@ service cloud.firestore {
         && (t.get('time', 0) == 0 || request.time < a.startedAt + duration.value(t.get('time', 0) * 60 + 60, 's'));
     }
     match /answers/{key} {
-      allow get: if isMentor() || ownsKey(key);
-      allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow get: if isCourseStaff() || ownsKey(key);
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if ownsKey(key)
         && key == request.resource.data.cid + '_' + request.auth.uid + '_' + request.resource.data.mid + '_' + string(request.resource.data.att) + '_' + string(request.resource.data.n)
         && request.resource.data.uid == request.auth.uid
@@ -258,8 +262,8 @@ service cloud.firestore {
 
     // Learner agreement (copyright and conduct), accepted once before starting.
     match /agree/{uid} {
-      allow get: if isMentor() || (signedIn() && request.auth.uid == uid);
-      allow list: if isMentor();
+      allow get: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
+      allow list: if isCourseStaff();
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.uid == uid
         && request.resource.data.at == request.time;
@@ -270,17 +274,17 @@ service cloud.firestore {
     // standard. The student adds and, until it is reviewed, deletes their own; staff
     // see everything, record the review, and may add earlier work for a student.
     match /evidence/{id} {
-      allow get: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow list: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow get: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow list: if isCourseStaff() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if (signedIn()
           && request.resource.data.uid == request.auth.uid
           && progActive()
           && !('review' in request.resource.data)
           && request.resource.data.path.matches('evidence/' + request.auth.uid + '/.*'))
-        || (isMentor()
+        || (isCourseStaff()
           && request.resource.data.byStaff == true
           && request.resource.data.path.matches('evidence/' + request.resource.data.uid + '/.*'));
-      allow update: if isMentor()
+      allow update: if isCourseStaff()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['review']);
       allow delete: if signedIn() && resource.data.uid == request.auth.uid
         && !('review' in resource.data);

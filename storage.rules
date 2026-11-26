@@ -4,9 +4,12 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function signedIn() { return request.auth != null; }
-    function isMentor() {
+    // Course staff = FULL mentors only ('signer' mentors sign Field Logbook entries
+    // but are students in the Learning Portal).
+    function isCourseStaff() {
       return signedIn()
-        && firestore.exists(/databases/(default)/documents/mentors/$(request.auth.uid));
+        && firestore.exists(/databases/(default)/documents/mentors/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/mentors/$(request.auth.uid)).data.get('level', 'full') == 'full';
     }
     // One enrolment (enrol/us335815_<uid>) covers the whole qualification; staff may
     // pause one unit standard for a student with paused.<courseId>.
@@ -18,9 +21,9 @@ service firebase.storage {
 
     // evidence/<student uid>/<qualification>/<unit standard>/<file>
     match /evidence/{uid}/{rest=**} {
-      allow read: if isMentor() || (signedIn() && request.auth.uid == uid);
+      allow read: if isCourseStaff() || (signedIn() && request.auth.uid == uid);
       allow create: if signedIn()
-        && ((request.auth.uid == uid && enrolledIn('SAQA71549')) || isMentor())
+        && ((request.auth.uid == uid && enrolledIn('SAQA71549')) || isCourseStaff())
         && request.resource.size < 500 * 1024 * 1024
         && (request.resource.contentType.matches('image/.*')
             || request.resource.contentType.matches('video/.*')
@@ -36,9 +39,8 @@ service firebase.storage {
     // full mentors from Course setup. Opened only inside the portal, with the student's
     // own login (no public links); never upload assessor memos.
     match /course/{cid}/{rest=**} {
-      allow read: if isMentor() || enrolledIn(cid);
-      allow write: if isMentor()
-        && firestore.get(/databases/(default)/documents/mentors/$(request.auth.uid)).data.get('level', 'full') == 'full'
+      allow read: if isCourseStaff() || enrolledIn(cid);
+      allow write: if isCourseStaff()
         && request.resource.size < 1024 * 1024 * 1024;
     }
 
