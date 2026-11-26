@@ -51,12 +51,12 @@ echo "--- What changes in Firestore:"; diff .rules-out/live-firestore.rules .rul
 echo "--- What changes in Storage:";   diff .rules-out/live-storage.rules .rules-out/storage.rules | grep '^[<>]' | head -40 || true
 firebase deploy --config firebase.rules.json --project $P --only firestore:rules,storage
 # Give the college's staff login the assessor role (only adds the 'role' field).
-UID=$(curl -s -X POST -H "Authorization: Bearer $T" -H "Content-Type: application/json" -H "x-goog-user-project: $P" \
+SUID=$(curl -s -X POST -H "Authorization: Bearer $T" -H "Content-Type: application/json" -H "x-goog-user-project: $P" \
   "https://identitytoolkit.googleapis.com/v1/projects/$P/accounts:lookup" -d "{\"email\":[\"$ASSESSOR_EMAIL\"]}" \
   | python3 -c 'import sys,json;u=json.load(sys.stdin).get("users",[]);print(u[0]["localId"] if u else "")')
-if [ -z "$UID" ]; then echo "Could not find the login $ASSESSOR_EMAIL - role not set."; else
+if [ -z "$SUID" ]; then echo "Could not find the login $ASSESSOR_EMAIL - role not set."; else
   curl -s -o /dev/null -w "Role set for $ASSESSOR_EMAIL: HTTP %{http_code}\n" -X PATCH -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
-    "https://firestore.googleapis.com/v1/projects/$P/databases/(default)/documents/mentors/$UID?updateMask.fieldPaths=role&currentDocument.exists=true" \
+    "https://firestore.googleapis.com/v1/projects/$P/databases/(default)/documents/mentors/$SUID?updateMask.fieldPaths=role&currentDocument.exists=true" \
     -d '{"fields":{"role":{"stringValue":"assessor"}}}'
 fi
 echo "STAFF RULES DONE"
