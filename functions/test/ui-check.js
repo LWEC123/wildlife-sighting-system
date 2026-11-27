@@ -20,7 +20,7 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   // back-fill: an older upload whose test was already decided before uploads were assessed with the test
   const old = Timestamp.fromMillis(Date.now() - 86400e3);
   await db.doc('evidence/ev0').set({ uid: stu.uid, cid: 'us335815', mid: 'm00', kind: 'sheet', name: 'Old sheet.docx', path: 'evidence/' + stu.uid + '/o.docx', type: 'application/pdf', size: 1000, at: old, us: 'US335815' });
-  await db.doc('results/us335815_' + stu.uid).set({ uid: stu.uid, cid: 'us335815', marks: { m00: { outcome: 'C', by: 'Zee Staff', reg: '613/A/TEST', at: Timestamp.fromMillis(old.toMillis() + 3600e3) } } });
+  await db.doc('results/us335815_' + stu.uid).set({ uid: stu.uid, cid: 'us335815', marks: { m00: { outcome: 'C', by: 'Zee Staff', reg: '613/A/TEST', at: Timestamp.fromMillis(old.toMillis() + 3600e3) } }, hist: { m01: [{ outcome: 'NYC', by: 'Zee Staff', at: old, fix: 'earlier attempt' }] } });
   await db.doc('premarks/us335815_' + stu.uid + '_m01').set({ cid: 'us335815', uid: stu.uid, mid: 'm01', forSub: sub.toMillis(), status: 'done', model: 'claude-opus-5-5', memo: 'M01_Savanna_Memo.docx', files: ['M01 answer sheet.docx'], warnings: [], at: Timestamp.now(),
     result: { version: 'A', total: 17.5, max_total: 24, percent: 73, recommendation: 'C', good: 'Clear answers on the savanna food web and fire.', fix: 'Question 9: name two grasses and say why they matter to grazers.', notes: 'Question 10 handwriting is faint in places.',
       questions: [{ n: 1, max: 2, mark: 2, student_answer: 'B', comment: 'Correct.', confidence: 'high' }, { n: 9, max: 6, mark: 3.5, student_answer: 'Red grass is palatable…', comment: 'Two of three memo points; grasses not named.', confidence: 'medium' }, { n: 10, max: 4, mark: 2, student_answer: 'Fire keeps the bush open…', comment: 'Partly legible.', confidence: 'low' }] } });
@@ -44,21 +44,36 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   console.log('bulk box:', (await pg.textContent('#aiAll')).trim().slice(0, 120));
   await pg.click('#aiAllBtn');
   await pg.waitForTimeout(2500);
+  console.log('toast after confirm all:', await pg.textContent('#toast'));
   const res = (await db.doc('results/us335815_' + stu.uid).get()).data() || {};
-  console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed));
+  console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed), '| m01 attempts kept:', ((res.hist || {}).m01 || []).map(h => h.outcome).join(','));
   console.log('evidence ev0 back-fill:', JSON.stringify(((await db.doc('evidence/ev0').get()).data() || {}).review || null));
   console.log('evidence ev1 review:', JSON.stringify(((await db.doc('evidence/ev1').get()).data() || {}).review || null));
   // outcomes grid: hover shows the answers behind an orange/red result, click opens the test
   await db.doc('results/us335815_' + stu.uid).set({ hist: { m02: [{ at: Timestamp.now(), qa: [
     { n: 1, type: 'MC', q: 'Which grass is palatable?', a: 'C) Ngongoni', s: 0, max: 1, tags: ['SO1-AC3'] },
-    { n: 10, type: 'WR', q: 'Explain how fire shapes the savanna.', a: 'Fire burns things.', s: 1, max: 4, tags: ['SO1-AC3', 'SO2-AC1'] },
-    { n: 11, type: 'WR', q: 'Name two grazers.', a: 'Zebra and wildebeest', s: 4, max: 4, tags: ['SO2-AC1'] }] }] } }, { merge: true });
+    { n: 10, type: 'WRITTEN', q: 'Explain how fire shapes the savanna.', a: 'Fire burns things.', s: 1, max: 4, tags: ['SO1-AC3', 'SO2-AC1'] },
+    { n: 11, type: 'WRITTEN', q: 'Name two grazers.', a: 'Zebra and wildebeest', s: 4, max: 4, tags: ['SO2-AC1'] }] }] } }, { merge: true });
   await pg.click('#navMonitor'); await pg.waitForTimeout(2500);
   const tips = await pg.$$eval('#classGrid td.ocell', els => els.map(e => e.title));
   console.log('grid cells:', tips.length, '| first tip:', JSON.stringify(tips[0] || '').slice(0, 400));
   await pg.click('#classGrid td.ocell'); await pg.waitForTimeout(500);
   console.log('popup open:', await pg.$eval('#ocModal', e => !e.hidden), '|', (await pg.textContent('#ocBody')).replace(/\s+/g, ' ').slice(0, 300));
   await pg.screenshot({ path: OUT + '/outcome.png' });
+  // change a confirmed mark from the popup: reason required, original kept, result recomputed
+  await pg.click('#ocBody button:has-text("Change mark")'); await pg.waitForTimeout(300);
+  await pg.fill('#ocs-10', '3'); await pg.fill('#ocn-10', 'Fire also keeps the trees down: accepted.');
+  await pg.click('#ocSave'); await pg.waitForTimeout(500);
+  console.log('no reason → still editing:', !!(await pg.$('#ocWhy')));
+  await pg.fill('#ocWhy', 'Moderation: second reason is valid.'); await pg.fill('#ocMsg', 'Good point about fire.');
+  await pg.screenshot({ path: OUT + '/change-edit.png' });
+  await pg.click('#ocSave'); await pg.waitForTimeout(2500);
+  console.log('toast:', await pg.textContent('#toast'));
+  const rc = (await db.doc('results/us335815_' + stu.uid).get()).data() || {};
+  const h2 = (rc.hist || {}).m02 || [], last = h2[h2.length - 1] || {};
+  console.log('change saved: hist', h2.length, '| outcome', rc.marks && rc.marks.m02 && rc.marks.m02.outcome, '| total', last.total + '/' + last.max, '| q10', JSON.stringify(last.qa && last.qa[1]), '| change', JSON.stringify(Object.assign({}, last.change, { at: undefined })));
+  console.log('student feedback:', JSON.stringify(((rc.marks || {}).m02 || {}).fix));
+  await pg.screenshot({ path: OUT + '/change-done.png' });
   const r3 = ((await db.doc('results/us335802_stu1').get()).data() || {}).marks || {};
   if (r3.m03) console.log('online test m03:', r3.m03.outcome, r3.m03.reassessBy, JSON.stringify(r3.m03.fix || '').slice(0, 260));
   // student: no consent card, just the notice
