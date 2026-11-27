@@ -48,6 +48,17 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed));
   console.log('evidence ev0 back-fill:', JSON.stringify(((await db.doc('evidence/ev0').get()).data() || {}).review || null));
   console.log('evidence ev1 review:', JSON.stringify(((await db.doc('evidence/ev1').get()).data() || {}).review || null));
+  // outcomes grid: hover shows the answers behind an orange/red result, click opens the test
+  await db.doc('results/us335815_' + stu.uid).set({ hist: { m02: [{ at: Timestamp.now(), qa: [
+    { n: 1, type: 'MC', q: 'Which grass is palatable?', a: 'C) Ngongoni', s: 0, max: 1, tags: ['SO1-AC3'] },
+    { n: 10, type: 'WR', q: 'Explain how fire shapes the savanna.', a: 'Fire burns things.', s: 1, max: 4, tags: ['SO1-AC3', 'SO2-AC1'] },
+    { n: 11, type: 'WR', q: 'Name two grazers.', a: 'Zebra and wildebeest', s: 4, max: 4, tags: ['SO2-AC1'] }] }] } }, { merge: true });
+  await pg.click('#navMonitor'); await pg.waitForTimeout(2500);
+  const tips = await pg.$$eval('#classGrid td.ocell', els => els.map(e => e.title));
+  console.log('grid cells:', tips.length, '| first tip:', JSON.stringify(tips[0] || '').slice(0, 400));
+  await pg.click('#classGrid td.ocell'); await pg.waitForTimeout(500);
+  console.log('popup open:', await pg.$eval('#ocModal', e => !e.hidden), '|', (await pg.textContent('#ocBody')).replace(/\s+/g, ' ').slice(0, 300));
+  await pg.screenshot({ path: OUT + '/outcome.png' });
   const r3 = ((await db.doc('results/us335802_stu1').get()).data() || {}).marks || {};
   if (r3.m03) console.log('online test m03:', r3.m03.outcome, r3.m03.reassessBy, JSON.stringify(r3.m03.fix || '').slice(0, 260));
   // student: no consent card, just the notice
