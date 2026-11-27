@@ -43,7 +43,7 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   const res = (await db.doc('results/us335815_' + stu.uid).get()).data() || {};
   console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed));
   const r3 = ((await db.doc('results/us335802_stu1').get()).data() || {}).marks || {};
-  if (r3.m03) console.log('online test m03:', r3.m03.outcome, JSON.stringify(r3.m03.fix || '').slice(0, 200));
+  if (r3.m03) console.log('online test m03:', r3.m03.outcome, r3.m03.reassessBy, JSON.stringify(r3.m03.fix || '').slice(0, 260));
   // student: no consent card, just the notice
   const c2 = await b.newContext({ viewport: { width: 420, height: 900 } }); await route(c2); const p2 = await c2.newPage();
   await p2.goto('http://127.0.0.1:8765/LWECCourses.html');

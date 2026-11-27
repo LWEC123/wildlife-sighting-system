@@ -2285,9 +2285,14 @@ async function confirmAIOne(c,uid,m,quiet){
     r.questions.forEach(q=>{ const el=$('sc-'+id+'-'+q.n); if(el && el.dataset.w==='1'){ el.value=Math.min(+el.max||q.mark,q.mark); window.MV[el.id]=el.value; } });
     sumMark(id);
     const x=testParts(id); outcome=x.outcome;
-    if(x.redo.length && $('ff-'+id)){ const note='To be competent you need '+x.pass+'% in both parts. Multiple choice: '+x.mc.s+'/'+x.mc.max+' ('+x.mc.pct+'%). Written: '+x.wr.s+'/'+x.wr.max+' ('+x.wr.pct+'%). Please redo the '+x.redo.join(' and ')+' questions.';
+    const rdv=(($('rd-'+id)||{}).value||'');
+    if(x.redo.length===1 && $('fg-'+id) && !$('fg-'+id).value.includes('You keep that result')){ const kp=x.redo[0]==='written'?x.mc:x.wr;
+      $('fg-'+id).value='Well done on the '+(x.redo[0]==='written'?'multiple-choice':'written')+' part: '+kp.s+'/'+kp.max+' ('+kp.pct+'%). You keep that result and do not need to redo it.'+($('fg-'+id).value.trim()?'\n'+$('fg-'+id).value.trim():''); }
+    if(x.redo.length && $('ff-'+id)){ const note='To be competent you need '+x.pass+'% in both parts. Multiple choice: '+x.mc.s+'/'+x.mc.max+' ('+x.mc.pct+'%). Written: '+x.wr.s+'/'+x.wr.max+' ('+x.wr.pct+'%). Please redo '+(x.redo.length===1?'only ':'')+'the '+x.redo.join(' and ')+' questions'+(rdv?' in the portal by '+longDay(rdv):'')+'.';
       if(!$('ff-'+id).value.includes('in both parts')) $('ff-'+id).value=note+($('ff-'+id).value.trim()?'\n'+$('ff-'+id).value.trim():''); }
   }
+  const rd2=(($('rd-'+id)||{}).value||'');
+  if(outcome==='NYC' && !pm.testAtt && rd2 && $('ff-'+id) && !$('ff-'+id).value.includes(longDay(rd2))) $('ff-'+id).value=($('ff-'+id).value.trim()? $('ff-'+id).value.trim()+'\n' : '')+'Please hand in your corrected answer sheet by '+longDay(rd2)+'.';
   return await window.mark(c,uid,m,outcome,{quiet:true, viaAI:true});
 }
 window.confirmAI = (c,uid,m)=>confirmAIOne(c,uid,m,false);
@@ -2349,6 +2354,10 @@ window.uploadMemos = async ()=>{
 };
 
 /* ---------- marking (all unit standards) ---------- */
+// Default reassessment date: 3 working days from today (Zeriah, 27 Nov 2026); the assessor can change it.
+function reassessDefault(){ const d=new Date(); let n=0; while(n<3){ d.setDate(d.getDate()+1); if(d.getDay()!==0 && d.getDay()!==6) n++; }
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function longDay(iso){ return iso? new Date(iso+'T12:00:00').toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : ''; }
 let MARK_JUMP='';   // email link #marking-<cid>-<uid>-<mid> scrolls to that test
 function renderMarking(){
   if(!isMentor) return;
@@ -2370,6 +2379,7 @@ function renderMarking(){
       +'<div id="ai-'+id+'">'+aiBox(c,e.uid,m,pm,id)+'</div>'
       +'<label>Assessor feedback: what was done well</label><textarea id="fg-'+id+'" placeholder="e.g. Correct identification of all biome features in questions 1 to 6."></textarea>'
       +'<label>Assessor feedback: what needs correction</label><textarea id="ff-'+id+'" placeholder="e.g. Question 7: explain the role of fire in the grassland biome. Resubmit by ..."></textarea>'
+      +'<label>Reassessment date (used only if Not yet competent)</label><input type="date" id="rd-'+id+'" value="'+reassessDefault()+'" style="max-width:220px;">'
       +(own? '<div class="callout">This is <b>your own work</b>. Another assessor must mark it.</div>' : '')
       +(e.facilitator? '<p class="sm">Facilitator: <b>'+esc(e.facilitator)+'</b></p>' : '')
       +'<div class="btnrow"><button class="btn secondary small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'C\')">✔ Competent: open next module</button><button class="btn danger small" onclick="mark(\''+c+'\',\''+e.uid+'\',\''+m+'\',\'NYC\')">Not yet competent</button></div></div>';
@@ -2402,7 +2412,8 @@ window.mark = async (c,uid,m,outcome,opts)=>{
   if(outcome==='NYC' && !fix){ toast('Write what needs correction, so the student knows what to fix.'); return; }
   if(!good && !fix && !opts.quiet && !confirm('Mark without any written feedback?')) return;
   const pm=((S.prog[c+'_'+uid]||{}).mods||{})[m]||{};
-  const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(),
+  const reassessBy= outcome==='NYC'? ((($('rd-'+id)||{}).value)||'') : '';
+  const rec={outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:Timestamp.now(), reassessBy,
     submittedAt:pm.submittedAt||null, answers:pm.answers||'', link:pm.link||'', paper:!!pm.paper};
   if(pm.form) rec.form=pm.form;
   rec.facilitator=(stu&&stu.facilitator)||(pm.form&&pm.form.facilitator)||'';
@@ -2438,7 +2449,7 @@ window.mark = async (c,uid,m,outcome,opts)=>{
   try{
     await setDoc(doc(db,'results',c+'_'+uid), {uid, cid:c,
       passed: m.length>3? {[m]: outcome==='C', [baseOf(m)]: outcome==='C'} : {[m]: outcome==='C'},
-      marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp()}, mx)},
+      marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), reassessBy}, mx)},
       hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
     if(!opts.quiet) toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
     else if(opts.viaAI && !confirmAllRunning()) toast(outcome==='C'?'AI result confirmed: competent. The next module is open.':'AI result confirmed: not yet competent.');
