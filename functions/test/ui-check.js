@@ -42,6 +42,7 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   await pg.waitForTimeout(2500);
   const res = (await db.doc('results/us335815_' + stu.uid).get()).data() || {};
   console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed));
+  console.log('evidence ev1 review:', JSON.stringify(((await db.doc('evidence/ev1').get()).data() || {}).review || null));
   const r3 = ((await db.doc('results/us335802_stu1').get()).data() || {}).marks || {};
   if (r3.m03) console.log('online test m03:', r3.m03.outcome, r3.m03.reassessBy, JSON.stringify(r3.m03.fix || '').slice(0, 260));
   // student: no consent card, just the notice

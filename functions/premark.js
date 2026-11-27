@@ -266,6 +266,12 @@ async function premark(deps, cid, uid, mid, opts = {}) {
       memo = { kind: 'text', name: 'online test version ' + ver + ' (written questions only)', text: testMemoText(Object.assign({}, paper, { questions: written }), keys, ver) };
       work = [{ type: 'text', text: 'Online test, version ' + ver + '. The learner typed these answers:\n\n' + written.map(q => 'Q' + q.n + ': ' + (ans[q.n] == null ? '(not answered)' : ans[q.n])).join('\n\n') }];
       files = ['online test answers'];
+      // Files the learner uploaded for this test (e.g. a photo of rough work): read them with the answers.
+      const extra = await studentFiles(deps, cid, uid, mid, {}, warnings);
+      if (extra.blocks.length) {
+        work.push({ type: 'text', text: 'The learner also uploaded these files with this test. They are extra evidence, not separate questions: use them only where they help you understand a written answer, and say briefly in notes what each file shows (or that it does not belong to this test).' });
+        work.push(...extra.blocks); files.push(...extra.names);
+      }
     } else {
       source = 'sheet';
       memo = await loadSheetMemo(deps, cid, mid);
