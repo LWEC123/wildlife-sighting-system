@@ -17,6 +17,10 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   const sub = Timestamp.fromMillis(Date.now() - 3600e3);
   await db.doc('progress/us335815_' + stu.uid).set({ uid: stu.uid, cid: 'us335815', mods: { m01: { sheets: ['ev1'], answers: '', submittedAt: sub } } });
   await db.doc('evidence/ev1').set({ uid: stu.uid, cid: 'us335815', mid: 'm01', kind: 'sheet', name: 'M01 answer sheet.docx', path: 'evidence/' + stu.uid + '/a.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 24000, at: sub, us: 'US335815' });
+  // back-fill: an older upload whose test was already decided before uploads were assessed with the test
+  const old = Timestamp.fromMillis(Date.now() - 86400e3);
+  await db.doc('evidence/ev0').set({ uid: stu.uid, cid: 'us335815', mid: 'm00', kind: 'sheet', name: 'Old sheet.docx', path: 'evidence/' + stu.uid + '/o.docx', type: 'application/pdf', size: 1000, at: old, us: 'US335815' });
+  await db.doc('results/us335815_' + stu.uid).set({ uid: stu.uid, cid: 'us335815', marks: { m00: { outcome: 'C', by: 'Zee Staff', reg: '613/A/TEST', at: Timestamp.fromMillis(old.toMillis() + 3600e3) } } });
   await db.doc('premarks/us335815_' + stu.uid + '_m01').set({ cid: 'us335815', uid: stu.uid, mid: 'm01', forSub: sub.toMillis(), status: 'done', model: 'claude-opus-5-5', memo: 'M01_Savanna_Memo.docx', files: ['M01 answer sheet.docx'], warnings: [], at: Timestamp.now(),
     result: { version: 'A', total: 17.5, max_total: 24, percent: 73, recommendation: 'C', good: 'Clear answers on the savanna food web and fire.', fix: 'Question 9: name two grasses and say why they matter to grazers.', notes: 'Question 10 handwriting is faint in places.',
       questions: [{ n: 1, max: 2, mark: 2, student_answer: 'B', comment: 'Correct.', confidence: 'high' }, { n: 9, max: 6, mark: 3.5, student_answer: 'Red grass is palatable…', comment: 'Two of three memo points; grasses not named.', confidence: 'medium' }, { n: 10, max: 4, mark: 2, student_answer: 'Fire keeps the bush open…', comment: 'Partly legible.', confidence: 'low' }] } });
@@ -42,6 +46,7 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   await pg.waitForTimeout(2500);
   const res = (await db.doc('results/us335815_' + stu.uid).get()).data() || {};
   console.log('saved mark:', JSON.stringify(res.marks && res.marks.m01 && { outcome: res.marks.m01.outcome, total: res.marks.m01.total, max: res.marks.m01.max, ai: Object.assign({}, res.marks.m01.ai, { at: undefined }) }), 'passed:', JSON.stringify(res.passed));
+  console.log('evidence ev0 back-fill:', JSON.stringify(((await db.doc('evidence/ev0').get()).data() || {}).review || null));
   console.log('evidence ev1 review:', JSON.stringify(((await db.doc('evidence/ev1').get()).data() || {}).review || null));
   const r3 = ((await db.doc('results/us335802_stu1').get()).data() || {}).marks || {};
   if (r3.m03) console.log('online test m03:', r3.m03.outcome, r3.m03.reassessBy, JSON.stringify(r3.m03.fix || '').slice(0, 260));

@@ -1806,6 +1806,24 @@ function evReviewPill(e){
   if(r.status==='redo') return '<span class="pill bad">✎ Needs correction</span>';
   return '<span class="pill wait">⏳ Not reviewed yet</span>';
 }
+// An answer sheet uploaded for a module test is assessed with that test. Marks saved before this
+// was automatic (27 Nov 2026) left such uploads "Not reviewed yet": record them with the test's
+// decision, its assessor and its date. Runs for full staff once results and evidence have loaded.
+const EV_BF=new Set();
+function backfillEvReviews(){
+  if(mentorLevel!=='full' || !S.resLoaded || !S.evLoaded) return;
+  S.evidence.forEach(v=>{
+    if(v.kind!=='sheet' || !v.mid || !v.uid || (v.review&&v.review.status) || EV_BF.has(v.id)) return;
+    const cids=v.cid? [v.cid] : Object.keys(S.res).filter(k=>k.endsWith('_'+v.uid)).map(k=>k.slice(0,-(v.uid.length+1)));
+    for(const c of cids){
+      const mk=((S.res[c+'_'+v.uid]||{}).marks||{})[v.mid];
+      if(!mk || !mk.outcome || !mk.at || ms(mk.at)<ms(v.at)) continue;
+      EV_BF.add(v.id);
+      updateDoc(doc(db,'evidence',v.id), {review:{status:'accepted', comment:'Assessed with the '+modTitle(v.mid,c)+' test: '+(mk.outcome==='C'?'competent':'not yet competent'), by:mk.by||'', reg:mk.reg||'', at:mk.at, withTest:true}}).catch(e=>{ EV_BF.delete(v.id); console.warn('evidence back-fill',e); });
+      return;
+    }
+  });
+}
 function evCard(e, staff){
   const r=e.review||{};
   return '<div class="sub-entry"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">'
@@ -1878,7 +1896,7 @@ function startStaff(){
   const a=assessor(); $('asName').value=a.name; $('asReg').value=a.reg;
   unsubs.push(onSnapshot(query(collection(db,'enrol'), where('cid','==',PK)), s=>{ S.enrol=s.docs.map(d=>Object.assign({id:d.id},d.data())); S.enrol.sort((a,b)=>(a.name||'').localeCompare(b.name||'')); renderMonitor(); }, e=>console.warn('enrol',e)));
   unsubs.push(onSnapshot(collection(db,'progress'), s=>{ S.prog={}; s.docs.forEach(d=>S.prog[d.id]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('progress',e)));
-  unsubs.push(onSnapshot(collection(db,'results'), s=>{ S.res={}; s.docs.forEach(d=>S.res[d.id]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('results',e)));
+  unsubs.push(onSnapshot(collection(db,'results'), s=>{ S.res={}; s.docs.forEach(d=>S.res[d.id]=d.data()); S.resLoaded=true; renderMonitor(); renderMarking(); backfillEvReviews(); }, e=>console.warn('results',e)));
   unsubs.push(onSnapshot(query(collection(db,'invites'), where('cid','==',PK)), s=>{ S.invites=s.docs.map(d=>Object.assign({code:d.id},d.data())); S.invites.sort((a,b)=>ms(b.createdAt)-ms(a.createdAt)); renderCodes(); }, e=>console.warn('invites',e)));
   unsubs.push(onSnapshot(collection(db,'choice'), s=>{ S.choice={}; s.docs.forEach(d=>S.choice[d.id]=d.data()); renderMonitor(); renderMarking(); }, e=>console.warn('choice',e)));
   unsubs.push(onSnapshot(collection(db,'agree'), s=>{ S.agree={}; s.docs.forEach(d=>S.agree[d.id]=d.data()); renderMonitor(); }, e=>console.warn('agree',e)));
@@ -1886,7 +1904,7 @@ function startStaff(){
   unsubs.push(onSnapshot(query(collection(db,'sessions'), where('start','>=',since)), s=>{
     S.sessions=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor();
   }, e=>console.warn('sessions',e)));
-  unsubs.push(onSnapshot(collection(db,'evidence'), s=>{ S.evidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); renderMonitor(); renderMarking(); }, e=>console.warn('evidence',e)));
+  unsubs.push(onSnapshot(collection(db,'evidence'), s=>{ S.evidence=s.docs.map(d=>Object.assign({id:d.id},d.data())); S.evLoaded=true; renderMonitor(); renderMarking(); backfillEvReviews(); }, e=>console.warn('evidence',e)));
   if(mentorLevel==='full'){
     unsubs.push(onSnapshot(collection(db,'premarks'), s=>{ S.pre={}; s.docs.forEach(d=>S.pre[d.id]=d.data()); renderMarking(); renderMonitor(); }, e=>console.warn('premarks',e)));
     unsubs.push(onSnapshot(collection(db,'memos'), s=>{ S.memos={}; s.docs.forEach(d=>S.memos[d.id]=d.data()); renderMemos(); }, e=>console.warn('memos',e)));
