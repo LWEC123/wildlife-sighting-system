@@ -313,15 +313,21 @@ async function onlineParts(db, cid, uid, mid, att, result) {
   const tk = cid + '_' + mid + '_' + (a.ver || 'A');
   const [paper, keys, ans] = await Promise.all([db.doc('tests/' + tk).get(), db.doc('testkeys/' + tk).get(),
     db.collection('answers').where('cid', '==', cid).where('uid', '==', uid).where('mid', '==', mid).where('att', '==', att).get()]);
-  const qs = (paper.data() || {}).questions || [], k = (keys.data() || {}).keys || {}, A = {};
+  // A resit of one part only: the other part is kept from the mark before (see LWECCourses.html resitPart).
+  const prev = ((((await db.doc('results/' + cid + '_' + uid).get()).data() || {}).marks) || {})[mid];
+  const only = prev && prev.outcome === 'NYC' && prev.att === att - 1 && (prev.redo || []).length === 1 && prev.keep ? prev.redo[0] : null;
+  const partOf = q => q.type === 'WRITTEN' ? 'written' : 'multiple-choice';
+  const qs = ((paper.data() || {}).questions || []).filter(q => !only || partOf(q) === only), k = (keys.data() || {}).keys || {}, A = {};
   ans.docs.forEach(x => { A[x.data().n] = x.data().a; });
   const pass = (paper.data() || {}).pass || 70, mc = { s: 0, max: 0 }, wr = { s: 0, max: 0 };
   qs.forEach(q => {
     if (q.type === 'WRITTEN') { const aq = ((result || {}).questions || []).find(x => x.n === q.n); wr.s += aq ? aq.mark : 0; wr.max += q.marks; }
     else { mc.max += q.marks; if (A[q.n] && k[q.n] && A[q.n] === k[q.n].answer) mc.s += q.marks; }
   });
+  if (only === 'written' && prev.keep.mc) { mc.s += prev.keep.mc.s; mc.max += prev.keep.mc.max; }
+  if (only === 'multiple-choice' && prev.keep.wr) { wr.s += prev.keep.wr.s; wr.max += prev.keep.wr.max; }
   mc.pct = pct(mc.s, mc.max); wr.pct = pct(wr.s, wr.max);
-  return Object.assign({ mc, wr, pass, total: mc.s + wr.s, max: mc.max + wr.max }, partsOutcome(mc, wr, pass));
+  return Object.assign({ mc, wr, pass, only, total: mc.s + wr.s, max: mc.max + wr.max }, partsOutcome(mc, wr, pass));
 }
 
 module.exports = { onlineParts, partsOutcome, premark, newHandIns, callClaudeReal, tidy, testMemoText, SCHEMA, SYSTEM, MODEL };
