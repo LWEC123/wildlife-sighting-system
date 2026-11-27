@@ -177,6 +177,7 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
 .pmodal .phead{background:var(--green-deep); color:#fff; padding:12px 14px; border-radius:12px 12px 0 0; display:flex; gap:10px; align-items:center; position:sticky; top:-16px; z-index:2;}
 .pmodal .phead b{flex:1;}
 .pmodal .pbody{padding:14px 16px 20px;}
+td.ocell{cursor:pointer;} td.ocell:hover{background:#fff4e0;}
 .sigbox{display:flex; gap:12px; align-items:center; border:1px solid #d8d0bc; border-radius:8px; padding:8px 10px; margin-top:6px; background:#fbf9f3; font-size:.85rem;}
 .sigbox img{height:46px; width:auto; background:#fff; border-bottom:1px solid #999;}
 .sigbox.empty{color:var(--muted); font-style:italic;}
@@ -446,6 +447,7 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   <p class="sm" style="margin-top:8px;">Your name, signature, account and the date and time are recorded with this form. This is your electronic signature.</p>
   <div class="btnrow"><button class="btn" onclick="sgOk()">Sign</button><button class="btn ghost small" onclick="sgCancel()">Cancel</button></div>
 </div></div></div>
+<div class="pmodal" id="ocModal" hidden onclick="if(event.target===this)this.hidden=true"><div class="pbox"><div class="phead"><b id="ocTitle"></b><button class="btn small" onclick="hideEl('ocModal')">✕ Close</button></div><div class="pbody" id="ocBody"></div></div></div>
 <div class="pmodal" id="shareModal" hidden><div class="pbox" style="max-width:520px;"><div class="phead"><b id="shareTitle">Link</b><button class="btn small" onclick="hideEl('shareModal')">✕</button></div><div class="pbody">
   <p class="note">Send this link. It opens a short form on any phone, with no login. Every answer comes straight into the PoE.</p>
   <input id="shareUrl" readonly onclick="this.select()">
@@ -1528,7 +1530,7 @@ window.importTagKey = async inp=>{
 function tagStats(r){   // r = results doc; uses the latest marked attempt of every module
   const st={}; const hist=(r&&r.hist)||{};
   Object.keys(hist).forEach(m=>{ const hs=hist[m]||[]; const last=[...hs].reverse().find(h=>h.qa); if(!last) return;
-    last.qa.forEach(q=>(q.tags||[]).forEach(t=>{ const x=st[t]=st[t]||{s:0,max:0,mods:new Set()}; x.s+=+q.s||0; x.max+=+q.max||0; x.mods.add(m); })); });
+    last.qa.forEach(q=>(q.tags||[]).forEach(t=>{ const x=st[t]=st[t]||{s:0,max:0,mods:new Set(),items:[]}; x.s+=+q.s||0; x.max+=+q.max||0; x.mods.add(m); x.items.push({m, n:q.n, type:q.type, q:q.q, a:q.a, s:+q.s||0, max:+q.max||0}); })); });
   return st;
 }
 function light(p){ return p==null? '' : p>=70? '🟢' : p>=50? '🟠' : '🔴'; }
@@ -1989,13 +1991,36 @@ function renderMonitor(){
   renderClassGrid(rows);
   if(curStu) openStu(curStu, true);
 }
+// Hover text for one student's result on one outcome: the questions behind it and the answers given.
+function cut(t,n){ t=String(t==null?'':t).replace(/\s+/g,' ').trim(); return t.length>n? t.slice(0,n-1)+'…' : t; }
+function ocTip(t,x,p){
+  let s=tagLabel(t)+': '+x.s+' / '+x.max+' ('+p+'%)';
+  if(p<70) x.items.forEach(i=>{ s+='\n\n'+modTitle(i.m).split(':')[0]+', question '+i.n+' ('+i.s+' / '+i.max+'): '+cut(i.q,90)+'\nAnswer: '+(i.a==null?'(not answered)':cut(i.a,160)); });
+  return s+'\n\nClick to open the test.';
+}
+window.showOutcome=(uid,t)=>{
+  const e=S.enrol.find(x=>x.uid===uid)||{}, r=S.res[CID+'_'+uid]||{}, x=tagStats(r)[t]; if(!x) return;
+  const p=x.max? Math.round(x.s/x.max*100):0, mods=[...x.mods].sort();
+  const aiNote=(m,n)=>{ const q=((((S.pre||{})[CID+'_'+uid+'_'+m]||{}).result||{}).questions||[]).find(y=>String(y.n)===String(n)); return q&&q.comment? q.comment : ''; };
+  const row=(q,hl)=>'<tr'+(hl?' style="background:#fff4e0;"':'')+'><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q||'')+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'<i>(not answered)</i>':esc(q.a))+(aiNote(q.m||'',q.n)?'<div class="sm" style="margin-top:4px;">🤖 '+esc(aiNote(q.m||'',q.n))+'</div>':'')+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td style="white-space:nowrap;">'+(q.s<q.max?'<b style="color:var(--danger)">'+q.s+' / '+q.max+'</b>':q.s+' / '+q.max)+'</td></tr>';
+  let h='<p><b>'+esc(tagLabel(t))+'</b><br>'+esc(e.name||e.email||'')+': '+x.s+' / '+x.max+' ('+p+'%) '+light(p)+'</p>';
+  mods.forEach(m=>{
+    const hs=(r.hist||{})[m]||[], last=[...hs].reverse().find(y=>y.qa); if(!last) return;
+    const mk=(r.marks||{})[m]||{};
+    h+='<h3 style="margin-top:16px;">'+esc(modTitle(m))+'</h3><p class="sm">Latest marked attempt'+(last.at?', '+esc(fmtD(last.at)):'')+(mk.outcome?' · '+(mk.outcome==='C'?'competent':'not yet competent'):'')+'. Questions on this outcome are highlighted.</p>'
+      +(mk.fix?'<p class="note">Feedback given: '+esc(mk.fix)+'</p>':'')
+      +'<div class="tablewrap"><table class="t"><tr><th>#</th><th>Question</th><th>Student\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'
+      +last.qa.map(q=>row(Object.assign({m},q),(q.tags||[]).includes(t))).join('')+'</table></div>';
+  });
+  $('ocTitle').textContent=(e.name||'Student')+' · '+t; $('ocBody').innerHTML=h; $('ocModal').hidden=false;
+};
 function renderClassGrid(rows){
   const per=rows.map(r=>({r, st:tagStats(r.r)})), tags=[...new Set(per.flatMap(x=>Object.keys(x.st)))].sort(sortTags), box=$('classGrid');
   if(!tags.length){ box.hidden=true; return; }
   box.hidden=false;
-  box.innerHTML='<h2>🎯 Outcomes: where students are strong or struggling ('+esc(course.code)+')</h2><p class="note">From the latest marked online test of every module. 🟢 70% or more · 🟠 50 to 69% · 🔴 below 50%. Hover over a code for its wording.</p>'
+  box.innerHTML='<h2>🎯 Outcomes: where students are strong or struggling ('+esc(course.code)+')</h2><p class="note">From the latest marked online test of every module. 🟢 70% or more · 🟠 50 to 69% · 🔴 below 50%. Hover over a code for its wording. Hover over a student\'s 🟠 or 🔴 to see their answers, or click any result to open the test.</p>'
     +'<div class="tablewrap"><table class="t"><tr><th>Student</th>'+tags.map(t=>'<th title="'+esc(tagLabel(t))+'">'+esc(t)+'</th>').join('')+'<th>Struggling with</th></tr>'
-    +per.map(({r,st})=>'<tr><td><b>'+esc(r.e.name||r.e.email)+'</b></td>'+tags.map(t=>{ const x=st[t]; if(!x||!x.max) return '<td class="sm">·</td>'; const p=Math.round(x.s/x.max*100); return '<td title="'+esc(tagLabel(t))+': '+x.s+'/'+x.max+'">'+light(p)+' <span class="sm">'+p+'%</span></td>'; }).join('')
+    +per.map(({r,st})=>'<tr><td><b>'+esc(r.e.name||r.e.email)+'</b></td>'+tags.map(t=>{ const x=st[t]; if(!x||!x.max) return '<td class="sm">·</td>'; const p=Math.round(x.s/x.max*100); return '<td class="ocell" title="'+esc(ocTip(t,x,p))+'" onclick="showOutcome(\''+r.e.uid+'\',\''+esc(t)+'\')">'+light(p)+' <span class="sm">'+p+'%</span></td>'; }).join('')
       +'<td class="sm">'+(struggling(st).map(esc).join(', ')||'—')+'</td></tr>').join('')
     +'<tr><td><b>Class</b></td>'+tags.map(t=>{ let a=0,b=0; per.forEach(({st})=>{ if(st[t]){ a+=st[t].s; b+=st[t].max; } }); const p=b?Math.round(a/b*100):null; return '<td>'+(p==null?'·':light(p)+' <span class="sm">'+p+'%</span>')+'</td>'; }).join('')+'<td></td></tr>'
     +'</table></div>';
