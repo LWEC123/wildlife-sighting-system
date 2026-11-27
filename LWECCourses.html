@@ -1022,7 +1022,8 @@ function feedbackBox(mk){
   if(!g && !f) return '';
   return '<div class="sub-entry" style="margin-top:8px;"><b>📋 Assessor feedback</b> <span class="sm">'+esc(mk.by||'')+(mk.at?' · '+fmtD(mk.at):'')+'</span>'
     +(g?'<p class="note" style="margin-top:6px;"><b style="color:var(--ok)">✔ Done well:</b></p><div class="answer">'+esc(g)+'</div>':'')
-    +(f?'<p class="note" style="margin-top:6px;"><b style="color:var(--danger)">✎ Needs correction:</b></p><div class="answer">'+esc(f)+'</div>':'')+'</div>';
+    +(f?'<p class="note" style="margin-top:6px;"><b style="color:var(--danger)">✎ Needs correction:</b></p><div class="answer">'+esc(f)+'</div>':'')
+    +(mk.outcome==='NYC' && mk.reassessBy? '<p class="note" style="margin-top:6px;">📅 <b>Reassessment: hand in by '+esc(fmtD(new Date(mk.reassessBy+'T12:00:00')))+'</b>'+((mk.redo||[]).length===1?' (only the '+esc(mk.redo[0])+' questions)':'')+'</p>':'')+'</div>';
 }
 function itemRow(l,r){ return '<div class="item"><span class="lbl">'+l+'</span>'+r+'</div>'; }
 
@@ -1394,6 +1395,11 @@ const TK={};          // staff: cid_mid_ver -> {paper, keys}
 const AN={};          // staff: attempt key -> {attempt, answers}
 const MV={};          // staff: marks typed into the marking list
 window.MV=MV;
+// A resit after "not yet competent" in only one part asks only that part again; the other part's
+// mark is kept from the attempt before (Zeriah, 27 Nov 2026).
+function partOf(q){ return q.type==='WRITTEN'? 'written' : 'multiple-choice'; }
+function resitPart(mk, att){ return mk && mk.outcome==='NYC' && mk.att===att-1 && (mk.redo||[]).length===1 && mk.keep ? mk.redo[0] : null; }
+function onlyPart(paper, part){ return part? Object.assign({}, paper, {questions:(paper.questions||[]).filter(q=>partOf(q)===part)}) : paper; }
 function otOf(m){ const o=(m||{}).otest; return o && (o.vers||[]).length? o : null; }
 function attKey(cid,uid,mid,n){ return cid+'_'+uid+'_'+mid+'_'+n; }
 function tsMs(t){ return ms(t) || 0; }
@@ -1412,14 +1418,14 @@ async function loadTest(mid, force){
     if(!last){ Object.assign(st,{phase:'start', nextAtt:1, ver:'A'}); }
     else if(!last.submittedAt){
       st.attempt=last; st.att=last.att; st.ver=last.ver;
-      const ps=await getDoc(doc(db,'tests',CID+'_'+mid+'_'+last.ver)); st.paper=ps.data();
+      const ps=await getDoc(doc(db,'tests',CID+'_'+mid+'_'+last.ver)); st.only=resitPart(mk,last.att); st.paper=onlyPart(ps.data(),st.only);
       const as=await getDocs(query(collection(db,'answers'), where('uid','==',me.uid), where('cid','==',CID), where('mid','==',mid), where('att','==',last.att)));
       st.answers={}; as.docs.forEach(d=>{ st.answers[d.data().n]=d.data().a; });
       st.phase='doing';
       const left=timeLeft(st);
       if((left!=null && left<=0) || Object.keys(st.answers).length>=st.paper.questions.length){ st.busy=false; await submitOnline(mid,true); return; }
     } else if(mk && mk.att===last.att && mk.outcome==='NYC'){
-      Object.assign(st,{phase:'start', nextAtt:last.att+1, ver: ot.vers[last.att % ot.vers.length]});
+      Object.assign(st,{phase:'start', nextAtt:last.att+1, ver: ot.vers[last.att % ot.vers.length], only:resitPart(mk,last.att+1), keep:mk.keep||null});
     } else { st.phase='handed'; st.attempt=last; }
   }catch(e){ console.warn('test',e); st.phase='error'; st.err=e.code||e.message; }
   st.busy=false; drawTest(mid);
@@ -1431,7 +1437,9 @@ function drawTest(mid){
   if(st.phase==='error'){ box.innerHTML='<p class="note">The test could not be opened ('+esc(st.err)+'). Check your connection and try again.</p>'; return; }
   if(st.phase==='handed'){ box.innerHTML='<p class="note">Your test is handed in. Your assessor will mark it soon.</p>'; return; }
   if(st.phase==='start'){
+    const kp=st.only&&st.keep? (st.only==='written'? st.keep.mc : st.keep.wr) : null;
     box.innerHTML='<div class="sub-entry"><b>📝 Online test'+(st.nextAtt>1?' (attempt '+st.nextAtt+': new questions)':'')+'</b>'
+      +(st.only? '<p class="note" style="margin-top:6px;">This time you answer <b>only the '+(st.only==='written'?'written':'multiple-choice')+' questions</b>. You keep your '+(st.only==='written'?'multiple-choice':'written')+' mark from last time'+(kp?' ('+kp.s+'/'+kp.max+')':'')+'.</p>' : '')
       +'<p class="note" style="margin-top:6px;">You see one question at a time. Once you save an answer it is locked: you <b>cannot go back</b> to change it.'+(ot.time?' You have <b>'+ot.time+' minutes</b> from when you start; the test hands itself in when the time is up.':'')+' Make sure you have time and a good connection before you start.</p>'
       +'<div class="btnrow"><button class="btn" onclick="startTest(\''+mid+'\')">Start the test</button></div></div>';
     return;
@@ -1456,7 +1464,7 @@ window.startTest = async mid=>{
   try{
     const ps=await getDoc(doc(db,'tests',CID+'_'+mid+'_'+st.ver));
     if(!ps.exists()){ toast('This test is not ready yet. Ask your assessor.'); return; }
-    await setDoc(doc(db,'attempts',attKey(CID,me.uid,mid,st.nextAtt)), {uid:me.uid, cid:CID, mid, att:st.nextAtt, ver:st.ver, nq:ps.data().questions.length, startedAt:serverTimestamp()});
+    await setDoc(doc(db,'attempts',attKey(CID,me.uid,mid,st.nextAtt)), Object.assign({uid:me.uid, cid:CID, mid, att:st.nextAtt, ver:st.ver, nq:onlyPart(ps.data(),st.only).questions.length, startedAt:serverTimestamp()}, st.only?{only:st.only}:{}));
     setCurrent(mid,'test-started');
     await loadTest(mid,true);
   }catch(e){ console.warn(e); toast('Could not start the test ('+(e.code||e.message)+').'); }
@@ -1618,7 +1626,8 @@ async function loadMarkData(c, uid, m, att){
   }
   const ver=AN[ak].attempt.ver||'A', tk=c+'_'+m+'_'+ver;
   if(!TK[tk]){ const [p,k]=await Promise.all([getDoc(doc(db,'tests',tk)), getDoc(doc(db,'testkeys',tk))]); TK[tk]={paper:p.data()||{questions:[]}, keys:(k.data()||{}).keys||{}}; }
-  return {ak, ver, ...AN[ak], ...TK[tk]};
+  const prev=((S.res[c+'_'+uid]||{}).marks||{})[m], only=resitPart(prev,att);
+  return {ak, ver, ...AN[ak], ...TK[tk], paper:onlyPart(TK[tk].paper,only), only, keep: only? prev.keep : null};
 }
 function autoScore(q,key,a){ if(q.type==='WRITTEN') return null; return a && key && a===key.answer ? q.marks : 0; }
 async function fillMark(c, uid, m, att){
@@ -1634,7 +1643,8 @@ async function fillMark(c, uid, m, att){
         const key= q.type==='MC'? esc(k.answer||'')+') '+esc(q.options[LETTERS.indexOf(k.answer)]||'') : q.type==='TF'? esc(k.answer||'') : '';
         return '<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;max-width:260px;">'+esc(q.text)+'</td><td>'+shown+(au!=null?(au?' ✔':' ✘'):'')+'</td><td class="sm" style="white-space:pre-wrap;">'+key+(k.memo?(key?'<br>':'')+'Memo: '+esc(k.memo):'')+'</td>'
           +'<td style="white-space:nowrap;"><input id="sc-'+id+'-'+q.n+'" data-w="'+(q.type==='WRITTEN'?1:0)+'" type="number" min="0" max="'+q.marks+'" step="0.5" value="'+(MV['sc-'+id+'-'+q.n]!=null? MV['sc-'+id+'-'+q.n] : au!=null?au:'')+'" style="width:70px;" oninput="window.MV[this.id]=this.value;sumMark(\''+id+'\')"> / '+q.marks+'</td></tr>'; }).join('')
-      +'</table></div><p class="note" style="margin-top:6px;" data-pass="'+(d.paper.pass||70)+'" id="pass-'+id+'"><b>Total: <span id="tot-'+id+'"></span></b> · pass mark '+(d.paper.pass||70)+'% in <b>each</b> part<br><span id="parts-'+id+'"></span></p>'; });
+      +'</table></div>'+(d.only? '<p class="sm">Resit of the <b>'+d.only+'</b> part only. Kept from the attempt before: '+(d.only==='written'? 'multiple choice '+d.keep.mc.s+'/'+d.keep.mc.max : 'written '+d.keep.wr.s+'/'+d.keep.wr.max)+'.</p>' : '')
+      +'<p class="note" style="margin-top:6px;" data-pass="'+(d.paper.pass||70)+'" data-keep="'+esc(d.only? JSON.stringify(d.only==='written'? {mc:d.keep.mc} : {wr:d.keep.wr}) : '')+'" id="pass-'+id+'"><b>Total: <span id="tot-'+id+'"></span></b> · pass mark '+(d.paper.pass||70)+'% in <b>each</b> part<br><span id="parts-'+id+'"></span></p>'; });
     sumMark(id);
   }catch(e){ console.warn(e); box.innerHTML='<p class="note">Could not load the online test ('+esc(e.code||e.message)+').</p>'; }
 }
@@ -1645,7 +1655,9 @@ window.sumMark = id=>{
 };
 // Online test: competence is needed in BOTH parts (multiple choice and written), each at the pass mark.
 function testParts(id){
-  const pass=+(($('pass-'+id)||{}).dataset||{}).pass||70, mc={s:0,max:0}, wr={s:0,max:0};
+  const ds=(($('pass-'+id)||{}).dataset||{}), pass=+ds.pass||70, mc={s:0,max:0}, wr={s:0,max:0};
+  let kp={}; try{ kp=ds.keep? JSON.parse(ds.keep) : {}; }catch(e){}
+  if(kp.mc){ mc.s=+kp.mc.s||0; mc.max=+kp.mc.max||0; } if(kp.wr){ wr.s=+kp.wr.s||0; wr.max=+kp.wr.max||0; }
   document.querySelectorAll('[id^="sc-'+id+'-"][data-w]').forEach(i=>{ const o=i.dataset.w==='1'?wr:mc; o.s+=+i.value||0; o.max+=+i.max||0; });
   [mc,wr].forEach(o=>o.pct= o.max? Math.round(o.s/o.max*1000)/10 : 100);
   const redo=[mc.pct<pass&&'multiple-choice', wr.pct<pass&&'written'].filter(Boolean);
@@ -2405,7 +2417,9 @@ window.mark = async (c,uid,m,outcome,opts)=>{
     const total=qa.reduce((a,x)=>a+x.s,0), max=qa.reduce((a,x)=>a+x.max,0), scores={}; qa.forEach(x=>scores[x.n]={s:x.s,max:x.max});
     rec.parts={mc:tp.mc, wr:tp.wr, pass:tp.pass};
     Object.assign(rec,{att:pm.testAtt, ver:d.ver, qa, total, max, startedAt:d.attempt.startedAt||null, submittedAt:d.attempt.submittedAt||rec.submittedAt});
-    mx={att:pm.testAtt, ver:d.ver, total, max, scores};
+    mx={att:pm.testAtt, ver:d.ver, total:tp.mc.s+tp.wr.s, max:tp.mc.max+tp.wr.max, scores};
+    rec.total=mx.total; rec.max=mx.max; if(d.only) rec.only=d.only;
+    if(outcome==='NYC' && tp.redo.length===1){ mx.redo=tp.redo; mx.keep= tp.redo[0]==='written'? {mc:tp.mc} : {wr:tp.wr}; }
   }
   // AI pre-mark: an answer sheet's marks are the assessor's (edited) marks in the AI table.
   const pre=preFor(c,uid,m,pm);
