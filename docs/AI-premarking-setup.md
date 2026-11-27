@@ -89,3 +89,10 @@ PREMARK_FAKE=1 firebase emulators:exec --config firebase.test.json --project dem
 ```
 `PREMARK_FAKE=1` swaps Claude for `functions/test/fake-claude.js`, so tests cost nothing.
 `functions/test/ui-check.js` drives a copy of the portal wired to the emulators with Playwright.
+
+## WhatsApp alerts (optional)
+
+Each pre-marked test also sends a short WhatsApp message to the assessor's own number through
+CallMeBot (free). It has no student names, only the course, module and the Marking page link.
+Secrets: `CALLMEBOT_KEY` (the key CallMeBot sends you on WhatsApp) and `WHATSAPP_TO` (your number,
+e.g. 2782...). Test it with `cd functions && node test/whatsapp-test.js`.

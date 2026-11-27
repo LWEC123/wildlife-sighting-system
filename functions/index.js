@@ -11,6 +11,8 @@
 // Secrets (set once, see docs/AI-premarking-setup.md):
 //   ANTHROPIC_API_KEY    the Claude API key
 //   GMAIL_APP_PASSWORD   a Google "app password" for the notification sender address
+//   CALLMEBOT_KEY        CallMeBot WhatsApp key (free, sends only to the assessor's own number)
+//   WHATSAPP_TO          the assessor's WhatsApp number, e.g. 2782...
 
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
@@ -32,6 +34,8 @@ const PORTAL = 'https://lwec123.github.io/wildlife-sighting-system/LWECCourses.h
 
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
 const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD');
+const CALLMEBOT_KEY = defineSecret('CALLMEBOT_KEY');
+const WHATSAPP_TO = defineSecret('WHATSAPP_TO');
 
 setGlobalOptions({ region: REGION, maxInstances: 3 });
 initializeApp();
@@ -47,7 +51,7 @@ function deps() {
   return { db, bucket, sharp, now: () => FieldValue.serverTimestamp(), callClaude: (memo, work) => callClaudeReal(client, memo, work) };
 }
 
-const OPTS = { secrets: [ANTHROPIC_API_KEY, GMAIL_APP_PASSWORD], timeoutSeconds: 540, memory: '1GiB' };
+const OPTS = { secrets: [ANTHROPIC_API_KEY, GMAIL_APP_PASSWORD, CALLMEBOT_KEY, WHATSAPP_TO], timeoutSeconds: 540, memory: '1GiB' };
 
 // ---------- email to the assessor, one per pre-marked hand-in ----------
 const SUBJECT = {
@@ -100,6 +104,22 @@ async function notify(cid, uid, mid) {
   } catch (e) { console.error('email failed', e.message); }
 }
 
+// ---------- WhatsApp alert to the assessor (CallMeBot), one per pre-marked hand-in ----------
+// No student names or ids go to WhatsApp (POPIA): only the course, module and the Marking link.
+const { sendWhatsApp } = require('./whatsapp');
+async function whatsappAlert(cid, uid, mid) {
+  const ref = db.doc('premarks/' + cid + '_' + uid + '_' + mid);
+  const p = (await ref.get()).data() || {};
+  if (!SUBJECT[p.status] || p.waFor === p.forSub + ':' + p.status) return;
+  const code = ((await db.doc('courses/' + cid).get()).data() || {}).code || cid.toUpperCase();
+  const mod = 'Module ' + (parseInt(mid.slice(1, 3), 10) || mid) + mid.slice(3).toUpperCase();
+  const text = (p.status === 'done' ? 'LWEC: a test is waiting for your Confirm (' : 'LWEC: a test needs you to mark it yourself (') + code + ' ' + mod + '). Open the Marking page: ' + PORTAL;
+  try {
+    const r = await sendWhatsApp(CALLMEBOT_KEY.value(), WHATSAPP_TO.value(), text);
+    if (r.ok) await ref.update({ waFor: p.forSub + ':' + p.status }); else console.error('whatsapp failed', r.reply);
+  } catch (e) { console.error('whatsapp failed', e.message); }
+}
+
 // ---------- triggers ----------
 exports.premarkOnHandIn = onDocumentWritten(Object.assign({ document: 'progress/{key}' }, OPTS), async ev => {
   const before = ev.data && ev.data.before && ev.data.before.exists ? ev.data.before.data() : null;
@@ -109,7 +129,10 @@ exports.premarkOnHandIn = onDocumentWritten(Object.assign({ document: 'progress/
   for (const mid of newHandIns(before, after)) {
     if (!/^m\d\d[a-j]?$/.test(mid)) continue;
     const r = await premark(deps(), after.cid, after.uid, mid);
-    if (r.status !== 'skipped' && r.status !== 'not-handed-in' && r.status !== 'not-needed') await notify(after.cid, after.uid, mid);
+    if (r.status !== 'skipped' && r.status !== 'not-handed-in' && r.status !== 'not-needed') {
+      await notify(after.cid, after.uid, mid);
+      await whatsappAlert(after.cid, after.uid, mid);
+    }
   }
 });
 
