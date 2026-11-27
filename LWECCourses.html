@@ -1935,7 +1935,9 @@ function stuSummary(e, cid){
   const done=mids.filter(m=>passed[m]===true).length;
   const waiting=mids.filter(m=>{ const pm=(p.mods||{})[m]||{}; return pm.submittedAt && passed[m]!==true && (!marks[m] || ms(marks[m].at)<ms(pm.submittedAt)); });
   const cur=p.current||null;
-  const newEv=S.evidence.filter(v=>v.uid===e.uid && !(v.review&&v.review.status)).length;
+  // A test's own uploads count as assessed once that test has been marked (they are part of it).
+  const testDone=v=>{ if(v.kind!=='sheet'||!v.mid) return false; const mk=((S.res[(v.cid||cid)+'_'+e.uid]||{}).marks||{})[v.mid]; return !!(mk && ms(mk.at)>=ms(v.at)); };
+  const newEv=S.evidence.filter(v=>v.uid===e.uid && !(v.review&&v.review.status) && !testDone(v)).length;
   return {cid, mids, chosen, newEv, p, r, sess, lastSeen, weekSec, totalSec:p.totalSec||0, allSec, done, waiting, cur, online: lastSeen && Date.now()-lastSeen<ONLINE_MS};
 }
 function busyText(x){
@@ -2451,6 +2453,11 @@ window.mark = async (c,uid,m,outcome,opts)=>{
       passed: m.length>3? {[m]: outcome==='C', [baseOf(m)]: outcome==='C'} : {[m]: outcome==='C'},
       marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), reassessBy}, mx)},
       hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
+    // Files the student uploaded for this module's test are assessed with it: record that, so they
+    // no longer show as "new upload" on the Student monitor and go into the PoE (Zeriah, 27 Nov 2026).
+    const subMs=ms(pm.submittedAt)||Date.now();
+    const evs=S.evidence.filter(v=>v.uid===uid && v.mid===m && (!v.cid || v.cid===c) && v.kind==='sheet' && !(v.review&&v.review.status) && ms(v.at)<=subMs+60000);
+    await Promise.all(evs.map(v=>updateDoc(doc(db,'evidence',v.id), {review:{status:'accepted', comment:'Assessed with the '+modTitle(m,c)+' test: '+(outcome==='C'?'competent':'not yet competent'), by:as.name, reg:as.reg, at:serverTimestamp(), withTest:true}}).catch(e=>console.warn('evidence review',e))));
     if(!opts.quiet) toast(outcome==='C'?'Marked competent. The next module is open for the student.':'Marked not yet competent.');
     else if(opts.viaAI && !confirmAllRunning()) toast(outcome==='C'?'AI result confirmed: competent. The next module is open.':'AI result confirmed: not yet competent.');
     return true;
