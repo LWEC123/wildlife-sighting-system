@@ -45,7 +45,7 @@ git checkout claude/project-thread-kc8ysa          # skip this line once the pul
 cd functions && npm ci && cd ..
 firebase deploy --only functions:helpChat,functions:dailySummary --project lwec-field-logbook
 ```
-If it asks to delete other functions, type **N**. When it says `Deploy complete!`, reply "merge NN".
+If it asks to delete other functions, type **N**. When it says `Deploy complete!`, reply "merge 57".
 
 ### Step 2. WordPress (about 5 minutes, in WP Admin)
 1. **Plugins › Add New Plugin**. In the search box type `Code Snippets`. On the card "Code Snippets"
