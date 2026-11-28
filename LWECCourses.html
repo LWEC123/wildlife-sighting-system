@@ -160,6 +160,8 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
 /* Viewer's name on videos: fixed low on the right, just above the player controls, clear of slide titles and text. */
 .wm,.ytbox>.wm,.vwrap>.wm{position:absolute; inset:auto; bottom:72px; right:14px; width:auto; height:auto; pointer-events:none; color:rgba(255,255,255,.42); font-size:.8rem; font-weight:700; text-shadow:0 0 3px rgba(0,0,0,.6); white-space:nowrap; z-index:3; border-radius:0;}
 .vwrap:fullscreen .wm{font-size:1.1rem;}
+.wm{max-width:calc(100% - 24px); overflow:hidden; text-overflow:ellipsis;}
+@media (max-width:560px){ .wm,.ytbox>.wm,.vwrap>.wm{font-size:.6rem; bottom:60px; right:8px;} }
 .fsbtn{position:absolute; top:8px; right:8px; z-index:4; background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:.9rem;}
 .loadbox{background:var(--sand); border-radius:10px; padding:14px; margin-top:8px;}
 #viewer{position:fixed; inset:0; background:#2b2f2a; z-index:300; display:flex; flex-direction:column;}
