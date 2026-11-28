@@ -152,16 +152,16 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   .slip .c{font-family:Consolas,monospace; font-size:18pt; font-weight:700; letter-spacing:3px;}
 }
 /* protected viewing */
-.vwrap{position:relative; margin:8px auto 0; background:#000; border-radius:10px; overflow:hidden; -webkit-user-select:none; user-select:none; max-width:calc(78vh * var(--ar, 1.7778));}
+.vwrap{position:relative; margin:8px auto 0; background:#000; border-radius:10px; overflow:hidden; -webkit-user-select:none; user-select:none; max-width:calc((78vh - 26px) * var(--ar, 1.7778));}
 .vwrap video{margin-top:0; display:block; max-height:none; height:auto;}
-.vwrap:fullscreen{max-width:none;}
-.vwrap:fullscreen{display:flex; align-items:center; justify-content:center;}
-.vwrap:fullscreen video{max-height:100vh; height:100%; border-radius:0;}
-/* Viewer's name on videos: fixed low on the right, just above the player controls, clear of slide titles and text. */
-.wm,.ytbox>.wm,.vwrap>.wm{position:absolute; inset:auto; bottom:72px; right:14px; width:auto; height:auto; pointer-events:none; color:rgba(255,255,255,.42); font-size:.8rem; font-weight:700; text-shadow:0 0 3px rgba(0,0,0,.6); white-space:nowrap; z-index:3; border-radius:0;}
-.vwrap:fullscreen .wm{font-size:1.1rem;}
-.wm{max-width:calc(100% - 24px); overflow:hidden; text-overflow:ellipsis;}
-@media (max-width:560px){ .wm,.ytbox>.wm,.vwrap>.wm{font-size:.6rem; bottom:60px; right:8px;} }
+.vwrap:fullscreen{max-width:none; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.vwrap:fullscreen video{max-height:calc(100vh - 30px); height:auto; width:auto; max-width:100%; border-radius:0;}
+/* Viewer's name on videos: a thin strip under the picture, so it never covers slide content. */
+.wm,.vwrap>.wm{position:static; display:block; width:100%; box-sizing:border-box; padding:5px 12px; background:#111; color:rgba(255,255,255,.55); font-size:.75rem; font-weight:700; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;}
+.ytbox{margin-bottom:28px;}
+.ytbox>.wm{position:absolute; inset:auto; top:100%; left:0; right:0; width:100%; height:auto; border-radius:0 0 10px 10px;}
+.vwrap:fullscreen .wm{font-size:.95rem; background:transparent;}
+@media (max-width:560px){ .wm,.vwrap>.wm,.ytbox>.wm{font-size:.62rem; padding:4px 8px;} }
 .fsbtn{position:absolute; top:8px; right:8px; z-index:4; background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:.9rem;}
 .loadbox{background:var(--sand); border-radius:10px; padding:14px; margin-top:8px;}
 #viewer{position:fixed; inset:0; background:#2b2f2a; z-index:300; display:flex; flex-direction:column;}
