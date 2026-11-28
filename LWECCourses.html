@@ -746,7 +746,7 @@ function listenCourses(){
   unsubs.push(onSnapshot(collection(db,'courses'), s=>{
     courses={}; s.docs.forEach(d=>courses[d.id]=d.data());
     if(CID) useCourse(CID);
-    if(isMentor){ fillStaffCourses(); renderMonitor(); renderMarking(); if(!$('tab-setup').hidden) renderSetup(); }
+    if(isMentor){ fillStaffCourses(); renderMonitor(); renderMarking(); if(!$('tab-setup').hidden && !setupDirty) renderSetup(); }
     else { syncResults(); renderCourse(); }
   }, e=>console.warn('courses',e)));
 }
