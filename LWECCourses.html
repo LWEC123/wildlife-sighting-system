@@ -152,11 +152,13 @@ table.aft th, table.aft td{border:1px solid #e3ddcc; padding:5px 7px; text-align
   .slip .c{font-family:Consolas,monospace; font-size:18pt; font-weight:700; letter-spacing:3px;}
 }
 /* protected viewing */
-.vwrap{position:relative; margin-top:8px; background:#000; border-radius:10px; overflow:hidden; -webkit-user-select:none; user-select:none;}
-.vwrap video{margin-top:0; display:block;}
+.vwrap{position:relative; margin:8px auto 0; background:#000; border-radius:10px; overflow:hidden; -webkit-user-select:none; user-select:none; max-width:calc(78vh * var(--ar, 1.7778));}
+.vwrap video{margin-top:0; display:block; max-height:none; height:auto;}
+.vwrap:fullscreen{max-width:none;}
 .vwrap:fullscreen{display:flex; align-items:center; justify-content:center;}
 .vwrap:fullscreen video{max-height:100vh; height:100%; border-radius:0;}
-.wm{position:absolute; top:12%; left:6%; pointer-events:none; color:rgba(255,255,255,.42); font-size:.8rem; font-weight:700; text-shadow:0 0 3px rgba(0,0,0,.6); white-space:nowrap; transition:top 1.5s, left 1.5s; z-index:3;}
+/* Viewer's name on videos: fixed low on the right, just above the player controls, clear of slide titles and text. */
+.wm,.ytbox>.wm,.vwrap>.wm{position:absolute; inset:auto; bottom:72px; right:14px; width:auto; height:auto; pointer-events:none; color:rgba(255,255,255,.42); font-size:.8rem; font-weight:700; text-shadow:0 0 3px rgba(0,0,0,.6); white-space:nowrap; z-index:3; border-radius:0;}
 .vwrap:fullscreen .wm{font-size:1.1rem;}
 .fsbtn{position:absolute; top:8px; right:8px; z-index:4; background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:3px 8px; cursor:pointer; font-size:.9rem;}
 .loadbox{background:var(--sand); border-radius:10px; padding:14px; margin-top:8px;}
@@ -1306,7 +1308,6 @@ function mediaErr(e){ return String(e&&e.message)==='no-access' ? "This file isn
 
 function wmText(){ return (enrol&&enrol.name||profile.name||'')+' · '+(me&&me.email||'')+' · '+new Date().toLocaleDateString('en-ZA')+' · LWEC'; }
 function wmHTML(){ return '<div class="wm">'+esc(wmText())+'</div>'; }
-setInterval(()=>{ document.querySelectorAll('.wm').forEach(el=>{ el.style.top=(4+Math.random()*80)+'%'; el.style.left=(2+Math.random()*45)+'%'; }); }, 9000);
 window.fullWrap = btn=>{
   const w=btn.parentElement;
   if(document.fullscreenElement){ document.exitFullscreen(); return; }
@@ -1314,7 +1315,7 @@ window.fullWrap = btn=>{
   else { const v=w.querySelector('video'); if(v&&v.webkitEnterFullscreen) v.webkitEnterFullscreen(); }
 };
 function videoHTML(src){
-  return '<div class="vwrap" oncontextmenu="return false"><video controls controlsList="nodownload noplaybackrate nofullscreen noremoteplayback" disablePictureInPicture disableRemotePlayback preload="metadata" playsinline src="'+esc(src)+'"></video>'
+  return '<div class="vwrap" oncontextmenu="return false"><video controls controlsList="nodownload noplaybackrate nofullscreen noremoteplayback" disablePictureInPicture disableRemotePlayback preload="metadata" playsinline onloadedmetadata="if(this.videoWidth&&this.videoHeight)this.parentElement.style.setProperty(\'--ar\',this.videoWidth/this.videoHeight)" src="'+esc(src)+'"></video>'
     +wmHTML()+'<button class="fsbtn" type="button" onclick="fullWrap(this)" title="Full screen">⛶</button></div>';
 }
 function stamp(c){
