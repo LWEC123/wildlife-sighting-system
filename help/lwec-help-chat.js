@@ -38,7 +38,7 @@
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
   var log = box.querySelector('#lwh-log'), input = box.querySelector('#lwh-in'), send = box.querySelector('#lwh-send');
-  function bubble(role, text) { var d = document.createElement('div'); d.className = 'lwh-m ' + (role === 'user' ? 'lwh-u' : 'lwh-a'); d.textContent = text; log.appendChild(d); return d; }
+  function bubble(role, text) { var d = document.createElement('div'); d.className = 'lwh-m ' + (role === 'user' ? 'lwh-u' : 'lwh-a'); d.textContent = role === 'user' ? text : String(text).replace(/\*\*/g, '').replace(/^#+\s*/gm, ''); log.appendChild(d); return d; }
   function render() {
     log.innerHTML = '';
     bubble('assistant', 'Hi! I am the LWEC Help assistant. I can help with signing in, passwords, codes, handing in tests and videos. What is the problem?');
