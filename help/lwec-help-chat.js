@@ -35,7 +35,6 @@
     + '<div id="lwh-log" aria-live="polite"></div>'
     + '<form id="lwh-form"><textarea id="lwh-in" maxlength="1500" placeholder="Type your question…" aria-label="Your question"></textarea><button id="lwh-send" type="submit">Send</button></form>';
   function mount() { document.body.appendChild(btn); document.body.appendChild(box); render(); }
-  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
 
   var log = box.querySelector('#lwh-log'), input = box.querySelector('#lwh-in'), send = box.querySelector('#lwh-send');
   function bubble(role, text) { var d = document.createElement('div'); d.className = 'lwh-m ' + (role === 'user' ? 'lwh-u' : 'lwh-a'); d.textContent = role === 'user' ? text : String(text).replace(/\*\*/g, '').replace(/^#+\s*/gm, ''); log.appendChild(d); return d; }
@@ -68,5 +67,7 @@
   box.querySelector('#lwh-new').onclick = function () { state = { sid: 'c' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36), msgs: [] }; save(); render(); };
   box.querySelector('#lwh-form').onsubmit = function (e) { e.preventDefault(); var t = input.value; input.value = ''; ask(t); };
   input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); box.querySelector('#lwh-form').onsubmit(e); } });
+  // Mount last: render() needs log/input above to exist.
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
   window.lwecHelpOpen = function (text) { box.classList.add('open'); if (text) ask(text); };
 })();
