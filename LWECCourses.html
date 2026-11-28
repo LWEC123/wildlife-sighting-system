@@ -522,7 +522,30 @@ const US_LIST = [
   {id:'US262317', label:'US 262317: Lead participants through an adventure activity'},
   {id:'US262320', label:'US 262320: Manage and organise groups'},
   {id:'US246740', label:'US 246740: Care for customers'},
-  {id:'US255914', label:'US 255914: Minimise and manage safety'}
+  {id:'US255914', label:'US 255914: Minimise and manage safety'},
+  // Further 71549 unit standards, so earlier work can be filed under the right one.
+  {id:'US335796', label:'US 335796: Apply interpretation skills'},
+  {id:'US335794', label:'US 335794: Apply knowledge of South Africa to enhance a tourism experience'},
+  {id:'US335798', label:'US 335798: Describe the role and functions of role-players in the tourist guiding sector'},
+  {id:'US110009', label:'US 110009: Manage administration records'},
+  {id:'US335795', label:'US 335795: Operate within the national and international legal tourism framework'},
+  {id:'US335800', label:'US 335800: Apply professional values and ethics in the operational environment'},
+  {id:'US335797', label:'US 335797: Conduct a dangerous animals experience'},
+  {id:'US262305', label:'US 262305: Plan and implement minimum environmental impact practices'},
+  {id:'US119869', label:'US 119869: Iron Age archaeology'},
+  {id:'US119870', label:'US 119870: Research an archaeological site'},
+  {id:'US8518',   label:'US 8518: Track animals and spoor'},
+  {id:'US119472', label:'US 119472: Fundamental: accommodate audience and context needs in oral communication'},
+  {id:'US119457', label:'US 119457: Fundamental: interpret and use information from texts'},
+  {id:'US119467', label:'US 119467: Fundamental: use language and communication in occupational learning (NQF 3)'},
+  {id:'US119465', label:'US 119465: Fundamental: write and present texts (NQF 3)'},
+  {id:'US9015',   label:'US 9015: Fundamental: statistics and probability'},
+  {id:'US7484',   label:'US 7484: Fundamental: shape and motion'},
+  {id:'US7468',   label:'US 7468: Fundamental: financial mathematics'},
+  {id:'US119462', label:'US 119462: Fundamental: sustained oral communication'},
+  {id:'US119469', label:'US 119469: Fundamental: read, analyse and respond to texts'},
+  {id:'US119471', label:'US 119471: Fundamental: use language and communication in occupational learning (NQF 4)'},
+  {id:'US119459', label:'US 119459: Fundamental: write for a wide range of contexts'}
 ];
 const EV_MAX = 500*1024*1024;
 const IDLE_MS = 10*60*1000, BEAT_S = 60, ONLINE_MS = 2*60*1000;
@@ -2330,7 +2353,7 @@ window.staffUpload = async uid=>{
   const ok=[], skipped=[];
   files.forEach(f=>{ if(!evType(f)) skipped.push(f.name+' (type not allowed)'); else if(f.size>EV_MAX) skipped.push(f.name+' (over 500 MB)'); else ok.push(f); });
   if(!ok.length){ toast('None of these files can be uploaded: '+skipped.slice(0,3).join(', ')); return; }
-  const usFor=f=>{ if(auto){ const m=(f.webkitRelativePath||f.name).match(/\b(\d{6})\b/g)||[]; const hit=m.map(n=>'US'+n).find(id=>US_LIST.some(u=>u.id===id)); if(hit) return hit; } return fallback; };
+  const usFor=f=>{ if(auto){ const m=(f.webkitRelativePath||f.name).match(/\b(\d{6}|\d{4})\b/g)||[]; const hit=m.map(n=>'US'+n).find(id=>US_LIST.some(u=>u.id===id)); if(hit) return hit; } return fallback; };
   const total=ok.reduce((a,f)=>a+f.size,0);
   if(!confirm('Upload '+ok.length+' file'+(ok.length>1?'s':'')+' ('+fmtSize(total)+') into '+(e.name||e.email)+'\'s evidence file?'+(skipped.length?'\n\n'+skipped.length+' file(s) will be skipped: '+skipped.slice(0,5).join(', '):'')+'\n\nKeep this page open until it finishes.')) return;
   const by=val('asName')||assessor().name||profile.name||'';
