@@ -4,6 +4,8 @@
 //  premarkNow       the staff button "Run AI pre-mark again" on the Marking page
 //  dailySummary     07:00 every day: summary email + Student monitor spreadsheet (daily.js)
 //  monitorReports   lets the college computer download the saved spreadsheets (key-protected)
+//  helpChat         the student help chat on the portal and the college website (help.js)
+//                   + the daily website health check inside dailySummary (health.js)
 //
 // Both write SUGGESTED marks to premarks/<cid>_<uid>_<mid> (staff only) and email the
 // assessor. The assessor's own decision on the Marking page is the only result that counts.
@@ -158,6 +160,8 @@ const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onRequest } = require('firebase-functions/v2/https');
 const crypto = require('crypto');
 const { buildSummary, loadData, buildMonitorCsv, monitorCids, buildStaffLogCsv } = require('./daily');
+const { runHealth, healthHtml } = require('./health');
+const { makeWp } = require('./wpclient');
 const REPORTS = 'reports/';
 // <folder>/<file>.csv as saved below; the only names the download endpoint serves.
 const REPORT_NAME = /^(student-monitor\/US\d+\/LWEC-student-monitor-US\d+|staff-access-log\/LWEC-staff-access-log)-\d{4}-\d{2}-\d{2}\.csv$/;
@@ -177,6 +181,16 @@ exports.dailySummary = onSchedule({ schedule: '0 7 * * *', timeZone: 'Africa/Joh
   const pass = GMAIL_APP_PASSWORD.value();
   if (!pass || pass === 'none') { console.warn('no GMAIL_APP_PASSWORD, email not sent'); return; }
   const tr = nodemailer.createTransport({ service: 'gmail', auth: { user: NOTIFY_FROM, pass: pass.replace(/\s+/g, '') } });
+  // Website health check: its result goes right under "Good morning" (a failure never stops the summary).
+  try {
+    const h = await runHealth({ fetch, wp: makeWp(), db, now: () => now, mail: (to, subject, html) => tr.sendMail({ from: 'Limpopo Wildlife Eco College <' + NOTIFY_FROM + '>', to, subject, html }) });
+    console.log('health', JSON.stringify({ ok: h.ok, bad: h.items.filter(i => !i.ok).map(i => i.name), unverified: h.unverified.length, fixed: h.fixed.length, help: h.help.count }));
+    const cut = s.html.indexOf('</p>') + 4;
+    s.html = s.html.slice(0, cut) + healthHtml(h, now) + s.html.slice(cut);
+    s.text = 'Websites: ' + (h.ok ? 'all OK' : h.items.filter(i => !i.ok).map(i => i.name + ': ' + i.detail).join('; ')) + '\n\n' + s.text;
+    if (!h.ok) s.subject += ' · ⚠️ website problem';
+    if (h.help.count) s.subject += ' · ' + h.help.count + ' help request' + (h.help.count === 1 ? '' : 's');
+  } catch (e) { console.error('health check failed', e.message); }
   await tr.sendMail({ from: 'LWEC Learning Portal <' + NOTIFY_FROM + '>', to: NOTIFY_TO, subject: s.subject,
     html: s.html + '<p style="color:#888;font-size:12px;font-family:Arial,sans-serif">Attached for your records: today\'s Student monitor spreadsheet and the staff resources access log (who opened what), the same as the download buttons in the portal.</p>',
     text: s.text + '\n\nAttached: today\'s Student monitor spreadsheet and the staff resources access log.',
@@ -210,4 +224,33 @@ exports.monitorReports = onRequest({ timeoutSeconds: 60, memory: '256MiB', maxIn
   if (!ok) { res.status(404).send('Not found'); return; }
   const [buf] = await f.download();
   res.set('Content-Type', 'text/csv; charset=utf-8').send(buf);
+});
+
+// ---------- student help chat (portal + college website) ----------
+// Public HTTPS endpoint called by help/lwec-help-chat.js. Limits per IP, per email and per day are
+// in help.js. Chats are kept in helpchats/ and requests for the college in helpdesk/ (no browser can
+// read either; Firestore rules have no match for them).
+const { getAuth } = require('firebase-admin/auth');
+const { handleChat } = require('./help');
+const HELP_ORIGINS = ['https://lwec123.github.io', 'https://limpopowildlifeecocollege.com', 'https://www.limpopowildlifeecocollege.com'];
+exports.helpChat = onRequest({ secrets: [ANTHROPIC_API_KEY, GMAIL_APP_PASSWORD, CALLMEBOT_KEY, WHATSAPP_TO], cors: HELP_ORIGINS, timeoutSeconds: 120, memory: '512MiB', maxInstances: 3 }, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (req.method !== 'POST') { res.status(405).json({ reply: 'POST only' }); return; }
+  if (JSON.stringify(req.body || {}).length > 60000) { res.status(413).json({ reply: 'That message is too long.' }); return; }
+  const ip = String(req.get('x-forwarded-for') || req.ip || '').split(',')[0].trim() || 'unknown';
+  const pass = GMAIL_APP_PASSWORD.value().replace(/\s+/g, '');
+  const tr = nodemailer.createTransport({ service: 'gmail', auth: { user: NOTIFY_FROM, pass } });
+  const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value(), timeout: 90 * 1000, maxRetries: 1 });
+  const fake = process.env.FUNCTIONS_EMULATOR === 'true' && process.env.HELP_FAKE === '1';
+  const deps = {
+    db, now: () => Date.now(), auth: getAuth(), wp: makeWp(),
+    mail: (to, subject, html, replyTo) => tr.sendMail(Object.assign({ from: 'Limpopo Wildlife Eco College <' + NOTIFY_FROM + '>', to, subject, html }, replyTo ? { replyTo } : {})),
+    whatsapp: text => sendWhatsApp(CALLMEBOT_KEY.value(), WHATSAPP_TO.value(), text),
+    claude: fake ? require('./test/fake-help-claude') : p => client.beta.messages.create(Object.assign({
+      betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      thinking: { type: 'adaptive' }, output_config: { effort: 'low' }
+    }, p))
+  };
+  const r = await handleChat(deps, req.body, ip);
+  res.status(r.status).json({ reply: r.reply, sid: r.sid, actions: r.actions || [] });
 });
