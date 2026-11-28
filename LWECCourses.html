@@ -1983,6 +1983,11 @@ function stuSummary(e, cid){
   const newEv=S.evidence.filter(v=>v.uid===e.uid && !(v.review&&v.review.status) && !testDone(v)).length;
   return {cid, mids, chosen, newEv, p, r, sess, lastSeen, weekSec, totalSec:p.totalSec||0, allSec, done, waiting, cur, online: lastSeen && Date.now()-lastSeen<ONLINE_MS};
 }
+// The student's progress on the other unit standards, so the selected one is not mistaken for all.
+function otherProg(e){
+  const o=courseIds(true).filter(c=>c!==CID).map(c=>{ const x=stuSummary(e,c); return (x.done||x.cur||x.p.totalSec)? esc(cdef(c).code||c)+': '+x.done+'/'+x.mids.length : ''; }).filter(Boolean);
+  return o.length? '<div class="sm" style="margin-top:3px;">'+o.join(' · ')+'</div>' : '';
+}
 function busyText(x){
   if(x.done===x.mids.length) return 'Finished this unit standard 🎉';
   if(!x.cur || !x.cur.mid) return '<span class="sm">Not started yet</span>';
@@ -2004,12 +2009,12 @@ function renderMonitor(){
   const aiReady=courseIds(true).reduce((a,c)=>a+S.enrol.reduce((b,e)=>{ const x=stuSummary(e,c); return b+x.waiting.filter(m=>preFor(c,e.uid,m,(x.p.mods||{})[m]).status==='done').length; },0),0);
   $('markBadge').hidden=!waiting; $('markBadge').textContent=waiting+(aiReady?' · 🤖'+aiReady:''); $('markBadge').title=waiting+' to mark'+(aiReady?', '+aiReady+' pre-marked by AI and ready to check':'');
   if(!rows.length){ $('monTable').innerHTML='<tr><td class="note">No students yet. Create access codes under <b>Access codes</b> and give each student theirs.</td></tr>'; return; }
-  $('monTable').innerHTML='<tr><th>Student</th><th>Last on</th><th>Busy with ('+esc(course.code||'')+')</th><th>Progress</th><th>This week</th><th>Time on '+esc(course.code||'')+'</th><th>Sessions</th></tr>'
+  $('monTable').innerHTML='<tr><th>Student</th><th>Last on</th><th>Busy with ('+esc(course.code||'')+')</th><th>Progress ('+esc(course.code||'')+')</th><th title="Time on the whole qualification, all unit standards">This week (all courses)</th><th>Time on '+esc(course.code||'')+'</th><th title="Visits to the portal in the last 90 days, all unit standards">Sessions (all, 90 days)</th></tr>'
     +rows.map(r=>'<tr class="click" onclick="openStu(\''+r.e.uid+'\')">'
       +'<td><b>'+esc(r.e.name||r.e.email)+'</b>'+(r.e.active?'':' <span class="pill bad">paused</span>')+((r.e.paused||{})[CID]?' <span class="pill bad">'+esc(course.code)+' paused</span>':'')+(S.agree[r.e.uid]?'':' <span class="pill wait">agreement not signed</span>')+'<div class="sm">'+esc(r.e.email||'')+'</div></td>'
       +'<td>'+(r.online?'<span class="pill live">● online now</span>':esc(ago(r.lastSeen)))+'</td>'
       +'<td>'+busyText(r)+(r.waiting.length?'<div><span class="pill wait">'+r.waiting.length+' to mark</span></div>':'')+(r.newEv?'<div><span class="pill wait">'+r.newEv+' new upload'+(r.newEv>1?'s':'')+'</span></div>':'')+'</td>'
-      +'<td>'+r.done+'/'+NMODS+'<div class="bar" style="height:7px;width:90px;"><i style="width:'+Math.round(r.done/NMODS*100)+'%"></i></div></td>'
+      +'<td>'+r.done+'/'+NMODS+' modules<div class="bar" style="height:7px;width:90px;"><i style="width:'+Math.round(r.done/NMODS*100)+'%"></i></div>'+otherProg(r.e)+'</td>'
       +'<td>'+fmtDur(r.weekSec)+'</td><td>'+fmtDur(r.totalSec)+'</td><td>'+r.sess.length+'</td></tr>').join('');
   renderClassGrid(rows);
   if(curStu) openStu(curStu, true);
@@ -3418,7 +3423,7 @@ window.printPoE = async uid=>{
 
 /* ---------- CSV ---------- */
 window.exportCSV = ()=>{
-  const head=['Student','Email','Access','Agreement signed','Last on','Busy with','Modules competent','Tests to mark','Time this week (min)','Time on unit standard (min)','Sessions (90 days)'].concat(MIDS.map((m,i)=>'Module '+(i+1)));
+  const head=['Student','Email','Access','Agreement signed','Last on','Busy with','Modules competent','Tests to mark','Time this week, all courses (min)','Time on unit standard (min)','Sessions, all courses (90 days)'].concat(MIDS.map((m,i)=>'Module '+(i+1)));
   const lines=[head];
   S.enrol.forEach(e=>{
     const x=stuSummary(e), passed=(x.r.passed||{});

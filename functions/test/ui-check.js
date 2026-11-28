@@ -60,6 +60,7 @@ const db = getFirestore(), auth = getAuth(), OUT = process.env.SP;
   await pg.click('#classGrid td.ocell'); await pg.waitForTimeout(500);
   console.log('popup open:', await pg.$eval('#ocModal', e => !e.hidden), '|', (await pg.textContent('#ocBody')).replace(/\s+/g, ' ').slice(0, 300));
   await pg.screenshot({ path: OUT + '/outcome.png' });
+  console.log('monitor head:', (await pg.$$eval('#monTable th', els => els.map(e => e.textContent))).join(' | '), '| progress cell:', await pg.$eval('#monTable tr:nth-child(2) td:nth-child(4)', e => e.textContent));
   // change a confirmed mark from the popup: reason required, original kept, result recomputed
   await pg.click('#ocBody button:has-text("Change mark")'); await pg.waitForTimeout(300);
   await pg.fill('#ocs-10', '3'); await pg.fill('#ocn-10', 'Fire also keeps the trees down: accepted.');
