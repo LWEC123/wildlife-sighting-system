@@ -59,9 +59,8 @@ If it asks to delete other functions, type **N**. When it says `Deploy complete!
 6. Click **Save Changes and Activate**.
 7. Check: **Tools › LWEC helper** opens a page with "LWEC helper 1.0". Tell Claude "helper is on".
 
-Claude then reads that page to see how Tutor LMS Pro marks unconfirmed emails on this site, and gives
-you one line to change in the snippet (`LWEC_VERIFY_KEY`). Until then the help chat and the daily check
-already work; only the "Confirm my email" links and "Mark email verified" wait for that line.
+Tutor LMS Pro on this site keeps `tutor_require_email_verification` = `required` until the student
+clicks the link, then `verified`. "Mark email verified" and the confirm links set it to `verified`.
 
 ### Step 3. Test
 - Open the portal (Ctrl+Shift+R), click **💬 Help**, click **I forgot my password**.

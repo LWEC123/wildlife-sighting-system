@@ -17,7 +17,7 @@
  */
 if (!defined('ABSPATH')) { return; }
 if (defined('LWEC_HELPER')) { return; }
-define('LWEC_HELPER', '1.0');
+define('LWEC_HELPER', '1.1');
 
 const LWEC_AUD = 'https://limpopowildlifeecocollege.com';
 const LWEC_CALLERS = array('67985548748-compute@developer.gserviceaccount.com', 'lwec-field-logbook@appspot.gserviceaccount.com');
@@ -40,32 +40,22 @@ function lwec_mail_result($ok, $error = '') {
 }
 
 /* ---------- Tutor LMS Pro email verification ----------
- * LWEC_VERIFY_KEY is the user meta that Tutor Pro keeps while an email is NOT confirmed yet.
- * Until it is known for this site (see Tools › LWEC helper), sign-ups are found by any meta key
- * containing "verif" and "Mark email verified" is not offered. */
-const LWEC_VERIFY_KEY = '';
-function lwec_unverified_keys($uid) {
-	$out = array();
-	foreach ((array) get_user_meta($uid) as $k => $v) {
-		$val = is_array($v) ? (string) reset($v) : (string) $v;
-		if (LWEC_VERIFY_KEY !== '' ? $k === LWEC_VERIFY_KEY : preg_match('/verif/i', $k)) {
-			if ($val !== '' && !in_array(strtolower($val), array('1', 'yes', 'true', 'verified'), true)) { $out[$k] = $val; }
-		}
-	}
-	return $out;
-}
-/** true = confirmed, false = not confirmed, null = cannot tell */
+ * Seen on this site (28 Nov 2026): Tutor Pro keeps user meta tutor_require_email_verification =
+ * "required" until the student clicks the link, then "verified" (and deletes
+ * tutor_email_verification_token). Staff accounts don't have it. */
+const LWEC_VERIFY_KEY = 'tutor_require_email_verification';
+const LWEC_VERIFY_TOKEN = 'tutor_email_verification_token';
+/** true = confirmed (or never needed), false = still waiting for the email link */
 function lwec_is_verified($uid) {
-	if (user_can($uid, 'edit_posts')) { return true; }
-	return count(lwec_unverified_keys($uid)) ? false : true;
+	return get_user_meta($uid, LWEC_VERIFY_KEY, true) !== 'required';
 }
-function lwec_verify_supported() { return LWEC_VERIFY_KEY !== ''; }
+function lwec_verify_supported() { return true; }
 function lwec_mark_verified($uid) {
-	if (!lwec_verify_supported()) { return false; }
-	delete_user_meta($uid, LWEC_VERIFY_KEY);
+	update_user_meta($uid, LWEC_VERIFY_KEY, 'verified');
+	delete_user_meta($uid, LWEC_VERIFY_TOKEN);
 	update_user_meta($uid, 'lwec_email_confirmed', time());
 	do_action('lwec_email_marked_verified', $uid);
-	return lwec_is_verified($uid) === true;
+	return lwec_is_verified($uid);
 }
 
 /* ---------- signed "Confirm my email" links (3 days) ---------- */
@@ -136,7 +126,7 @@ add_action('rest_api_init', function () {
 		}
 		$unverified = array();
 		foreach (get_users(array('date_query' => array(array('after' => '60 days ago', 'inclusive' => true)), 'orderby' => 'registered', 'order' => 'DESC', 'number' => 200)) as $u) {
-			if (lwec_is_verified($u->ID) === false) {
+			if (lwec_is_verified($u->ID) === false && !array_filter(lwec_user_by_email($u->user_email), function ($x) { return lwec_is_verified($x->ID); })) {
 				$unverified[] = array('id' => $u->ID, 'name' => $u->display_name, 'email' => $u->user_email, 'registered' => strtotime($u->user_registered . ' UTC'),
 					'fix_url' => admin_url('users.php?s=' . rawurlencode($u->user_email)));
 			}
@@ -211,7 +201,7 @@ add_action('admin_menu', function () {
 		$t = function ($x) { return $x ? esc_html(wp_date('j M Y H:i', $x)) : 'never'; };
 		echo '<div class="wrap"><h1>LWEC helper ' . esc_html(LWEC_HELPER) . '</h1>';
 		echo '<p>Last website email sent: <b>' . $t((int) get_option('lwec_mail_last_ok', 0)) . '</b> · last failed: <b>' . $t((int) get_option('lwec_mail_last_fail', 0)) . '</b> ' . esc_html((string) get_option('lwec_mail_last_error', '')) . '</p>';
-		echo '<p>Email-confirm setting: ' . (lwec_verify_supported() ? 'known (' . esc_html(LWEC_VERIFY_KEY) . ')' : 'not set yet') . '</p>';
+		echo '<p>Email confirmation: Tutor LMS Pro setting <code>' . esc_html(LWEC_VERIFY_KEY) . '</code> (required = waiting, verified = done).</p>';
 		echo '<h2>Newest 12 accounts: settings that look like email confirmation</h2><table class="widefat striped"><tr><th>ID</th><th>Signed up</th><th>Email</th><th>Settings (name = value)</th></tr>';
 		foreach (get_users(array('orderby' => 'registered', 'order' => 'DESC', 'number' => 12)) as $u) {
 			$keys = array();
