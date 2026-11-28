@@ -1998,21 +1998,82 @@ function ocTip(t,x,p){
   if(p<70) x.items.forEach(i=>{ s+='\n\n'+modTitle(i.m).split(':')[0]+', question '+i.n+' ('+i.s+' / '+i.max+'): '+cut(i.q,90)+'\nAnswer: '+(i.a==null?'(not answered)':cut(i.a,160)); });
   return s+'\n\nClick to open the test.';
 }
-window.showOutcome=(uid,t)=>{
+// Popup behind one result on the outcomes grid. Staff can change a confirmed mark here
+// (Zeriah, 27 Nov 2026): the original attempt stays in the PoE, the change is added as a new
+// record with who, when and why, and the result is worked out again (pass mark in BOTH parts).
+window.OC={uid:'',t:'',edit:''};
+const isWrittenQ=q=>q.type==='WRITTEN'||q.type==='SHORT'||q.type==='ESSAY';
+function ocParts(qa, last){
+  const pass=+((last.parts||{}).pass)||70, mc={s:0,max:0}, wr={s:0,max:0};
+  const sheet=qa.every(q=>q.type==='SHEET');
+  qa.forEach(q=>{ const o=(sheet||isWrittenQ(q))?wr:mc; o.s+=+q.s||0; o.max+=+q.max||0; });
+  const lp=last.parts||{};   // a one-part resit only holds the redone part: the other part is kept
+  if(!mc.max && lp.mc && lp.mc.max){ mc.s=+lp.mc.s||0; mc.max=+lp.mc.max; }
+  if(!wr.max && lp.wr && lp.wr.max){ wr.s=+lp.wr.s||0; wr.max=+lp.wr.max; }
+  [mc,wr].forEach(o=>o.pct= o.max? Math.round(o.s/o.max*1000)/10 : 100);
+  const redo=[mc.max&&mc.pct<pass&&'multiple-choice', wr.max&&wr.pct<pass&&'written'].filter(Boolean);
+  return {mc, wr, pass, redo, outcome: redo.length?'NYC':'C', sheet};
+}
+function ocPartsTxt(x){ return (x.sheet?[['Total',x.wr]]:[['Multiple choice',x.mc],['Written',x.wr]]).filter(r=>r[1].max).map(r=>r[0]+' '+r[1].s+' / '+r[1].max+' ('+r[1].pct+'%)').join(' · ')+' · pass mark '+x.pass+'% in each part → <b>'+(x.outcome==='C'?'Competent':'Not yet competent')+'</b>'; }
+window.showOutcome=(uid,t,edit)=>{
+  OC={uid,t,edit:edit||''};
   const e=S.enrol.find(x=>x.uid===uid)||{}, r=S.res[CID+'_'+uid]||{}, x=tagStats(r)[t]; if(!x) return;
   const p=x.max? Math.round(x.s/x.max*100):0, mods=[...x.mods].sort();
+  const canEdit=isMentor && !staffIsStudent && !isOwnWork(e);
   const aiNote=(m,n)=>{ const q=((((S.pre||{})[CID+'_'+uid+'_'+m]||{}).result||{}).questions||[]).find(y=>String(y.n)===String(n)); return q&&q.comment? q.comment : ''; };
-  const row=(q,hl)=>'<tr'+(hl?' style="background:#fff4e0;"':'')+'><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q||'')+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'<i>(not answered)</i>':esc(q.a))+(aiNote(q.m||'',q.n)?'<div class="sm" style="margin-top:4px;">🤖 '+esc(aiNote(q.m||'',q.n))+'</div>':'')+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td style="white-space:nowrap;">'+(q.s<q.max?'<b style="color:var(--danger)">'+q.s+' / '+q.max+'</b>':q.s+' / '+q.max)+'</td></tr>';
+  const row=(m,q,hl,ed)=>'<tr'+(hl?' style="background:#fff4e0;"':'')+'><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q||'')+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'<i>(not answered)</i>':esc(q.a))
+    +(aiNote(m,q.n)?'<div class="sm" style="margin-top:4px;">🤖 '+esc(aiNote(m,q.n))+'</div>':'')
+    +(q.note&&!ed?'<div class="sm" style="margin-top:4px;">✎ '+esc(q.note)+'</div>':'')
+    +(ed?'<input id="ocn-'+q.n+'" placeholder="Comment on this answer (optional)" value="'+esc(q.note||'')+'" style="margin-top:6px;width:100%;">':'')+'</td><td>'+esc((q.tags||[]).join(', '))+'</td>'
+    +'<td style="white-space:nowrap;">'+(ed?'<input id="ocs-'+q.n+'" type="number" min="0" max="'+q.max+'" step="0.5" value="'+q.s+'" style="width:64px;" oninput="ocLive()"> / '+q.max
+      : (q.s<q.max?'<b style="color:var(--danger)">'+q.s+' / '+q.max+'</b>':q.s+' / '+q.max)+(q.s0!=null&&q.s0!==q.s?'<div class="sm">was '+q.s0+'</div>':''))+'</td></tr>';
   let h='<p><b>'+esc(tagLabel(t))+'</b><br>'+esc(e.name||e.email||'')+': '+x.s+' / '+x.max+' ('+p+'%) '+light(p)+'</p>';
   mods.forEach(m=>{
     const hs=(r.hist||{})[m]||[], last=[...hs].reverse().find(y=>y.qa); if(!last) return;
-    const mk=(r.marks||{})[m]||{};
+    const mk=(r.marks||{})[m]||{}, ed=OC.edit===m;
     h+='<h3 style="margin-top:16px;">'+esc(modTitle(m))+'</h3><p class="sm">Latest marked attempt'+(last.at?', '+esc(fmtD(last.at)):'')+(mk.outcome?' · '+(mk.outcome==='C'?'competent':'not yet competent'):'')+'. Questions on this outcome are highlighted.</p>'
-      +(mk.fix?'<p class="note">Feedback given: '+esc(mk.fix)+'</p>':'')
+      +(last.change?'<p class="sm">✎ Mark changed by '+esc(last.change.by)+' on '+esc(fmtD(last.change.at))+': '+esc(last.change.reason)+'</p>':'')
+      +(mk.fix&&!ed?'<p class="note">Feedback given: '+esc(mk.fix)+'</p>':'')
       +'<div class="tablewrap"><table class="t"><tr><th>#</th><th>Question</th><th>Student\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'
-      +last.qa.map(q=>row(Object.assign({m},q),(q.tags||[]).includes(t))).join('')+'</table></div>';
+      +last.qa.map(q=>row(m,q,(q.tags||[]).includes(t),ed)).join('')+'</table></div>'
+      +(ed? '<div class="sub-entry" style="margin-top:10px;"><p class="note" id="ocLive">'+ocPartsTxt(ocParts(last.qa,last))+'</p>'
+          +'<label class="sm"><b>Reason for the change</b> (required, kept in the PoE)</label><textarea id="ocWhy" rows="2" style="width:100%;" placeholder="e.g. Moderation: the answer names a correct second reason, so 3 marks."></textarea>'
+          +'<label class="sm" style="display:block;margin-top:6px;"><b>Message to the student</b> (optional, added to their feedback)</label><textarea id="ocMsg" rows="2" style="width:100%;"></textarea>'
+          +'<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><button class="btn" id="ocSave" onclick="ocSave(\''+m+'\')">💾 Save the change</button><button class="btn ghost" onclick="showOutcome(OC.uid,OC.t)">Cancel</button></div></div>'
+        : canEdit? '<p style="margin-top:8px;"><button class="btn small ghost" onclick="showOutcome(OC.uid,OC.t,\''+m+'\')">✎ Change mark / comment</button></p>' : '');
   });
   $('ocTitle').textContent=(e.name||'Student')+' · '+t; $('ocBody').innerHTML=h; $('ocModal').hidden=false;
+};
+function ocEdited(last){ return last.qa.map(q=>{ const i=$('ocs-'+q.n), c=$('ocn-'+q.n); const v=i&&i.value!==''? Math.min(+q.max||0,Math.max(0,Math.round(+i.value*2)/2)) : +q.s||0; return Object.assign({},q,{s:v, note:c? c.value.trim() : (q.note||'')}); }); }
+function ocLast(m){ const hs=((S.res[CID+'_'+OC.uid]||{}).hist||{})[m]||[]; return [...hs].reverse().find(y=>y.qa); }
+window.ocLive=()=>{ const last=ocLast(OC.edit); if(!last) return; const el=$('ocLive'); if(el) el.innerHTML=ocPartsTxt(ocParts(ocEdited(last),last)); };
+window.ocSave=async m=>{
+  const uid=OC.uid, last=ocLast(m), r=S.res[CID+'_'+uid]||{}, mk=(r.marks||{})[m]||{}; if(!last) return;
+  const why=($('ocWhy').value||'').trim(), msg=($('ocMsg').value||'').trim();
+  if(!why){ toast('Write the reason for the change. It is kept in the PoE.'); $('ocWhy').focus(); return; }
+  const qa=ocEdited(last);
+  const qs=qa.map((q,i)=>{ const o=last.qa[i]; return (q.s!==(+o.s||0) || (q.note||'')!==(o.note||''))? {n:q.n, from:+o.s||0, to:q.s, comment:q.note||''} : null; }).filter(Boolean);
+  if(!qs.length){ toast('Nothing was changed.'); return; }
+  qa.forEach((q,i)=>{ const o=last.qa[i]; if(q.s!==(+o.s||0) && o.s0==null) q.s0=+o.s||0; });
+  const as=assessor(), name=as.name||profile.name||me.email, x=ocParts(qa,last), now=Timestamp.now();
+  const total=x.mc.s+x.wr.s, max=x.mc.max+x.wr.max, scores={}; qa.forEach(q=>scores[q.n]={s:q.s,max:q.max});
+  const lines=qs.map(c=>'Question '+c.n+(c.from!==c.to?': '+c.from+' → '+c.to+' marks':'')+(c.comment?'. '+c.comment:'')).join('\n');
+  const fix=[mk.fix||'', 'Mark reviewed by '+name+' on '+fmtD(now)+(msg?': '+msg:'.'), lines].filter(Boolean).join('\n\n');
+  const change={by:name, reg:as.reg||'', byUid:me.uid, role:staffRole, at:now, reason:why, from:{outcome:mk.outcome||last.outcome||'', total:last.total!=null?last.total:null, max:last.max!=null?last.max:null}, to:{outcome:x.outcome, total, max}, qs};
+  const rec=Object.assign({}, last, {outcome:x.outcome, qa, total, max, parts:{mc:x.mc, wr:x.wr, pass:x.pass}, fix, by:name, reg:as.reg||'', byUid:me.uid, at:now, change});
+  const mx=Object.assign({}, mk, {outcome:x.outcome, total, max, scores, fix, changed:change});
+  delete mx.redo; delete mx.keep;
+  if(x.outcome==='NYC'){ mx.reassessBy=mk.reassessBy||reassessDefault(); rec.reassessBy=mx.reassessBy; if(x.redo.length===1){ mx.redo=x.redo; mx.keep= x.redo[0]==='written'? {mc:x.mc} : {wr:x.wr}; } }
+  else { mx.reassessBy=''; rec.reassessBy=''; }
+  const flips=(mk.outcome||'')!==x.outcome;
+  $('ocSave').disabled=true;
+  try{
+    const up={['passed.'+m]:x.outcome==='C', ['marks.'+m]:mx, ['hist.'+m]:arrayUnion(rec)};
+    if(m.length>3) up['passed.'+baseOf(m)]=x.outcome==='C';
+    await updateDoc(doc(db,'results',CID+'_'+uid), up);
+    toast(flips? 'Saved. The result is now '+(x.outcome==='C'?'competent':'not yet competent')+'.' : 'Saved. The change is in the PoE.');
+    OC.edit=''; setTimeout(()=>showOutcome(uid,OC.t),400);
+  }catch(e){ $('ocSave').disabled=false; toast('Could not save: '+e.code); }
 };
 function renderClassGrid(rows){
   const per=rows.map(r=>({r, st:tagStats(r.r)})), tags=[...new Set(per.flatMap(x=>Object.keys(x.st)))].sort(sortTags), box=$('classGrid');
@@ -2492,10 +2553,12 @@ window.mark = async (c,uid,m,outcome,opts)=>{
     rec.ai=ai; mx.ai=ai;
   }
   try{
-    await setDoc(doc(db,'results',c+'_'+uid), {uid, cid:c,
-      passed: m.length>3? {[m]: outcome==='C', [baseOf(m)]: outcome==='C'} : {[m]: outcome==='C'},
-      marks:{[m]:Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), reassessBy}, mx)},
-      hist:{[m]: arrayUnion(rec)}}, {mergeFields:['uid','cid','passed.'+m,'marks.'+m,'hist.'+m].concat(m.length>3?['passed.'+baseOf(m)]:[])});
+    // set() with mergeFields replaces an arrayUnion field instead of adding to it, which would
+    // drop earlier attempts from the PoE: create the doc if needed, then update() the fields.
+    const rref=doc(db,'results',c+'_'+uid), bw=writeBatch(db);
+    const up={['passed.'+m]: outcome==='C', ['marks.'+m]: Object.assign({outcome, good, fix, by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), reassessBy}, mx), ['hist.'+m]: arrayUnion(rec)};
+    if(m.length>3) up['passed.'+baseOf(m)]=outcome==='C';
+    bw.set(rref, {uid, cid:c}, {merge:true}); bw.update(rref, up); await bw.commit();
     // Files the student uploaded for this module's test are assessed with it: record that, so they
     // no longer show as "new upload" on the Student monitor and go into the PoE (Zeriah, 27 Nov 2026).
     const subMs=ms(pm.submittedAt)||Date.now();
@@ -2520,14 +2583,13 @@ window.priorCompetent = async (uid,m)=>{
   if(!todo.length){ toast('Already competent.'); return; }
   if(!confirm('Record '+todo.map(k=>'Module '+(parseInt(k.slice(1,3),10)||k)).join(', ')+' as competent for '+(e.name||e.email)+'?\n\nUse this for work they completed before the online portal. It shows in their PoE pack as "Competent before the online portal", recorded by '+as.name+'.')) return;
   const good='Competent before the online portal (work completed earlier, recorded by the assessor).';
-  const now=Timestamp.now(), pass={}, marks={}, hist={}, fields=['uid','cid'];
+  const now=Timestamp.now(), up={};
   todo.forEach(k=>{
-    pass[k]=true; if(k.length>3) pass[baseOf(k)]=true;
-    marks[k]={outcome:'C', good, fix:'', by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), prior:true};
-    hist[k]=arrayUnion({outcome:'C', good, fix:'', by:as.name, reg:as.reg, byUid:me.uid, at:now, submittedAt:null, answers:'', link:'', paper:false, prior:true});
-    fields.push('passed.'+k,'marks.'+k,'hist.'+k); if(k.length>3) fields.push('passed.'+baseOf(k));
+    up['passed.'+k]=true; if(k.length>3) up['passed.'+baseOf(k)]=true;
+    up['marks.'+k]={outcome:'C', good, fix:'', by:as.name, reg:as.reg, byUid:me.uid, at:serverTimestamp(), prior:true};
+    up['hist.'+k]=arrayUnion({outcome:'C', good, fix:'', by:as.name, reg:as.reg, byUid:me.uid, at:now, submittedAt:null, answers:'', link:'', paper:false, prior:true});
   });
-  try{ await setDoc(doc(db,'results',CID+'_'+uid), {uid, cid:CID, passed:pass, marks, hist}, {mergeFields:fields});
+  try{ const rref=doc(db,'results',CID+'_'+uid), bw=writeBatch(db); bw.set(rref, {uid, cid:CID}, {merge:true}); bw.update(rref, up); await bw.commit();
     toast(todo.length+' module'+(todo.length>1?'s':'')+' recorded as competent. The student can carry on from the next module.'); }
   catch(err){ toast('Could not save: '+err.code); }
 };
@@ -3239,10 +3301,17 @@ window.printPoE = async uid=>{
   const last=x.mids[x.mids.length-1];
   const modPage=m=>{
     const hs=hist[m]||[]; if(!hs.length) return '';
-    let b='';
+    let b='', n=0;
     hs.forEach((a,i)=>{
       const sg=a.byUid&&sigs[a.byUid];
-      b+='<h3>Attempt '+(i+1)+': '+(a.outcome==='C'?'Competent':'Not yet competent')+'</h3><table class="pr"><tr><th>Handed in</th><td>'+fmtDT(a.submittedAt)+'</td><th>Assessed</th><td>'+fmtDT(a.at)+'</td></tr>'
+      if(!a.change) n++;
+      const ch=a.change;
+      b+=(ch? '<h3>Mark changed (attempt '+n+'): '+(a.outcome==='C'?'Competent':'Not yet competent')+'</h3>'
+          +'<table class="pr"><tr><th>Changed by</th><td>'+esc(ch.by)+(ch.role?' ('+esc(ch.role)+')':'')+(ch.reg?', reg. '+esc(ch.reg):'')+'</td><th>Date</th><td>'+fmtDT(ch.at)+'</td></tr>'
+          +'<tr><th>Reason</th><td colspan="3" style="white-space:pre-wrap;">'+esc(ch.reason)+'</td></tr>'
+          +'<tr><th>Result before</th><td>'+(ch.from.outcome==='C'?'Competent':ch.from.outcome==='NYC'?'Not yet competent':'—')+(ch.from.max?', '+ch.from.total+' / '+ch.from.max:'')+'</td><th>Result after</th><td>'+(ch.to.outcome==='C'?'Competent':'Not yet competent')+', '+ch.to.total+' / '+ch.to.max+'</td></tr>'
+          +'<tr><th>Questions changed</th><td colspan="3">'+(ch.qs||[]).map(c=>'Question '+c.n+': '+c.from+' → '+c.to+(c.comment?' ('+esc(c.comment)+')':'')).join('<br>')+'</td></tr></table>'
+        : '<h3>Attempt '+n+': '+(a.outcome==='C'?'Competent':'Not yet competent')+'</h3>')+'<table class="pr"><tr><th>Handed in</th><td>'+fmtDT(a.submittedAt)+'</td><th>Assessed</th><td>'+fmtDT(a.at)+'</td></tr>'
         +'<tr><th>Assessor</th><td>'+esc(a.by)+'</td><th>Registration no.</th><td>'+esc(a.reg||'')+'</td></tr>'
         +(a.link?'<tr><th>Answer sheet link</th><td colspan="3">'+esc(a.link)+'</td></tr>':'')
         +(a.paper?'<tr><th>Paper</th><td colspan="3">Answer sheet handed in on paper: file it behind this page.</td></tr>':'')
@@ -3251,7 +3320,7 @@ window.printPoE = async uid=>{
         +(a.form? '<p style="margin-top:3mm;font-size:10pt;"><b>Answers typed on screen in the portal</b> (headings, questions and names are added by the portal and cannot be changed by the learner)</p>'+formTable(a.form,true)
           : a.answers?'<div style="white-space:pre-wrap;border:1px solid #777;padding:4mm;margin-top:3mm;font-size:10pt;">'+esc(a.answers)+'</div>':'')
         +(a.qa? '<p style="margin-top:3mm;font-size:10pt;">Online test version '+esc(a.ver||'')+' · started '+fmtDT(a.startedAt)+' · handed in '+fmtDT(a.submittedAt)+' · score <b>'+a.total+' / '+a.max+' ('+(a.max?Math.round(a.total/a.max*100):0)+'%)</b></p>'
-          +'<table class="pr"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'+a.qa.map(q=>'<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'(not answered)':esc(q.a))+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td>'+q.s+' / '+q.max+'</td></tr>').join('')+'</table>' : '')
+          +'<table class="pr"><tr><th>#</th><th>Question</th><th>Learner\'s answer</th><th>Outcomes</th><th>Mark</th></tr>'+a.qa.map(q=>'<tr><td>'+q.n+'</td><td style="white-space:pre-wrap;">'+esc(q.q)+'</td><td style="white-space:pre-wrap;">'+(q.a==null?'(not answered)':esc(q.a))+(q.note?'<br><i>Assessor: '+esc(q.note)+'</i>':'')+'</td><td>'+esc((q.tags||[]).join(', '))+'</td><td>'+q.s+' / '+q.max+(q.s0!=null&&q.s0!==q.s?' (was '+q.s0+')':'')+'</td></tr>').join('')+'</table>' : '')
         +'<div class="prsig">'+sigHtml(sg? {name:a.by, png:sg.png, role:'Assessor'+(a.reg?' (reg. '+a.reg+')':''), at:a.at} : {name:a.by, role:'Assessor (marked online)', at:a.at})+'</div>';
     });
     return prPage((m===last?'4. Summative: ':'3. Formative: ')+modTitle(m), sub, b);
@@ -3259,7 +3328,7 @@ window.printPoE = async uid=>{
   h+=prPage('3. Formative assessment: summary', sub, '<table class="pr"><tr><th>Module</th><th>First opened</th><th>Video watched</th><th>Attempts</th><th>Outcome</th><th>Date</th><th>Assessor</th></tr>'
     +x.mids.map(m=>{ const pm=(p.mods||{})[m]||{}, op=pm.opened||{}, hs=hist[m]||[], la=hs[hs.length-1];
       const first=Math.min(...Object.values(op).map(ms).filter(Boolean), Infinity);
-      return '<tr><td>'+esc(modTitle(m))+'</td><td>'+(first<Infinity?fmtD(first):'—')+'</td><td>'+watchTxt(m,pm).replace(/<[^>]+>/g,' ')+'</td><td>'+hs.length+'</td><td>'+(passed[m]===true?(la&&la.prior?'Competent before the online portal':'Competent'):la?'Not yet competent':'—')+'</td><td>'+(la?fmtD(la.at):'—')+'</td><td>'+(la?esc(la.by):'')+'</td></tr>'; }).join('')
+      return '<tr><td>'+esc(modTitle(m))+'</td><td>'+(first<Infinity?fmtD(first):'—')+'</td><td>'+watchTxt(m,pm).replace(/<[^>]+>/g,' ')+'</td><td>'+hs.filter(a=>!a.change).length+'</td><td>'+(passed[m]===true?(la&&la.prior?'Competent before the online portal':'Competent'):la?'Not yet competent':'—')+'</td><td>'+(la?fmtD(la.at):'—')+'</td><td>'+(la?esc(la.by):'')+'</td></tr>'; }).join('')
     +'</table><p style="margin-top:4mm;font-size:9pt;">Time active on this unit standard: '+fmtDur(x.totalSec)+' · Sessions in the last 90 days: '+x.sess.length+'</p>');
   setupMids(CID).filter(m=>m!==last).forEach(m=>{ h+=modPage(m); });
   h+=modPage(last);
